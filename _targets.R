@@ -11,7 +11,7 @@ library(hathiTools)
 
 # Set target options:
 tar_option_set(
-  packages = c("tibble"), # packages that your targets need to run
+  packages = c("tibble", "magrittr"), # packages that your targets need to run
   format = "rds" # default storage format
   # Set other options as needed.
 )
@@ -47,7 +47,7 @@ list(
 
   tar_target(
     name = demagogue_worksets,
-    command = workset_builder("demagogue", pub_date = decades:(decades+9)) |>
+    command = workset_builder("demagogue", pub_date = decades:(decades+9)) %>%
       mutate(decade = decades),
     pattern = map(decades),
     deployment = "main"
