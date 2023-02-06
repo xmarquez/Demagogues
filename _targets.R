@@ -5,13 +5,13 @@
 
 # Load packages required to define the pipeline:
 library(targets)
-library(dplyr)
+library(tidyverse)
 library(hathiTools)
 # library(tarchetypes) # Load other packages as needed. # nolint
 
 # Set target options:
 tar_option_set(
-  packages = c("tibble", "magrittr", "dplyr", "tidyr"), # packages that your targets need to run
+  packages = c("tibble", "magrittr"), # packages that your targets need to run
   format = "rds" # default storage format
   # Set other options as needed.
 )
@@ -51,5 +51,25 @@ list(
       mutate(decade = decades),
     pattern = map(decades),
     deployment = "main"
-  )
+  ),
+
+  tar_target(
+    name = demagogue_worksets_meta,
+    command = demagogue_worksets %>%
+      left_join(load_raw_hathifile(hathi_catalog)),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = demagogue_usable_htids,
+    command = demagogue_worksets_meta %>%
+      dplyr::filter(rights_date_used >= decade, rights_date_used < decade+10,
+                    decade == decades) %>%
+      dplyr::mutate(rights_date_used2 = stringr::str_extract(imprint, "[0-9]{4}") %>%
+                      as.double()) %>%
+      dplyr::filter(rights_date_used2 <= rights_date_used,
+                    lang == "eng"),
+    pattern = map(decades),
+    resources = tar_resources(future = list(partition = "parallel", memory = "4G"))
+  ),
 )
