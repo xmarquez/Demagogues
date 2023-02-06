@@ -71,5 +71,5 @@ list(
                     lang == "eng"),
     pattern = map(decades),
     resources = tar_resources(future = tar_resources_future(
-      resources = list(partition = "parallel", memory = "4G"))),
+      resources = list(partition = "parallel", memory = "4G")))
 )
