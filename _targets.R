@@ -70,6 +70,7 @@ list(
       dplyr::filter(rights_date_used2 <= rights_date_used,
                     lang == "eng"),
     pattern = map(decades),
-    resources = tar_resources(future = list(partition = "parallel", memory = "4G"))
-  ),
+    resources = tar_resources(future = tar_resources_future(
+      resources = list(partition = "parallel", memory = "4G")))
+  )
 )
