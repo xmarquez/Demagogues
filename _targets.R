@@ -42,6 +42,14 @@ list(
     deployment = "main"
   ),
 
+  # Tracking of big catalog HathiFile ---------------------------------------
+
+  tar_target(
+    name = hathi_catalog,
+    command = here::here("raw-hathifiles/hathi_full_20230101.txt.gz"),
+    format = "file",
+    deployment = "main"
+  ),
 
   # Workset creation and metadata addition ----------------------------------
 
@@ -52,6 +60,8 @@ list(
     pattern = map(decades),
     deployment = "main"
   ),
+
+
 
   tar_target(
     name = demagogue_worksets_meta,
