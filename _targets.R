@@ -11,7 +11,7 @@ library(hathiTools)
 
 # Set target options:
 tar_option_set(
-  packages = c("tibble", "magrittr"), # packages that your targets need to run
+  packages = c("tibble", "magrittr", "dplyr"), # packages that your targets need to run
   format = "rds" # default storage format
   # Set other options as needed.
 )
