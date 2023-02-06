@@ -66,7 +66,7 @@ list(
   tar_target(
     name = demagogue_worksets_meta,
     command = demagogue_worksets %>%
-      left_join(load_raw_hathifile(hathi_catalog)),
+      dplyr::left_join(load_raw_hathifile(hathi_catalog)),
     resources = tar_resources(future = tar_resources_future(
       resources = list(partition = "parallel", memory = "8G")))
   ),
