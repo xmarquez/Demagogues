@@ -5,13 +5,13 @@
 
 # Load packages required to define the pipeline:
 library(targets)
-library(tidyverse)
+library(dplyr)
 library(hathiTools)
 # library(tarchetypes) # Load other packages as needed. # nolint
 
 # Set target options:
 tar_option_set(
-  packages = c("tibble", "magrittr"), # packages that your targets need to run
+  packages = c("tibble", "magrittr", "dplyr", "tidyr"), # packages that your targets need to run
   format = "rds" # default storage format
   # Set other options as needed.
 )
