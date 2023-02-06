@@ -22,7 +22,7 @@ options(clustermq.scheduler = "multiprocess")
 # tar_make_future() configuration (okay to leave alone):
 future::plan(future.batchtools::batchtools_slurm, template = here::here("slurm.tmpl"),
              resources = list(partition = "quicktest", ncpus = 2,
-                              memory = "6G",
+                              memory = "12G",
                               walltime = "1:00:00"))
 
 # Run the R scripts in the R/ folder with your custom functions:
