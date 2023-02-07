@@ -105,7 +105,7 @@ list(
   tar_target(
     name = demagogue_files,
     command = hathiTools::cache_htids(demagogue_samples, attempt_rsync = TRUE,
-                                      cache_format = "parquet"),
+                                      cache_format = "rds"),
     pattern = map(demagogue_samples),
     resources = tar_resources(future = tar_resources_future(
       plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl",
