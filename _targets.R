@@ -20,10 +20,7 @@ tar_option_set(
 options(clustermq.scheduler = "multiprocess")
 
 # tar_make_future() configuration (okay to leave alone):
-future::plan(future.batchtools::batchtools_slurm, template = here::here("slurm.tmpl"),
-             resources = list(partition = "quicktest", ncpus = 2,
-                              memory = "12G",
-                              walltime = "1:00:00"))
+future::plan(future.batchtools::batchtools_slurm, template = here::here("slurm.tmpl"))
 
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
@@ -68,7 +65,8 @@ list(
     command = demagogue_worksets %>%
       dplyr::left_join(hathiTools::load_raw_hathifile(hathi_catalog)),
     resources = tar_resources(future = tar_resources_future(
-      resources = list(partition = "parallel", memory = "8G")))
+      resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
+                       walltime = "1:00:00")))
   ),
 
   tar_target(
@@ -82,6 +80,7 @@ list(
                     lang == "eng"),
     pattern = map(decades),
     resources = tar_resources(future = tar_resources_future(
-      resources = list(partition = "parallel", memory = "4G")))
+      resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
+                       walltime = "1:00:00")))
   )
 )
