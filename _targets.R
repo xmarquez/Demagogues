@@ -61,9 +61,17 @@ list(
 
 
   tar_target(
+    name = cached_hathi_catalog,
+    command = hathiTools::load_raw_hathifile(hathi_catalog),
+    resources = tar_resources(future = tar_resources_future(
+      resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
+                       walltime = "1:00:00")))
+  ),
+
+  tar_target(
     name = demagogue_worksets_meta,
-    command = demagogue_worksets %>%
-      dplyr::inner_join(hathiTools::load_raw_hathifile(hathi_catalog)),
+    command = cached_hathi_catalog %>%
+      dplyr::inner_join(demagogue_worksets),
     resources = tar_resources(future = tar_resources_future(
       resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
                        walltime = "1:00:00")))
