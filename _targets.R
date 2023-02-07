@@ -91,7 +91,7 @@ list(
     resources = tar_resources(future = tar_resources_future(
       plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl",
                           resources = list(partition = "quicktest", memory = "1G", ncpus = 2,
-                                           walltime = "0:20:00")))
+                                           walltime = "0:20:00"))))
   ),
 
   tar_target(
