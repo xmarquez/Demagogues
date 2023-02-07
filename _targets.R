@@ -108,7 +108,7 @@ list(
     pattern = map(demagogue_samples),
     resources = tar_resources(future = tar_resources_future(
       resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-                       walltime = "0:20:00")))
+                       walltime = "0:40:00")))
   ),
 
   tar_target(
