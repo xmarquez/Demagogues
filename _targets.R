@@ -109,7 +109,7 @@ list(
     pattern = map(demagogue_samples),
     resources = tar_resources(future = tar_resources_future(
       plan = future::plan(future.batchtools::batchtools_slurm, template = here::here("slurm.tmpl")),
-      resources = list(partition = "parallel", memory = "5G", ncpus = 2,
+      resources = list(partition = "quicktest", memory = "5G", ncpus = 2,
                        walltime = "0:20:00")))
   )
 
