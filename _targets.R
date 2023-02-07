@@ -74,7 +74,6 @@ list(
     command = cached_hathi_catalog %>%
       dplyr::filter(htid %in% demagogue_worksets$htid),
     resources = tar_resources(future = tar_resources_future(
-      plan = future.batchtools::batchtools_slurm(template = "slurm"),
       resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
                        walltime = "1:00:00")))
   ),
@@ -91,7 +90,6 @@ list(
                     lang == "eng"),
     pattern = map(decades),
     resources = tar_resources(future = tar_resources_future(
-      plan = future.batchtools::batchtools_slurm(template = "slurm"),
       resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
                        walltime = "0:20:00")))
     ),
@@ -110,7 +108,6 @@ list(
                                       cache_format = "rds"),
     pattern = map(demagogue_samples),
     resources = tar_resources(future = tar_resources_future(
-      plan = future.batchtools::batchtools_slurm(template = "slurm"),
       resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
                        walltime = "0:40:00")))
   ),
@@ -120,7 +117,6 @@ list(
     command = compute_dfm(demagogue_files, cache_format = "rds"),
     pattern = map(demagogue_files),
     resources = tar_resources(future = tar_resources_future(
-      plan = future.batchtools::batchtools_slurm(template = "slurm"),
       resources = list(partition = "quicktest", memory = "8G", ncpus = 4,
                        walltime = "0:20:00"))),
     iteration = "list"
