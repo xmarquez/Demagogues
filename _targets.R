@@ -88,7 +88,17 @@ list(
       dplyr::filter(rights_date_used2 <= rights_date_used,
                     lang == "eng"),
     pattern = map(decades),
-    resources = tar_resources(future = tar_resources_future(resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
-                       walltime = "1:00:00")))
+    resources = tar_resources(future = tar_resources_future(
+      plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl"),
+      resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
+                       walltime = "0:05:00")))
+  ),
+
+  tar_target(
+    name = demagogue_samples,
+    command = demagogue_usable_htids %>%
+      dplyr::sample_n(min(200, dplyr::n()), weight = n),
+    pattern = map(demagogue_usable_htids),
+    deployment = "main"
   )
 )
