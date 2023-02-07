@@ -20,7 +20,7 @@ tar_option_set(
 options(clustermq.scheduler = "multiprocess")
 
 # tar_make_future() configuration (okay to leave alone):
-future::plan(future.batchtools::batchtools_slurm)
+# future::plan(future.batchtools::batchtools_slurm)
 
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
@@ -112,9 +112,23 @@ list(
     resources = tar_resources(future = tar_resources_future(
       plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl",
                           resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-                                           walltime = "0:20:00")),
+                                           walltime = "0:40:00")),
       resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-                       walltime = "0:20:00")))
-    )
+                       walltime = "0:40:00")))
+    ),
+
+  tar_target(
+    name = decade_dfm,
+    command = compute_dfm(demagogue_files, cache_format = "rds"),
+    pattern = map(demagogue_files),
+    resources = tar_resources(future = tar_resources_future(
+      plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl",
+                          resources = list(partition = "quicktest", memory = "6G", ncpus = 4,
+                                           walltime = "0:20:00")),
+      resources = list(partition = "quicktest", memory = "6G", ncpus = 4,
+                       walltime = "0:20:00"))),
+    iteration = "list"
+  ),
+
 
 )
