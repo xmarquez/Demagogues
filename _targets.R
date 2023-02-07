@@ -128,7 +128,7 @@ list(
       resources = list(partition = "quicktest", memory = "6G", ncpus = 4,
                        walltime = "0:20:00"))),
     iteration = "list"
-  ),
+  )
 
 
 )
