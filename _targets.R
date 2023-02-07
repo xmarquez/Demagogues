@@ -88,8 +88,7 @@ list(
       dplyr::filter(rights_date_used2 <= rights_date_used,
                     lang == "eng"),
     pattern = map(decades),
-    resources = tar_resources(future = tar_resources_future(plan = future.batchtools::batchtools_slurm(template = "slurm.tmpl"),
-      resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
+    resources = tar_resources(future = tar_resources_future(resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
                        walltime = "1:00:00")))
   )
 )
