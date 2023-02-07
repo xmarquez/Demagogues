@@ -80,6 +80,7 @@ list(
   tar_target(
     name = demagogue_usable_htids,
     command = demagogue_worksets_meta %>%
+      dplyr::left_join(demagogue_worksets) %>%
       dplyr::filter(rights_date_used >= decade, rights_date_used < decade+10,
                     decade == decades) %>%
       dplyr::mutate(rights_date_used2 = stringr::str_extract(imprint, "[0-9]{4}") %>%
