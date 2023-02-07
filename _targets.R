@@ -90,9 +90,9 @@ list(
     pattern = map(decades),
     resources = tar_resources(future = tar_resources_future(
       plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl",
-                          resources = list(partition = "quicktest", memory = "1G", ncpus = 2,
+                          resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
                                            walltime = "0:20:00")),
-      resources = list(partition = "quicktest", memory = "1G", ncpus = 2,
+      resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
                        walltime = "0:20:00")))
     ),
 
@@ -111,9 +111,9 @@ list(
     pattern = map(demagogue_samples),
     resources = tar_resources(future = tar_resources_future(
       plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl",
-                          resources = list(partition = "quicktest", memory = "2G", ncpus = 4,
+                          resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
                                            walltime = "0:20:00")),
-      resources = list(partition = "quicktest", memory = "2G", ncpus = 4,
+      resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
                        walltime = "0:20:00")))
     )
 
