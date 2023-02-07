@@ -64,7 +64,6 @@ list(
     name = cached_hathi_catalog,
     command = hathiTools::load_raw_hathifile(hathi_catalog),
     resources = tar_resources(future = tar_resources_future(
-      plan = future.batchtools::batchtools_slurm(template = "slurm"),
       resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
                        walltime = "1:00:00")))
   ),
