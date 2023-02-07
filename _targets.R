@@ -71,7 +71,7 @@ list(
   tar_target(
     name = demagogue_worksets_meta,
     command = cached_hathi_catalog %>%
-      dplyr::inner_join(demagogue_worksets),
+      dplyr::filter(htid %in% demagogue_worksets$htid),
     resources = tar_resources(future = tar_resources_future(
       resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
                        walltime = "1:00:00")))
