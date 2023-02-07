@@ -20,7 +20,7 @@ tar_option_set(
 options(clustermq.scheduler = "multiprocess")
 
 # tar_make_future() configuration (okay to leave alone):
-future::plan(future.batchtools::batchtools_slurm, template = here::here("slurm.tmpl"))
+future::plan(future.batchtools::batchtools_slurm)
 
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
@@ -88,7 +88,7 @@ list(
       dplyr::filter(rights_date_used2 <= rights_date_used,
                     lang == "eng"),
     pattern = map(decades),
-    resources = tar_resources(future = tar_resources_future(
+    resources = tar_resources(future = tar_resources_future(plan = future.batchtools::batchtools_slurm(template = "slurm.tmpl"),
       resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
                        walltime = "1:00:00")))
   )
