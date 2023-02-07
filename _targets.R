@@ -89,7 +89,7 @@ list(
                     lang == "eng"),
     pattern = map(decades),
     resources = tar_resources(future = tar_resources_future(
-      plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl"),
+      plan = future::plan(future.batchtools::batchtools_slurm, template = here::here("slurm.tmpl")),
       resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
                        walltime = "0:05:00")))
   ),
@@ -100,5 +100,17 @@ list(
       dplyr::sample_n(min(200, dplyr::n()), weight = n),
     pattern = map(demagogue_usable_htids),
     deployment = "main"
+  ),
+
+  tar_target(
+    name = demagogue_files,
+    command = hathiTools::cache_htids(demagogue_samples, attempt_rsync = TRUE,
+                                      cache_format = "parquet"),
+    pattern = map(demagogue_samples),
+    resources = tar_resources(future = tar_resources_future(
+      plan = future::plan(future.batchtools::batchtools_slurm, template = here::here("slurm.tmpl")),
+      resources = list(partition = "parallel", memory = "5G", ncpus = 2,
+                       walltime = "0:20:00")))
   )
+
 )
