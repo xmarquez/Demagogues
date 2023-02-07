@@ -20,7 +20,9 @@ tar_option_set(
 options(clustermq.scheduler = "multiprocess")
 
 # tar_make_future() configuration (okay to leave alone):
-# future::plan(future.batchtools::batchtools_slurm)
+future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl",
+             resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
+                              walltime = "0:40:00"))
 
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
@@ -110,9 +112,7 @@ list(
                                       cache_format = "rds"),
     pattern = map(demagogue_samples),
     resources = tar_resources(future = tar_resources_future(
-      plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl", .skip = FALSE,
-                          resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-                                           walltime = "0:40:00")),
+      plan = future::tweak(future.batchtools::batchtools_slurm, template = "slurm.tmpl"),
       resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
                        walltime = "0:40:00")))
     ),
@@ -122,9 +122,7 @@ list(
     command = compute_dfm(demagogue_files, cache_format = "rds"),
     pattern = map(demagogue_files),
     resources = tar_resources(future = tar_resources_future(
-      plan = future::plan(future.batchtools::batchtools_slurm, template = "slurm.tmpl", .skip = FALSE,
-                          resources = list(partition = "quicktest", memory = "8G", ncpus = 4,
-                                           walltime = "0:20:00")),
+      plan = future::tweak(future.batchtools::batchtools_slurm, template = "slurm.tmpl"),
       resources = list(partition = "quicktest", memory = "8G", ncpus = 4,
                        walltime = "0:20:00"))),
     iteration = "list"
