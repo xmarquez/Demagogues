@@ -243,14 +243,24 @@ list(
   tar_target(
     name = predictive_model_weights,
     command = dplyr::bind_rows(weights_predictive_classification_LiblineaR_decade_dfm = weights_predictive_classification_LiblineaR_decade_dfm,
-                               weights_predictive_classification_LiblineaR_sampled_decade_dfm = weights_predictive_classification_LiblineaR_sampled_decade_dfm,
                                weights_predictive_regression_LiblineaR_decade_dfm = weights_predictive_regression_LiblineaR_decade_dfm,
-                               weights_predictive_regression_LiblineaR_sampled_decade_dfm = weights_predictive_regression_LiblineaR_sampled_decade_dfm,
                                weights_predictive_classification_xgboost_decade_dfm = weights_predictive_classification_xgboost_decade_dfm,
-                               weights_predictive_classification_xgboost_sampled_decade_dfm = weights_predictive_classification_xgboost_sampled_decade_dfm,
                                weights_predictive_regression_xgboost_decade_dfm = weights_predictive_regression_xgboost_decade_dfm,
-                               weights_predictive_regression_xgboost_sampled_decade_dfm = weights_predictive_regression_xgboost_sampled_decade_dfm,
                                .id = "id"),
+    deployment = "main"
+
+  ),
+
+  tar_target(
+    name = combined_performance,
+    command = dplyr::bind_rows(regression_LiblineaR_decade_dfm_testing = performance_predictive_regression_LiblineaR_decade_dfm_testing,
+                               regression_LiblineaR_decade_dfm_training = performance_predictive_regression_LiblineaR_decade_dfm_training,
+                               regression_xgboost_decade_dfm_testing = performance_predictive_regression_xgboost_decade_dfm_testing,
+                               regression_xgboost_decade_dfm_training = performance_predictive_regression_xgboost_decade_dfm_training,
+                               classification_xgboost_decade_dfm_testing = performance_predictive_classification_xgboost_decade_dfm_testing,
+                               classification_xgboost_decade_dfm_trainig = performance_predictive_classification_xgboost_decade_dfm_training,
+                               classification_LiblineaR_decade_dfm_testing = performance_predictive_classification_LiblineaR_decade_dfm_testing,
+                               classification_LiblineaR_decade_dfm_training = performance_predictive_classification_LiblineaR_decade_dfm_training),
     deployment = "main"
 
   )
