@@ -32,7 +32,7 @@ log.file = fs::path_expand(log.file)
 #SBATCH --mem-per-cpu=<%= resources$memory %>
 <%= if (!is.null(resources$partition)) sprintf(paste0("#SBATCH --partition='", resources$partition, "'")) %>
 <%= if (array.jobs) sprintf("#SBATCH --array=1-%i", nrow(jobs)) else "" %>
-#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-type=FAIL
 #SBATCH --mail-user=xavier.marquez@vuw.ac.nz
 
 ## Initialize work environment like
