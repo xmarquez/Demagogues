@@ -263,6 +263,58 @@ list(
                                classification_LiblineaR_decade_dfm_training = performance_predictive_classification_LiblineaR_decade_dfm_training),
     deployment = "main"
 
+  ),
+
+  tar_target(
+    name = combined_weights,
+    command = predictive_model_weights %>%
+      dplyr::filter(word != "demagogue_nn") %>%
+      dplyr::group_by(id, decade) %>%
+      dplyr::mutate(value = scale(value)) %>%
+      dplyr::group_by(decade, word) %>%
+      dplyr::summarise(mean = list(as_tibble_row(Hmisc::smean.cl.normal(value)))) %>%
+      tidyr::unnest(mean) %>%
+      dplyr::arrange(desc(Mean), .by_group = TRUE) %>%
+      dplyr::rename(value = Mean, value_upper = Upper, value_lower = Lower) %>%
+      dplyr::mutate(pos = stringr::str_extract(word, "(?<=_)[nvbj]{2}")) ,
+    deployment = "main"
+
+  ),
+
+# Graphs ------------------------------------------------------------------
+
+  tar_target(
+    name = pos_patterns,
+    command = c(".","_nn","_vb","_jj"),
+    deployment = "main"
+  ),
+
+  tar_target(name = max_per_decade,
+             command = 8,
+             deployment = "main"
+             ),
+
+  tar_target(name = max_num,
+             command = 60,
+             deployment = "main"
+             ),
+
+  tar_target(
+    name = graph_combined_weights,
+    command = graph_similarities(combined_weights %>%
+                                   dplyr::filter(stringr::str_detect(word, pos_patterns)),
+                                 top_n = max_per_decade,
+                                 var = value,
+                                 max_n = max_num),
+    pattern = map(pos_patterns),
+    iteration = "list",
+    deployment = "main"
+  ),
+
+  tar_quarto(
+    name = demagogue_graphs_document,
+    path = "demagogue_graphs.qmd",
+    deployment = "main"
   )
 
 )
