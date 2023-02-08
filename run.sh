@@ -14,5 +14,5 @@ cd /nfs/scratch/marquexa
 module load R/4.0.2
 module load R/CRAN
 
-R CMD BATCH run.R
+Rscript run.R
 
