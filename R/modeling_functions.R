@@ -333,7 +333,7 @@ get_y.dictionary2 <- function(dfm, feature, model_type = c("regression", "classi
     return(dfm %>%
              as.vector() %>%
              as.logical() %>%
-             as.factor())
+             factor(levels = c(FALSE, TRUE)))
   }
 
 }
@@ -351,7 +351,7 @@ get_y.character <- function(dfm, feature, model_type = c("regression", "classifi
     return(dfm %>%
              as.vector() %>%
              as.logical() %>%
-             as.factor())
+             factor(levels = c(FALSE, TRUE)))
   }
 
 }
