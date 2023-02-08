@@ -140,6 +140,12 @@ list(
       name = splits_decade_dfm,
       command = train_test_splits(decade_dfm, "demagogue_nn"),
       pattern = map(decade_dfm),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
+                                              walltime = "0:20:00")),
+        resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
+                         walltime = "0:20:00"))),
       iteration = "list"
     )
 
