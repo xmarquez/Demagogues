@@ -216,7 +216,7 @@ list(
                              engine = c("LiblineaR", "xgboost"),
                              dfms = c("decade_dfm"),
                              use = c("testing", "training")) %>%
-      dplyr::mutate(splits = paste("splits", sources, sep = "_")) %>%
+      dplyr::mutate(splits = paste("splits", dfms, sep = "_")) %>%
       tidyr::unite(col = "sources", prefix, model_type, engine, dfms, remove = FALSE) %>%
       dplyr::mutate(results = paste("performance", sources, use, sep = "_"),
                     source_names = sources,
