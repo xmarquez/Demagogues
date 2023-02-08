@@ -130,9 +130,9 @@ list(
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
                            resources = list(partition = "quicktest", memory = "10G", ncpus = 4,
-                                            walltime = "0:20:00")),
+                                            walltime = "0:30:00")),
       resources = list(partition = "quicktest", memory = "10G", ncpus = 4,
-                       walltime = "0:20:00"))),
+                       walltime = "0:30:00"))),
     iteration = "list"
   ),
 
