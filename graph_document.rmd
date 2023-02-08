@@ -1,0 +1,39 @@
+---
+title: "Graphs"
+author: "Xavier Marquez"
+date: "2023-02-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+
+library(targets)
+library(tidyverse)
+```
+
+## Combined Graphs
+
+```{r graphs}
+tar_load(graph_combined_weights)
+
+graph_combined_weights[[1]]
+
+```
+
+```{r}
+graph_combined_weights[[2]]
+
+```
+
+```{r}
+graph_combined_weights[[3]]
+
+```
+
+```{r}
+graph_combined_weights[[4]]
+
+```

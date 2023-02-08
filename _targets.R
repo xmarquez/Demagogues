@@ -309,6 +309,12 @@ list(
     pattern = map(pos_patterns),
     iteration = "list",
     deployment = "main"
+  ),
+
+  tar_knit(
+    name = graph_document,
+    path = "graph_document.rmd",
+    deployment = "main"
   )
 
 )
