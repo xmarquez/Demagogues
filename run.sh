@@ -1,13 +1,18 @@
 #!/bin/bash
+#
+#SBATCH --job-name=run_pipeline
+#SBATCH --output=pipeline.out
+#SBATCH --error=pipeline.err
+#SBATCH --time=01:00:00
+#SBATCH --partition=quicktest
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=20G
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --mail-user=xavier.marquez@vuw.ac.nz
 
-# Submit the pipeline as a background process with ./run.sh
-module load R/4.0.1
+cd /nfs/scratch/marquexa
+module load R/4.0.2
 module load R/CRAN
 
-nohup nice -4 R CMD BATCH run.R &
+R CMD BATCH run.R
 
-# Change the nice level above as appropriate
-# for your situation and system.
-
-# Removing .RData is recommended.
-# rm -f .RData
