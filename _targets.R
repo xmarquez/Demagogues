@@ -238,6 +238,21 @@ list(
                          walltime = "0:20:00"))),
       packages = c("quanteda")
     )
+  ),
+
+  tar_target(
+    name = predictive_model_weights,
+    command = dplyr::bind_rows(weights_predictive_classification_LiblineaR_decade_dfm = weights_predictive_classification_LiblineaR_decade_dfm,
+                               weights_predictive_classification_LiblineaR_sampled_decade_dfm = weights_predictive_classification_LiblineaR_sampled_decade_dfm,
+                               weights_predictive_regression_LiblineaR_decade_dfm = weights_predictive_regression_LiblineaR_decade_dfm,
+                               weights_predictive_regression_LiblineaR_sampled_decade_dfm = weights_predictive_regression_LiblineaR_sampled_decade_dfm,
+                               weights_predictive_classification_xgboost_decade_dfm = weights_predictive_classification_xgboost_decade_dfm,
+                               weights_predictive_classification_xgboost_sampled_decade_dfm = weights_predictive_classification_xgboost_sampled_decade_dfm,
+                               weights_predictive_regression_xgboost_decade_dfm = weights_predictive_regression_xgboost_decade_dfm,
+                               weights_predictive_regression_xgboost_sampled_decade_dfm = weights_predictive_regression_xgboost_sampled_decade_dfm,
+                               .id = "id"),
+    deployment = "main"
+
   )
 
 )
