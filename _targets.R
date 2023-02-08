@@ -7,7 +7,7 @@
 library(targets)
 library(tidyverse)
 library(hathiTools)
-# library(tarchetypes) # Load other packages as needed. # nolint
+library(tarchetypes) # Load other packages as needed. # nolint
 
 # Set target options:
 tar_option_set(
@@ -143,10 +143,101 @@ list(
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
                              resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
-                                              walltime = "0:20:00")),
+                                              walltime = "0:05:00")),
         resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
+                         walltime = "0:05:00"))),
+      iteration = "list"
+    ),
+
+
+# Predictive models -------------------------------------------------------
+
+  tar_eval(
+    values = tidyr::expand_grid(sources = c("decade_dfm"),
+                                engine = c("LiblineaR", "xgboost"),
+                                model_type = c("regression", "classification")) %>%
+      dplyr::mutate(splits = paste("splits", sources, sep = "_"),
+                    results = paste("predictive", model_type, engine, sources, sep = "_"),
+                    dplyr::across(dplyr::all_of(c("sources", "results", "splits")),
+                                  rlang::syms)),
+    tar_target(
+      name = results,
+      command = predictive_model(dfm = sources,
+                                 initial_split = splits,
+                                 feat = "demagogue_nn",
+                                 engine = engine,
+                                 model_type = model_type),
+      pattern = map(sources, splits),
+      packages = c("quanteda"),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
+                                              walltime = "0:20:00")),
+        resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
                          walltime = "0:20:00"))),
       iteration = "list"
     )
+  ),
+
+# Predictive model coefficient extraction ---------------------------------
+
+  tar_eval(
+    values = tidyr::crossing("predictive",
+                             c("regression", "classification"),
+                             c("LiblineaR", "xgboost"),
+                             c("decade_dfm")) %>%
+      tidyr::unite("sources") %>%
+      dplyr::mutate(results = paste("weights", sources, sep = "_"),
+                    source_names = sources,
+                    dplyr::across(dplyr::all_of(c("sources", "results")),
+                                  rlang::syms)),
+    tar_target(
+      name = results,
+      command = model_weights(sources) %>%
+        dplyr::mutate(source = source_names,
+                      decade = decades,
+                      measure = "Model Weights"),
+      pattern = map(sources, decades),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = list(partition = "quicktest", memory = "1G", ncpus = 2,
+                                              walltime = "0:05:00")),
+        resources = list(partition = "quicktest", memory = "1G", ncpus = 2,
+                         walltime = "0:05:00"))),
+      packages = c("quanteda")
+    )
+  ),
+
+# Predictive model evaluation ---------------------------------------------
+
+  tar_eval(
+    values = tidyr::crossing(prefix = "predictive",
+                             model_type = c("regression", "classification"),
+                             engine = c("LiblineaR", "xgboost"),
+                             dfms = c("decade_dfm"),
+                             use = c("testing", "training")) %>%
+      dplyr::mutate(splits = paste(dfms, "splits", sep = "_")) %>%
+      tidyr::unite(col = "sources", prefix, model_type, engine, dfms, remove = FALSE) %>%
+      dplyr::mutate(results = paste("performance", sources, use, sep = "_"),
+                    source_names = sources,
+                    dplyr::across(dplyr::all_of(c("sources", "results", "splits", "dfms")),
+                                  rlang::syms)),
+    tar_target(
+      name = results,
+      command = model_performance(sources, dfms, splits, feat = "demagogue_nn", use = use) %>%
+        dplyr::mutate(source = source_names,
+                      decade = decades,
+                      model_type = model_type,
+                      sample = use),
+      pattern = map(sources, dfms, splits, decades),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
+                                              walltime = "0:20:00")),
+        resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
+                         walltime = "0:20:00"))),
+      packages = c("quanteda")
+    )
+  )
 
 )

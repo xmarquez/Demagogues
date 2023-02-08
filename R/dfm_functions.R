@@ -20,3 +20,115 @@ compute_dfm <- function(dataset, cache_format = "rds",
   dfm
 
 }
+
+dfm_ppmi <- function(dfm, base = 10) {
+  # this is for a column-oriented sparse matrix; transpose if necessary
+  dfm_row_sum <- Matrix::rowSums(dfm)
+  dfm_col_sum <- Matrix::colSums(dfm)
+  N <- sum(dfm_row_sum)
+  col_prob <- dfm_col_sum/N
+  row_prob <- dfm_row_sum/N
+  pp = dfm@p+1
+  ip = dfm@i+1
+  tmpx = rep(0,length(dfm@x)) # new values go here, just a numeric vector
+  # iterate through sparse matrix:
+  all_zeros <- which(dfm_col_sum == 0)
+  col_indexes_used <- 1:(length(dfm@p)-1)
+  col_indexes_used <- col_indexes_used[ !col_indexes_used %in% all_zeros ]
+  for(i in col_indexes_used){
+    ind = pp[i]:(pp[i+1]-1)
+    not0 = ip[ind]
+    icol = dfm@x[ind]
+    tmp = log( (icol/N) / (row_prob[not0] * col_prob[i] ), base = base) # PMI
+    tmpx[ind] = tmp
+  }
+  dfm@x = tmpx
+  # to convert to PPMI, replace <0 values with 0 and do a Matrix::drop0().
+  dfm@x[which(dfm@x < 0)] <- 0
+  dfm <- Matrix::drop0(dfm)
+  quanteda::as.dfm(dfm)
+}
+
+feature_ppmi <- function(dfm, feature, base = 10) {
+  UseMethod("feature_ppmi", feature)
+}
+
+feature_ppmi.dictionary2 <- function(dfm, feature, base = 10) {
+  dfm <- dfm %>%
+    quanteda::dfm_lookup(feature, exclusive = FALSE)
+
+  feature_ppmi.default(dfm, stringr::str_to_upper(names(feature)), base = base)
+
+}
+
+feature_ppmi.default <- function(dfm, feature, base = 10) {
+
+  dfm_col_sum <- Matrix::colSums(dfm)
+  feat_sum <- Matrix::colSums(dfm %>%
+                                quanteda::dfm_select(pattern = feature))
+  total_sum <- sum(dfm)
+  cooccurrence_vec <- cooccurrence_feature(dfm, feature)
+
+  p_x_y <- cooccurrence_vec / sum(cooccurrence_vec)
+  p_x <- feat_sum / total_sum
+  p_y <- dfm_col_sum / total_sum
+
+  ppmi_vector <- log(p_x_y/ tcrossprod(p_x, p_y), base = base)
+  ppmi_vector[ which(ppmi_vector@x < 0) ] <- 0
+  ppmi_vector %>%
+    Matrix::t() %>%
+    as.matrix() %>%
+    tibble::as_tibble(rownames = "word") %>%
+    dplyr::rename_with(\(x) "value", -word)
+
+}
+
+cooccurrence_feature <- function(dfm, feature) {
+  # Get the feature column
+  feature_col <- dfm[,feature]
+  # Get the transpose of the feature column
+  feature_col_t <- Matrix::t(feature_col)
+  # Get the co-occurrence values by matrix cross-product of the feature column and the document-feature matrix
+  cooccurrence_vector <- feature_col_t %*% dfm
+  cooccurrence_vector
+}
+
+fcm_ppmi <- function(fcm, dfm, base = 10) {
+
+  feat_sum <- Matrix::colSums(dfm)
+  total_sum <- sum(dfm)
+
+  p_x_y <- fcm / sum(fcm)
+  p_x <- feat_sum / total_sum
+  p_y <- feat_sum / total_sum
+
+  pp = fcm@p+1
+  ip = fcm@i+1
+  tmpx = rep(0,length(fcm@x)) # new values go here, just a numeric vector
+  # iterate through sparse matrix:
+  all_zeros <- which(feat_sum == 0)
+  col_indexes_used <- 1:(length(fcm@p)-1)
+  col_indexes_used <- col_indexes_used[ !col_indexes_used %in% all_zeros ]
+  for(i in col_indexes_used){
+    ind = pp[i]:(pp[i+1]-1)
+    not0 = ip[ind]
+    icol = fcm@x[ind]
+    tmp = log( (icol/total_sum) / (p_x[not0] * p_y[i] ), base = base) # PMI
+    tmpx[ind] = tmp
+  }
+  fcm@x = tmpx
+  fcm@x[which(fcm@x < 0)] <- 0
+  fcm <- Matrix::drop0(fcm)
+  fcm
+
+}
+
+
+dfm_svd_wvs <- function(dfm, nv = 50) {
+  embeddings <- irlba::irlba(dfm, nv = nv)
+  embeddings <- embeddings$v
+
+  rownames(embeddings) <- colnames(dfm)
+  embeddings
+}
+
