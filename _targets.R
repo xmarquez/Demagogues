@@ -309,12 +309,6 @@ list(
     pattern = map(pos_patterns),
     iteration = "list",
     deployment = "main"
-  ),
-
-  tar_quarto(
-    name = demagogue_graphs_document,
-    path = "demagogue_graphs.qmd",
-    deployment = "main"
   )
 
 )
