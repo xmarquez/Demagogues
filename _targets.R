@@ -134,7 +134,13 @@ list(
       resources = list(partition = "quicktest", memory = "8G", ncpus = 4,
                        walltime = "0:20:00"))),
     iteration = "list"
-  )
+  ),
 
+  tar_target(
+      name = splits_decade_dfm,
+      command = train_test_splits(decade_dfm, "demagogue_nn"),
+      pattern = map(decade_dfm),
+      iteration = "list"
+    )
 
 )
