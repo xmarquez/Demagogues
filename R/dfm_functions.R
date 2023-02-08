@@ -79,7 +79,7 @@ feature_ppmi.default <- function(dfm, feature, base = 10) {
     Matrix::t() %>%
     as.matrix() %>%
     tibble::as_tibble(rownames = "word") %>%
-    dplyr::rename_with(\(x) "value", -word)
+    dplyr::rename_with(function(x) {"value"}, -word)
 
 }
 
