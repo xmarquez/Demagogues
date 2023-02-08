@@ -105,7 +105,7 @@ list(
   tar_target(
     name = demagogue_samples,
     command = demagogue_usable_htids %>%
-      dplyr::sample_n(min(200, dplyr::n()), weight = n),
+      dplyr::sample_n(min(500, dplyr::n()), weight = n),
     pattern = map(demagogue_usable_htids),
     deployment = "main"
   ),
@@ -117,10 +117,10 @@ list(
     pattern = map(demagogue_samples),
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-                                            walltime = "0:40:00")),
-      resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-                       walltime = "0:40:00")))
+                           resources = list(partition = "quicktest", memory = "4G", ncpus = 2,
+                                            walltime = "1:00:00")),
+      resources = list(partition = "quicktest", memory = "4G", ncpus = 2,
+                       walltime = "1:00:00")))
   ),
 
   tar_target(
