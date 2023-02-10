@@ -38,6 +38,12 @@ graph_combined_weights[[4]]
 
 ```
 
+
+```{r}
+graph_combined_weights[[5]]
+
+```
+
 ## Model performance graphs
 
 ```{r}
