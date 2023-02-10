@@ -135,14 +135,14 @@ dfm_svd_wvs <- function(dfm, nv = 50) {
 svd_word_vectors <- function(dfm, nv = 50, weight = c("ppmi", "tfidf")) {
   weight <- match.arg(weight, c("ppmi", "tfidf"))
   if(weight == "ppmi") {
-    embeddings <- dfm |>
-      dfm_ppmi() |>
-      dfm_svd_wvs(nv = nv) |>
+    embeddings <- dfm %>%
+      dfm_ppmi() %>%
+      dfm_svd_wvs(nv = nv) %>%
       wordVectors::as.VectorSpaceModel()
   } else if(weight == "tfidf") {
-    embeddings <- dfm |>
-      quanteda::dfm_tfidf() |>
-      dfm_svd_wvs(nv = nv) |>
+    embeddings <- dfm %>%
+      quanteda::dfm_tfidf() %>%
+      dfm_svd_wvs(nv = nv) %>%
       wordVectors::as.VectorSpaceModel()
   }
   embeddings
