@@ -232,13 +232,14 @@ list(
                       model_type = model_type,
                       sample = use),
       pattern = map(sources, dfms, splits, decades),
-      resources = tar_resources(future = tar_resources_future(
-        plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-                                              walltime = "0:10:00")),
-        resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-                         walltime = "0:10:00"))),
-      packages = c("quanteda")
+      # resources = tar_resources(future = tar_resources_future(
+      #   plan = future::tweak(future.batchtools::batchtools_slurm,
+      #                        resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
+      #                                         walltime = "0:10:00")),
+      #   resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
+      #                    walltime = "0:10:00"))),
+      packages = c("quanteda"),
+      deployment = "main"
     )
   ),
 
