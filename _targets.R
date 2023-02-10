@@ -274,6 +274,7 @@ list(
   tar_target(
     name = all_model_weights,
     command = dplyr::bind_rows(svd_model_weights,
+                               ppmi_model_weights,
                                predictive_model_weights),
     deployment = "main"
 
