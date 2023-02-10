@@ -152,7 +152,8 @@ list(
                                               walltime = "0:05:00")),
         resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
                          walltime = "0:05:00"))),
-      iteration = "list"
+      iteration = "list",
+      deployment = "main"
     ),
 
 
