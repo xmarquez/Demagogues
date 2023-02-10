@@ -33,20 +33,20 @@ graph_combined_weights[[3]]
 
 ```
 
-```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, adjectives only."}
+```{r graph_combined_weights_all_models_adjectives, fig.cap="Terms related to 'DEMOCRACY', average over all models, adjectives only."}
 graph_combined_weights[[4]]
 
 ```
 
 
-```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, terms ending in ism."}
+```{r graph_combined_weights_all_models_ideologies, fig.cap="Terms related to 'DEMOCRACY', average over all models, terms ending in ism."}
 graph_combined_weights[[5]]
 
 ```
 
 ## Model performance graphs
 
-```{r combined_performance_graph, fig.cap="Predictive performance of classification models."}
+```{r combined_performance_graph_classification, fig.cap="Predictive performance of classification models."}
 tar_load(combined_performance)
 
 combined_performance %>% 
@@ -63,7 +63,7 @@ combined_performance %>%
 
 ```
 
-```{r combined_performance_graph2, fig.cap="Predictive performance of regression models."}
+```{r combined_performance_graph_regression, fig.cap="Predictive performance of regression models."}
 combined_performance %>% 
   dplyr::filter(.estimator == "standard") %>% 
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = .metric, alpha = forcats::fct_rev(sample))) + 
