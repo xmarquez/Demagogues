@@ -313,7 +313,7 @@ list(
 
   tar_target(
     name = pos_patterns,
-    command = c(".","_NN","_VB","_JJ", "^[A-Z]"),
+    command = c(".","_nn","_vb","_jj", "ism_"),
     deployment = "main"
   ),
 

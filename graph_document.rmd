@@ -16,30 +16,30 @@ library(tidyverse)
 
 ## Combined Graphs
 
-```{r graph_combined_weights_all_models_all_terms, fig.cap="Terms related to 'DEMAGOGUE', average over all models, all terms."}
+```{r graph_combined_weights_all_models_all_terms, fig.cap="Terms related to 'DEMOCRACY', average over all models, all terms."}
 tar_load(graph_combined_weights)
 
 graph_combined_weights[[1]]
 
 ```
 
-```{r graph_combined_weights_all_models_nouns, fig.cap="Terms related to 'DEMAGOGUE', average over all models, nouns only."}
+```{r graph_combined_weights_all_models_nouns, fig.cap="Terms related to 'DEMOCRACY', average over all models, nouns only."}
 graph_combined_weights[[2]]
 
 ```
 
-```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMAGOGUE', average over all models, verbs only.}
+```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, verbs only.}
 graph_combined_weights[[3]]
 
 ```
 
-```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMAGOGUE', average over all models, adjectives only.}
+```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, adjectives only.}
 graph_combined_weights[[4]]
 
 ```
 
 
-```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMAGOGUE', average over all models, terms starting with caps only.}
+```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, terms ending in ism.}
 graph_combined_weights[[5]]
 
 ```
