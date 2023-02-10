@@ -16,7 +16,8 @@ module load R/CRAN
 
 Rscript run.R
 
-git add graph_document.md _targets/meta/meta figure/
+git add graph_document.md _targets/meta/meta figure/ _targets/objects/weights_*
+git add _targets/objects/graphs_* _targets/objects/performance_*
 git commit -m "graph document, figures, and metadata about targets"
 git branch --show-current
 git push https://github.com/xmarquez/demagogues.git master
