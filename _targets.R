@@ -387,7 +387,7 @@ list(
                              resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
                                               walltime = "0:10:00")),
         resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-                         walltime = "0:10:00"))),
+                         walltime = "0:10:00")))
 
     )
   ),
@@ -411,7 +411,8 @@ list(
                       source = source_names) %>%
         dplyr::rename(value = similarity) %>%
         tibble::as_tibble(),
-      pattern = map(sources, decades)
+      pattern = map(sources, decades),
+      deployment = "main"
     )
   ),
 
