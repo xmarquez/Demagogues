@@ -148,4 +148,39 @@ svd_word_vectors <- function(dfm, nv = 50, weight = c("ppmi", "tfidf")) {
   embeddings
 }
 
+ppmi_similarities <- function(dfm, feature) {
+  UseMethod("ppmi_similarities", feature)
+}
+
+ppmi_similarities.dictionary2 <- function(dfm, feature) {
+  dfm <- dfm %>%
+    quanteda::dfm_lookup(feature, exclusive = FALSE) %>%
+    Matrix::t()
+
+  ppmi_sims <- text2vec::sim2(dfm[ stringr::str_to_upper(names(feature)), ], dfm) %>%
+    as.vector() %>%
+    tibble::enframe() %>%
+    dplyr::mutate(word = rownames(dfm), .before = everything()) %>%
+    dplyr::arrange(-value) %>%
+    dplyr::select(-name)
+
+  ppmi_sims
+
+}
+
+ppmi_similarities.character <- function(dfm, feature) {
+  dfm <- dfm %>%
+    Matrix::t()
+
+  ppmi_sims <- text2vec::sim2(dfm[ feature, ], dfm) %>%
+    as.vector() %>%
+    tibble::enframe() %>%
+    dplyr::mutate(word = rownames(dfm), .before = everything()) %>%
+    dplyr::arrange(-value) %>%
+    dplyr::select(-name)
+
+  ppmi_sims
+
+}
+
 
