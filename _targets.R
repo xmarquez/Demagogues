@@ -137,8 +137,14 @@ list(
   ),
 
   tar_target(
+    name = demagogue_feature,
+    command = quanteda::dictionary(list(demagogue = c("demagogue_NN", "Demagogue_NN", "DEMAGOGUE_NN")), tolower = FALSE),
+    deployment = "main"
+  ),
+
+  tar_target(
       name = splits_decade_dfm,
-      command = train_test_splits(decade_dfm, "demagogue_nn"),
+      command = train_test_splits(decade_dfm, demagogue_feature),
       pattern = map(decade_dfm),
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
@@ -164,7 +170,7 @@ list(
       name = results,
       command = predictive_model(dfm = sources,
                                  initial_split = splits,
-                                 feat = "demagogue_nn",
+                                 feat = demagogue_feature,
                                  engine = engine,
                                  model_type = model_type),
       pattern = map(sources, splits),
@@ -219,7 +225,7 @@ list(
                                   rlang::syms)),
     tar_target(
       name = results,
-      command = model_performance(sources, dfms, splits, feat = "demagogue_nn", use = use) %>%
+      command = model_performance(sources, dfms, splits, feat = demagogue_feature, use = use) %>%
         dplyr::mutate(source = source_names,
                       decade = decades,
                       model_type = model_type,
@@ -263,7 +269,7 @@ list(
   tar_target(
     name = combined_weights,
     command = predictive_model_weights %>%
-      dplyr::filter(word != "demagogue_nn") %>%
+      dplyr::filter(word != "DEMAGOGUE") %>%
       dplyr::group_by(id, decade) %>%
       dplyr::mutate(value = scale(value)) %>%
       dplyr::group_by(decade, word) %>%
@@ -271,7 +277,7 @@ list(
       tidyr::unnest(mean) %>%
       dplyr::arrange(desc(Mean), .by_group = TRUE) %>%
       dplyr::rename(value = Mean, value_upper = Upper, value_lower = Lower) %>%
-      dplyr::mutate(pos = stringr::str_extract(word, "(?<=_)[nvbj]{2}")) ,
+      dplyr::mutate(pos = stringr::str_extract(word, "(?<=_)[NVBJnvbj]{2}")) ,
     deployment = "main"
 
   ),
@@ -280,7 +286,7 @@ list(
 
   tar_target(
     name = pos_patterns,
-    command = c(".","_nn","_vb","_jj"),
+    command = c(".","_NN","_VB","_JJ", "^[A-Z]"),
     deployment = "main"
   ),
 
