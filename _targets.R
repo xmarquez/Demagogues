@@ -255,6 +255,31 @@ list(
   ),
 
   tar_target(
+    name = svd_model_weights,
+    command = dplyr::bind_rows(sims_svd_word_vectors_decade_dfm = sims_svd_word_vectors_decade_dfm,
+                               .id = "id"),
+    deployment = "main"
+
+  ),
+
+  tar_target(
+    name = ppmi_model_weights,
+    command = dplyr::bind_rows(ppmi_single_decade_dfm = ppmi_single_decade_dfm,
+                               sims_ppmi_decade_dfm = sims_ppmi_decade_dfm,
+                               .id = "id"),
+    deployment = "main"
+
+  ),
+
+  tar_target(
+    name = all_model_weights,
+    command = dplyr::bind_rows(svd_model_weights,
+                               predictive_model_weights),
+    deployment = "main"
+
+  ),
+
+  tar_target(
     name = combined_performance,
     command = dplyr::bind_rows(regression_LiblineaR_decade_dfm_testing = performance_predictive_regression_LiblineaR_decade_dfm_testing,
                                regression_LiblineaR_decade_dfm_training = performance_predictive_regression_LiblineaR_decade_dfm_training,
@@ -270,7 +295,7 @@ list(
 
   tar_target(
     name = combined_weights,
-    command = predictive_model_weights %>%
+    command = all_model_weights %>%
       dplyr::filter(word != "DEMAGOGUE") %>%
       dplyr::group_by(id, decade) %>%
       dplyr::mutate(value = scale(value)) %>%
@@ -318,6 +343,126 @@ list(
     name = graph_document,
     path = "graph_document.rmd",
     deployment = "main"
+  ),
+
+# PPMI single feature calculation --------------------------------------------------------
+
+  tar_eval(
+    values = list(sources = rlang::syms("decade_dfm"),
+                  results = rlang::syms("ppmi_single_decade_dfm"),
+                  source_names = "decade_dfm"),
+    tar_target(
+      name = results,
+      command = feature_ppmi(sources, demagogue_feature) %>%
+        dplyr::mutate(decade = decades,
+                      measure = "PPMI of 'DEMAGOGUE' and other terms",
+                      source = source_names) %>%
+        dplyr::arrange(desc(value)),
+      pattern = map(sources, decades),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
+                                              walltime = "0:15:00")),
+        resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
+                         walltime = "0:15:00")))
+
+    )
+  ),
+
+# PPMI similarities --------------------------------------------------------
+
+  tar_eval(
+    values = list(sources = rlang::syms("decade_dfm"),
+                  results = rlang::syms("sims_ppmi_decade_dfm"),
+                  source_names = "decade_dfm"),
+    tar_target(
+      name = results,
+      command = ppmi_similarities(sources, demagogue_feature) %>%
+        dplyr::mutate(decade = decades,
+                      measure = "cosine similarity to 'DEMAGOGUE'",
+                      dimensions = nrow(sources),
+                      source = source_names),
+      pattern = map(sources, decades),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
+                                              walltime = "0:10:00")),
+        resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
+                         walltime = "0:10:00")))
+
+    )
+  ),
+
+# SVD word vector calculation ---------------------------------------------
+
+  tar_eval(
+    values = list(sources = rlang::syms("decade_dfm"),
+                  results = rlang::syms("svd_word_vectors_decade_dfm")),
+    tar_target(
+      name = results,
+      command = sources %>%
+        quanteda::dfm_lookup(demagogue_feature, exclusive = FALSE) %>%
+        svd_word_vectors(nv = 50, weight = "ppmi"),
+      pattern = map(sources),
+      iteration = "list",
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
+                                              walltime = "0:15:00")),
+        resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
+                         walltime = "0:15:00")))
+
+    )
+  ),
+
+# Similarity calculation for word vectors ---------------------------------
+
+  tar_eval(
+    values = tidyr::expand_grid(vectors = c("svd_word_vectors"),
+                                sources = c("decade_dfm")) %>%
+      tidyr::unite("sources", dplyr::everything()) %>%
+      dplyr::mutate(results = paste("sims", sources, sep = "_"),
+                    source_names = sources,
+                    dplyr::across(c(sources, results), rlang::syms)),
+    tar_target(
+      name = results,
+      command = wordVectors::closest_to(sources, "DEMAGOGUE", n = Inf,
+                                        fancy_names = FALSE) %>%
+        dplyr::mutate(decade = decades,
+                      dimensions = ncol(sources),
+                      measure = "Cosine similarity to 'DEMAGOGUE'",
+                      source = source_names) %>%
+        dplyr::rename(value = similarity) %>%
+        tibble::as_tibble(),
+      pattern = map(sources, decades)
+    )
+  ),
+
+  tar_eval(
+    tar_target(name = graphs,
+               command = graph_similarities(sources %>%
+                                              dplyr::filter(word != "DEMAGOGUE") %>%
+                                              dplyr::group_by(decade) %>%
+                                              dplyr::mutate(value = scale(value)) %>%
+                                              dplyr::ungroup() %>%
+                                              dplyr::filter(stringr::str_detect(word, pos_patterns)),
+                                            top_n = max_per_decade,
+                                            var = value,
+                                            max_n = max_num),
+               pattern = map(pos_patterns),
+               iteration = "list"),
+    values = tibble::tibble(sources = c("ppmi_single_decade_dfm",
+                                        "sims_ppmi_decade_dfm",
+                                        "sims_svd_word_vectors_decade_dfm",
+                                        "weights_predictive_regression_LiblineaR_decade_dfm",
+                                        "weights_predictive_classification_LiblineaR_decade_dfm",
+                                        "weights_predictive_regression_xgboost_decade_dfm",
+                                        "weights_predictive_classification_xgboost_decade_dfm"),
+                            graphs = paste("graph", sources, sep = "_")) %>%
+      dplyr::mutate(dplyr::across(dplyr::everything(), rlang::syms))
   )
+
+
+
 
 )
