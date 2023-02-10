@@ -359,12 +359,13 @@ list(
                       source = source_names) %>%
         dplyr::arrange(desc(value)),
       pattern = map(sources, decades),
-      resources = tar_resources(future = tar_resources_future(
-        plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
-                                              walltime = "0:15:00")),
-        resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
-                         walltime = "0:15:00")))
+      # resources = tar_resources(future = tar_resources_future(
+      #   plan = future::tweak(future.batchtools::batchtools_slurm,
+      #                        resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
+      #                                         walltime = "0:15:00")),
+      #   resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
+      #                    walltime = "0:15:00"))),
+      deployment = "main"
 
     )
   ),
@@ -383,9 +384,9 @@ list(
       iteration = "list",
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
+                             resources = list(partition = "quicktest", memory = "20G", ncpus = 10,
                                               walltime = "0:15:00")),
-        resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
+        resources = list(partition = "quicktest", memory = "20G", ncpus = 10,
                          walltime = "0:15:00")))
 
     )
