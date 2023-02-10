@@ -19,13 +19,7 @@ output: html_document
 
 ## Model performance graphs
 
+![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4-1.png)
 
-```
-## Error in vctrs::vec_size_common(string = string, pattern = pattern, replacement = replacement, : object 'name' not found
-```
-
-
-```
-## Error in vctrs::vec_size_common(string = string, pattern = pattern, replacement = replacement, : object 'name' not found
-```
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png)
 

@@ -191,14 +191,14 @@ graph_combined_weights_1e8cafe0|branch|a4b8141bda9c9bc4|8ab63c7bb5bf8434|8e524c0
 graph_combined_weights_52cb33d4|branch|1fe2edd58d9d5039|8ab63c7bb5bf8434|cffa4d45fdf7b1fd|-107577338||t19398.043765505s|e10f17b5d5ff51ac|29638610|rds|local|list|graph_combined_weights||0.846||
 graph_combined_weights_67b3c2b2|branch|cf5e61594783fd7a|8ab63c7bb5bf8434|116ace35c60b5651|-1970131167||t19398.0435993469s|f11630726ae1910a|29640320|rds|local|list|graph_combined_weights||1.979||
 graph_combined_weights_f4c67231|branch|cc62cc2b87faa149|8ab63c7bb5bf8434|07a96ddd35eb5c7d|816771298||t19398.0439669295s|c1896dc3bce06928|29653381|rds|local|list|graph_combined_weights||0.551||
-graph_document|stem|e5ede82db7e7e644|eccf9786ecbd520c|7ac43a45889a97bc|1969084058|graph_document.md*graph_document.rmd|t19398.0946493253s|d40b964692d80227|2048|file|local|vector|||7.792||
+graph_document|stem|e459efdf1b8536cf|eccf9786ecbd520c|7ac43a45889a97bc|1969084058|graph_document.md*graph_document.rmd|t19398.1158878664s|12813416541a944b|1956|file|local|vector|||11.142||
 graph_similarities|function|607a309d09fde5cd|||||||||||||||
 hathi_catalog|stem|7c40efa2e6d3a476|9d2f3f11582a1e09|c3b5fc02cdc369c1|1855722627|/nfs/scratch/marquexa/raw-hathifiles/hathi_full_20230101.txt.gz|t19383.0542476852s|1dfa2ef1fd294b73|1121435590|file|local|vector|||0.279||
 max_num|stem|803ba45767b16a76|fd9941618d4c9ea1|ef46db3751d8e999|-694455164||t19396.3058426778s|b6d2e014b07bc296|51|rds|local|vector|||0.197||
 max_per_decade|stem|6171e61498363697|7c74220eb026d8d0|ef46db3751d8e999|575166090||t19396.3058430829s|b6d2e014b07bc296|51|rds|local|vector|||0.001||
 model_performance|function|2ee0ba975ca85445|||||||||||||||
 model_performance.LiblineaR|function|4b95b10256304549|||||||||||||||
-model_performance.xgb.Booster|function|29e9dabd025bf3bb|||||||||||||||
+model_performance.xgb.Booster|function|dbe4462b08d842b3|||||||||||||||
 model_weights|function|c99c1dd7c9c23183|||||||||||||||
 model_weights.LiblineaR|function|c3eeea971328aa09|||||||||||||||
 model_weights.xgb.Booster|function|03e919ff91cea63f|||||||||||||||
