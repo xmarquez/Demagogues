@@ -172,14 +172,14 @@ list(
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
                              resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-                                              walltime = "0:20:00")),
+                                              walltime = "0:10:00")),
         resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-                         walltime = "0:20:00"))),
+                         walltime = "0:10:00"))),
       iteration = "list"
     )
   ),
 
-# Predictive model coefficient extraction ---------------------------------
+# Predictive model weight extraction ---------------------------------
 
   tar_eval(
     values = tidyr::crossing("predictive",
@@ -198,13 +198,8 @@ list(
                       decade = decades,
                       measure = "Model Weights"),
       pattern = map(sources, decades),
-      resources = tar_resources(future = tar_resources_future(
-        plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = list(partition = "quicktest", memory = "1G", ncpus = 2,
-                                              walltime = "0:05:00")),
-        resources = list(partition = "quicktest", memory = "1G", ncpus = 2,
-                         walltime = "0:05:00"))),
-      packages = c("quanteda")
+      deployment = "main",
+      packages = "quanteda"
     )
   ),
 
@@ -233,9 +228,9 @@ list(
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
                              resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-                                              walltime = "0:20:00")),
+                                              walltime = "0:10:00")),
         resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-                         walltime = "0:20:00"))),
+                         walltime = "0:10:00"))),
       packages = c("quanteda")
     )
   ),

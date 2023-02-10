@@ -37,3 +37,30 @@ graph_combined_weights[[3]]
 graph_combined_weights[[4]]
 
 ```
+
+## Model performance graphs
+
+```{r}
+tar_load(combined_performance)
+
+combined_performance %>% 
+  dplyr::filter(.estimator == "binary") %>% 
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = .metric, alpha = forcats::fct_rev(sample))) + 
+  ggplot2::geom_point() + 
+  ggplot2::geom_line() + ggplot2::facet_wrap(.metric~ stringr::str_extract(name, "(xgboost|LiblineaR)(_sampled)?")) +
+  ggplot2::theme_bw() +
+  ggplot2::labs(alpha = "Sample", color = "Metric")
+
+```
+
+```{r}
+combined_performance %>% 
+  dplyr::filter(.estimator == "standard") %>% 
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = .metric, alpha = forcats::fct_rev(sample))) + 
+  ggplot2::geom_point() + 
+  ggplot2::geom_line() + ggplot2::facet_wrap(.metric ~ stringr::str_extract(name, "(xgboost|LiblineaR)(_sampled)?")) +
+  ggplot2::theme_bw() +
+  ggplot2::labs(alpha = "Sample", color = "Metric")
+
+```
+
