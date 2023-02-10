@@ -35,7 +35,7 @@ list(
 
   tar_target(
     name = decades,
-    command = seq(1700, 2010, by = 10),
+    command = seq(1700, 2010, by = 5),
     deployment = "main"
   ),
 
@@ -51,8 +51,8 @@ list(
   # Workset creation and metadata addition ----------------------------------
 
   tar_target(
-    name = demagogue_worksets,
-    command = workset_builder("demagogue", pub_date = decades:(decades+9)) %>%
+    name = democracy_worksets,
+    command = workset_builder("democracy", pub_date = decades:(decades+9)) %>%
       mutate(decade = decades),
     pattern = map(decades),
     deployment = "main"
@@ -72,9 +72,9 @@ list(
   ),
 
   tar_target(
-    name = demagogue_worksets_meta,
+    name = democracy_worksets_meta,
     command = cached_hathi_catalog %>%
-      dplyr::filter(htid %in% demagogue_worksets$htid),
+      dplyr::filter(htid %in% democracy_worksets$htid),
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
                            resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
@@ -84,9 +84,9 @@ list(
   ),
 
   tar_target(
-    name = demagogue_usable_htids,
-    command = demagogue_worksets_meta %>%
-      dplyr::left_join(demagogue_worksets) %>%
+    name = democracy_usable_htids,
+    command = democracy_worksets_meta %>%
+      dplyr::left_join(democracy_worksets) %>%
       dplyr::filter(rights_date_used >= decade, rights_date_used < decade+10,
                     decade == decades) %>%
       dplyr::mutate(rights_date_used2 = stringr::str_extract(imprint, "[0-9]{4}") %>%
@@ -103,18 +103,18 @@ list(
     ),
 
   tar_target(
-    name = demagogue_samples,
-    command = demagogue_usable_htids %>%
+    name = democracy_samples,
+    command = democracy_usable_htids %>%
       dplyr::sample_n(min(500, dplyr::n()), weight = n),
-    pattern = map(demagogue_usable_htids),
+    pattern = map(democracy_usable_htids),
     deployment = "main"
   ),
 
   tar_target(
-    name = demagogue_files,
-    command = hathiTools::cache_htids(demagogue_samples, attempt_rsync = TRUE,
+    name = democracy_files,
+    command = hathiTools::cache_htids(democracy_samples, attempt_rsync = TRUE,
                                       cache_format = "rds"),
-    pattern = map(demagogue_samples),
+    pattern = map(democracy_samples),
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
                            resources = list(partition = "quicktest", memory = "6G", ncpus = 2,
@@ -125,8 +125,8 @@ list(
 
   tar_target(
     name = decade_dfm,
-    command = compute_dfm(demagogue_files, cache_format = "rds"),
-    pattern = map(demagogue_files),
+    command = compute_dfm(democracy_files, cache_format = "rds"),
+    pattern = map(democracy_files),
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
                            resources = list(partition = "quicktest", memory = "25G", ncpus = 2,
@@ -137,14 +137,14 @@ list(
   ),
 
   tar_target(
-    name = demagogue_feature,
-    command = quanteda::dictionary(list(demagogue = c("demagogue_NN", "Demagogue_NN", "DEMAGOGUE_NN")), tolower = FALSE),
+    name = democracy_feature,
+    command = quanteda::dictionary(list(democracy = c("democracy_nn", "democracy_nnp", "democracy_nns")), tolower = FALSE),
     deployment = "main"
   ),
 
   tar_target(
       name = splits_decade_dfm,
-      command = train_test_splits(decade_dfm, demagogue_feature),
+      command = train_test_splits(decade_dfm, democracy_feature),
       pattern = map(decade_dfm),
       # resources = tar_resources(future = tar_resources_future(
       #   plan = future::tweak(future.batchtools::batchtools_slurm,
@@ -171,7 +171,7 @@ list(
       name = results,
       command = predictive_model(dfm = sources,
                                  initial_split = splits,
-                                 feat = demagogue_feature,
+                                 feat = democracy_feature,
                                  engine = engine,
                                  model_type = model_type),
       pattern = map(sources, splits),
@@ -226,7 +226,7 @@ list(
                                   rlang::syms)),
     tar_target(
       name = results,
-      command = model_performance(sources, dfms, splits, feat = demagogue_feature, use = use) %>%
+      command = model_performance(sources, dfms, splits, feat = democracy_feature, use = use) %>%
         dplyr::mutate(source = source_names,
                       decade = decades,
                       model_type = model_type,
@@ -296,7 +296,7 @@ list(
   tar_target(
     name = combined_weights,
     command = all_model_weights %>%
-      dplyr::filter(word != "DEMAGOGUE") %>%
+      dplyr::filter(word != "DEMOCRACY") %>%
       dplyr::group_by(id, decade) %>%
       dplyr::mutate(value = scale(value)) %>%
       dplyr::group_by(decade, word) %>%
@@ -353,9 +353,9 @@ list(
                   source_names = "decade_dfm"),
     tar_target(
       name = results,
-      command = feature_ppmi(sources, demagogue_feature) %>%
+      command = feature_ppmi(sources, democracy_feature) %>%
         dplyr::mutate(decade = decades,
-                      measure = "PPMI of 'DEMAGOGUE' and other terms",
+                      measure = "PPMI of 'DEMOCRACY' with other terms",
                       source = source_names) %>%
         dplyr::arrange(desc(value)),
       pattern = map(sources, decades),
@@ -378,7 +378,7 @@ list(
     tar_target(
       name = results,
       command = sources %>%
-        quanteda::dfm_lookup(demagogue_feature, exclusive = FALSE) %>%
+        quanteda::dfm_lookup(democracy_feature, exclusive = FALSE) %>%
         svd_word_vectors(nv = 50, weight = "ppmi"),
       pattern = map(sources),
       iteration = "list",
@@ -403,11 +403,11 @@ list(
                     dplyr::across(c(sources, results), rlang::syms)),
     tar_target(
       name = results,
-      command = wordVectors::closest_to(sources, "DEMAGOGUE", n = Inf,
+      command = wordVectors::closest_to(sources, "DEMOCRACY", n = Inf,
                                         fancy_names = FALSE) %>%
         dplyr::mutate(decade = decades,
                       dimensions = ncol(sources),
-                      measure = "Cosine similarity to 'DEMAGOGUE'",
+                      measure = "Cosine similarity to 'DEMOCRACY'",
                       source = source_names) %>%
         dplyr::rename(value = similarity) %>%
         tibble::as_tibble(),
@@ -419,7 +419,7 @@ list(
   tar_eval(
     tar_target(name = graphs,
                command = graph_similarities(sources %>%
-                                              dplyr::filter(word != "DEMAGOGUE") %>%
+                                              dplyr::filter(word != "DEMOCRACY") %>%
                                               dplyr::group_by(decade) %>%
                                               dplyr::mutate(value = scale(value)) %>%
                                               dplyr::ungroup() %>%
