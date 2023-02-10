@@ -28,18 +28,18 @@ graph_combined_weights[[2]]
 
 ```
 
-```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, verbs only.}
+```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, verbs only."}
 graph_combined_weights[[3]]
 
 ```
 
-```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, adjectives only.}
+```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, adjectives only."}
 graph_combined_weights[[4]]
 
 ```
 
 
-```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, terms ending in ism.}
+```{r graph_combined_weights_all_models_verbs, fig.cap="Terms related to 'DEMOCRACY', average over all models, terms ending in ism."}
 graph_combined_weights[[5]]
 
 ```
