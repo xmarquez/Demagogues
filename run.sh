@@ -19,5 +19,5 @@ Rscript run.R
 git add graph_document.md _targets/meta/meta figure/
 git commit -m "graph document, figures, and metadata about targets"
 git branch --show-current
-git push origin master
+git push origin https://github.com/xmarquez/demagogues.git
 
