@@ -16,6 +16,16 @@ module load R/CRAN
 
 Rscript run.R
 
+# Capture its exit value
+
+exit_value=$?
+
+# Check the exit value and abort if it's not 0
+if [ $exit_value -ne 0 ]; then
+  echo "The last command failed with exit value $exit_value"
+  exit $exit_value
+fi
+
 git add graph_document.md _targets/meta/meta figure/
 git commit -m "graph document, figures, and metadata about targets"
 git push https://github.com/xmarquez/Demagogues.git master

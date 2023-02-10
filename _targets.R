@@ -265,7 +265,6 @@ list(
   tar_target(
     name = ppmi_model_weights,
     command = dplyr::bind_rows(ppmi_single_decade_dfm = ppmi_single_decade_dfm,
-                               sims_ppmi_decade_dfm = sims_ppmi_decade_dfm,
                                .id = "id"),
     deployment = "main"
 
@@ -370,30 +369,6 @@ list(
     )
   ),
 
-# PPMI similarities --------------------------------------------------------
-
-  tar_eval(
-    values = list(sources = rlang::syms("decade_dfm"),
-                  results = rlang::syms("sims_ppmi_decade_dfm"),
-                  source_names = "decade_dfm"),
-    tar_target(
-      name = results,
-      command = ppmi_similarities(sources, demagogue_feature) %>%
-        dplyr::mutate(decade = decades,
-                      measure = "cosine similarity to 'DEMAGOGUE'",
-                      dimensions = nrow(sources),
-                      source = source_names),
-      pattern = map(sources, decades),
-      resources = tar_resources(future = tar_resources_future(
-        plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
-                                              walltime = "0:10:00")),
-        resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
-                         walltime = "0:10:00")))
-
-    )
-  ),
-
 # SVD word vector calculation ---------------------------------------------
 
   tar_eval(
@@ -454,7 +429,6 @@ list(
                iteration = "list",
                deployment = "main"),
     values = tibble::tibble(sources = c("ppmi_single_decade_dfm",
-                                        "sims_ppmi_decade_dfm",
                                         "sims_svd_word_vectors_decade_dfm",
                                         "weights_predictive_regression_LiblineaR_decade_dfm",
                                         "weights_predictive_classification_LiblineaR_decade_dfm",
