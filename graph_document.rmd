@@ -47,7 +47,9 @@ combined_performance %>%
   dplyr::filter(.estimator == "binary") %>% 
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = .metric, alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
-  ggplot2::geom_line() + ggplot2::facet_wrap(.metric~ stringr::str_extract(name, "(xgboost|LiblineaR)(_sampled)?")) +
+  ggplot2::geom_line() + 
+  ggplot2::facet_wrap(.metric~ stringr::str_extract(source, "(xgboost|LiblineaR)(_sampled)?"),
+                      scales = "free_y") +
   ggplot2::theme_bw() +
   ggplot2::labs(alpha = "Sample", color = "Metric")
 
@@ -58,7 +60,7 @@ combined_performance %>%
   dplyr::filter(.estimator == "standard") %>% 
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = .metric, alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
-  ggplot2::geom_line() + ggplot2::facet_wrap(.metric ~ stringr::str_extract(name, "(xgboost|LiblineaR)(_sampled)?")) +
+  ggplot2::geom_line() + ggplot2::facet_wrap(.metric ~ stringr::str_extract(source, "(xgboost|LiblineaR)(_sampled)?")) +
   ggplot2::theme_bw() +
   ggplot2::labs(alpha = "Sample", color = "Metric")
 
