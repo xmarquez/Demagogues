@@ -75,12 +75,13 @@ list(
     name = democracy_worksets_meta,
     command = cached_hathi_catalog %>%
       dplyr::filter(htid %in% democracy_worksets$htid),
-    resources = tar_resources(future = tar_resources_future(
-      plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
-                                            walltime = "1:00:00")),
-      resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
-                       walltime = "1:00:00")))
+    # resources = tar_resources(future = tar_resources_future(
+    #   plan = future::tweak(future.batchtools::batchtools_slurm,
+    #                        resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
+    #                                         walltime = "1:00:00")),
+    #   resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
+    #                    walltime = "1:00:00"))),
+    deployment = "main"
   ),
 
   tar_target(
