@@ -95,12 +95,13 @@ list(
       dplyr::filter(rights_date_used2 <= rights_date_used,
                     lang == "eng"),
     pattern = map(decades),
-    resources = tar_resources(future = tar_resources_future(
-      plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-                                            walltime = "0:20:00")),
-      resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-                       walltime = "0:20:00")))
+    # resources = tar_resources(future = tar_resources_future(
+    #   plan = future::tweak(future.batchtools::batchtools_slurm,
+    #                        resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
+    #                                         walltime = "0:20:00")),
+    #   resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
+    #                    walltime = "0:20:00"))),
+    deployment = "main"
     ),
 
   tar_target(
