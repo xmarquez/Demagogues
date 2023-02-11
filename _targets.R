@@ -119,9 +119,9 @@ list(
     pattern = map(democracy_samples),
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = list(partition = "quicktest", memory = "8G", ncpus = 2,
+                           resources = list(partition = "quicktest", memory = "10G", ncpus = 2,
                                             walltime = "2:00:00")),
-      resources = list(partition = "quicktest", memory = "8G", ncpus = 2,
+      resources = list(partition = "quicktest", memory = "10G", ncpus = 2,
                        walltime = "2:00:00")))
   ),
 
