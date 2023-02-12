@@ -9,6 +9,16 @@ library(tidyverse)
 library(hathiTools)
 library(tarchetypes) # Load other packages as needed. # nolint
 
+democracy_files_resources <- list(partition = "quicktest", memory = "10G", ncpus = 2,
+                                  walltime = "2:00:00")
+dfm_resources <- list(partition = "quicktest", memory = "30G", ncpus = 2,
+                      walltime = "0:40:00")
+predictive_model_resources <- list(partition = "quicktest", memory = "15G",
+                                   ncpus = 6, walltime = "0:10:00")
+svd_word_vectors_resources <- list(partition = "parallel", memory = "20G", ncpus = 10,
+                                   walltime = "0:10:00")
+
+
 # Set target options:
 tar_option_set(
   packages = c("tibble", "magrittr", "dplyr"), # packages that your targets need to run
@@ -75,12 +85,6 @@ list(
     name = democracy_worksets_meta,
     command = cached_hathi_catalog %>%
       dplyr::filter(htid %in% democracy_worksets$htid),
-    # resources = tar_resources(future = tar_resources_future(
-    #   plan = future::tweak(future.batchtools::batchtools_slurm,
-    #                        resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
-    #                                         walltime = "1:00:00")),
-    #   resources = list(partition = "quicktest", memory = "20G", ncpus = 12,
-    #                    walltime = "1:00:00"))),
     deployment = "main"
   ),
 
@@ -95,12 +99,6 @@ list(
       dplyr::filter(rights_date_used2 <= rights_date_used,
                     lang == "eng"),
     pattern = map(decades),
-    # resources = tar_resources(future = tar_resources_future(
-    #   plan = future::tweak(future.batchtools::batchtools_slurm,
-    #                        resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-    #                                         walltime = "0:20:00")),
-    #   resources = list(partition = "quicktest", memory = "4G", ncpus = 4,
-    #                    walltime = "0:20:00"))),
     deployment = "main"
     ),
 
@@ -119,10 +117,8 @@ list(
     pattern = map(democracy_samples),
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = list(partition = "quicktest", memory = "10G", ncpus = 2,
-                                            walltime = "2:00:00")),
-      resources = list(partition = "quicktest", memory = "10G", ncpus = 2,
-                       walltime = "2:00:00"))),
+                           resources = democracy_files_resources),
+      resources = democracy_files_resources)),
     storage = "worker",
     retrieval = "worker"
 
@@ -134,10 +130,8 @@ list(
     pattern = map(democracy_files),
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = list(partition = "quicktest", memory = "30G", ncpus = 2,
-                                            walltime = "0:40:00")),
-      resources = list(partition = "quicktest", memory = "30G", ncpus = 2,
-                       walltime = "0:40:00"))),
+                           resources = dfm_resources),
+      resources = dfm_resources)),
     storage = "worker",
     retrieval = "worker",
     iteration = "list"
@@ -153,12 +147,6 @@ list(
       name = splits_decade_dfm,
       command = train_test_splits(decade_dfm, democracy_feature),
       pattern = map(decade_dfm),
-      # resources = tar_resources(future = tar_resources_future(
-      #   plan = future::tweak(future.batchtools::batchtools_slurm,
-      #                        resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
-      #                                         walltime = "0:05:00")),
-      #   resources = list(partition = "quicktest", memory = "2G", ncpus = 2,
-      #                    walltime = "0:05:00"))),
       iteration = "list",
       deployment = "main"
     ),
@@ -185,10 +173,8 @@ list(
       packages = c("quanteda"),
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = list(partition = "quicktest", memory = "15G", ncpus = 6,
-                                              walltime = "0:10:00")),
-        resources = list(partition = "quicktest", memory = "15G", ncpus = 6,
-                         walltime = "0:10:00"))),
+                             resources = predictive_model_resources),
+        resources = predictive_model_resources)),
       storage = "worker",
       retrieval = "worker",
       iteration = "list"
@@ -241,12 +227,6 @@ list(
                       model_type = model_type,
                       sample = use),
       pattern = map(sources, dfms, splits, decades),
-      # resources = tar_resources(future = tar_resources_future(
-      #   plan = future::tweak(future.batchtools::batchtools_slurm,
-      #                        resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-      #                                         walltime = "0:10:00")),
-      #   resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-      #                    walltime = "0:10:00"))),
       packages = c("quanteda"),
       deployment = "main"
     )
@@ -368,14 +348,7 @@ list(
                       source = source_names) %>%
         dplyr::arrange(desc(value)),
       pattern = map(sources, decades),
-      # resources = tar_resources(future = tar_resources_future(
-      #   plan = future::tweak(future.batchtools::batchtools_slurm,
-      #                        resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
-      #                                         walltime = "0:15:00")),
-      #   resources = list(partition = "quicktest", memory = "20G", ncpus = 2,
-      #                    walltime = "0:15:00"))),
       deployment = "main"
-
     )
   ),
 
@@ -393,10 +366,8 @@ list(
       iteration = "list",
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-                                              walltime = "0:10:00")),
-        resources = list(partition = "quicktest", memory = "10G", ncpus = 10,
-                         walltime = "0:10:00")))
+                             resources = svd_word_vectors_resources),
+        resources = svd_word_vectors_resources))
 
     )
   ),
