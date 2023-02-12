@@ -3,10 +3,10 @@
 #SBATCH --job-name=run_pipeline
 #SBATCH --output=pipeline.out
 #SBATCH --error=pipeline.err
-#SBATCH --time=05:00:00
-#SBATCH --partition=quicktest
+#SBATCH --time=06:00:00
+#SBATCH --partition=parallel
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=30G
+#SBATCH --mem=40G
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=xavier.marquez@vuw.ac.nz
 

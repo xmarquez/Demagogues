@@ -9,11 +9,11 @@ library(tidyverse)
 library(hathiTools)
 library(tarchetypes) # Load other packages as needed. # nolint
 
-democracy_files_resources <- list(partition = "quicktest", memory = "10G", ncpus = 2,
+democracy_files_resources <- list(partition = "parallel", memory = "10G", ncpus = 2,
                                   walltime = "2:00:00")
-dfm_resources <- list(partition = "quicktest", memory = "30G", ncpus = 2,
+dfm_resources <- list(partition = "parallel", memory = "30G", ncpus = 2,
                       walltime = "0:40:00")
-predictive_model_resources <- list(partition = "quicktest", memory = "15G",
+predictive_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 6, walltime = "0:10:00")
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
                                    walltime = "0:10:00")
