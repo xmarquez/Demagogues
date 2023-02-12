@@ -367,8 +367,9 @@ list(
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
                              resources = svd_word_vectors_resources),
-        resources = svd_word_vectors_resources))
-
+        resources = svd_word_vectors_resources)),
+      storage = "worker",
+      retrieval = "worker"
     )
   ),
 
