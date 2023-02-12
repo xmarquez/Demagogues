@@ -122,7 +122,10 @@ list(
                            resources = list(partition = "quicktest", memory = "10G", ncpus = 2,
                                             walltime = "2:00:00")),
       resources = list(partition = "quicktest", memory = "10G", ncpus = 2,
-                       walltime = "2:00:00")))
+                       walltime = "2:00:00"))),
+    storage = "worker",
+    retrieval = "worker"
+
   ),
 
   tar_target(
