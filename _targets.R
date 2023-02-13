@@ -37,7 +37,7 @@ splits <- tidyr::nesting(prefix = "splits",
 models_df <- tidyr::nesting(prefix = "predictive",
                          model_type = "classification",
                          sources = dfms_df$result,
-                         engine = c("LiblineaR", "xgboost")) %>%
+                         engine = c("LiblineaR", "xgboost", "glmnet")) %>%
   tidyr::expand_grid(tidyr::nesting(split = splits$result,
                                     split_type = splits$type)) %>%
   tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
@@ -53,7 +53,7 @@ model_performance_df <- tidyr::nesting(prefix = "performance",
                                     sources = models_df$result,
                                     source_names = as.character(sources),
                                     dfms = models_df$sources,
-                                    split = rep(splits$result, 2)) %>%
+                                    split = models_df$split) %>%
   tidyr::expand_grid(use = c("testing", "training")) %>%
   tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
