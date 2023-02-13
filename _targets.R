@@ -241,9 +241,9 @@ list(
                              dfms = c("decade_dfm"),
                              splits = c("", "similarity", "random"),
                              use = c("testing", "training")) %>%
+      tidyr::unite(col = "sources", prefix, model_type, engine, dfms, splits, remove = FALSE) %>%
       dplyr::mutate(splits = paste("splits", dfms, splits, sep = "_") %>%
                       stringr::str_remove("_$")) %>%
-      tidyr::unite(col = "sources", prefix, model_type, engine, dfms, splits, remove = FALSE) %>%
       dplyr::mutate(sources = stringr::str_remove(sources, "_$"),
                     results = paste("performance", sources, use, sep = "_"),
                     source_names = sources,
