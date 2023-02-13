@@ -9,20 +9,18 @@ output: html_document
 
 ## Combined Graphs
 
-![plot of chunk graphs](figure/graphs-1.png)
+![Terms related to 'DEMOCRACY', average over all models, all terms.](figure/graph_combined_weights_all_models_all_terms-1.png)
 
-![plot of chunk unnamed-chunk-1](figure/unnamed-chunk-1-1.png)
+![Terms related to 'DEMOCRACY', average over all models, nouns only.](figure/graph_combined_weights_all_models_nouns-1.png)
 
-![plot of chunk unnamed-chunk-2](figure/unnamed-chunk-2-1.png)
+![Terms related to 'DEMOCRACY', average over all models, verbs only.](figure/graph_combined_weights_all_models_verbs-1.png)
 
-![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3-1.png)
+![Terms related to 'DEMOCRACY', average over all models, adjectives only.](figure/graph_combined_weights_all_models_adjectives-1.png)
 
 
-![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4-1.png)
+![Terms related to 'DEMOCRACY', average over all models, terms ending in ism.](figure/graph_combined_weights_all_models_ideologies-1.png)
 
 ## Model performance graphs
 
-![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5-1.png)
-
-![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6-1.png)
+![Predictive performance of classification models.](figure/combined_performance_graph_classification-1.png)
 
