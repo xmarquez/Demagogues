@@ -57,14 +57,14 @@ model_performance_df <- tidyr::nesting(prefix = "performance",
   tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
-svd_word_vectors <- tidyr::nesting(prefix = "svd_word_vectors",
+svd_word_vectors_df <- tidyr::nesting(prefix = "svd_word_vectors",
                                    sources = dfms$result,
                                    dims = 50) %>%
   tidyr::unite(col = "result", prefix, sources, dims, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 sims_svd_word_vectors <- tidyr::nesting(prefix = "sims",
-                                        sources = svd_word_vectors$result,
+                                        sources = svd_word_vectors_df$result,
                                         source_names = as.character(sources)) %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
@@ -292,21 +292,21 @@ list(
 
   tar_target(
     name = predictive_model_weights,
-    command = do.call(dplyr::bind_rows, model_weights_df$result, list(id = "id")),
+    command = do.call(dplyr::bind_rows, model_weights_df$result %>% setNames(nm = .)),
     deployment = "main"
 
   ),
 
   tar_target(
     name = svd_model_weights,
-    command = dplyr::bind_rows(sims_svd_word_vectors$result, id = "id"),
+    command = do.call(dplyr::bind_rows, sims_svd_word_vectors$result %>% setNames(nm = .)),
     deployment = "main"
 
   ),
 
   tar_target(
     name = ppmi_model_weights,
-    command = do.call(dplyr::bind_rows, ppmi_word_vectors$result, list(id = "id")),
+    command = do.call(dplyr::bind_rows, ppmi_word_vectors$result %>% setNames(nm = .)),
     deployment = "main"
   ),
 
@@ -413,13 +413,12 @@ list(
 # SVD word vector calculation ---------------------------------------------
 
   tar_eval(
-    values = list(sources = rlang::syms("decade_dfm"),
-                  results = rlang::syms("svd_word_vectors_decade_dfm")),
+    values = svd_word_vectors_df,
     tar_target(
-      name = results,
+      name = result,
       command = sources %>%
         quanteda::dfm_lookup(democracy_feature, exclusive = FALSE) %>%
-        svd_word_vectors(nv = 50, weight = "ppmi"),
+        svd_word_vectors(nv = dims, weight = "ppmi"),
       pattern = map(sources),
       iteration = "list",
       resources = tar_resources(future = tar_resources_future(
@@ -434,14 +433,9 @@ list(
 # Similarity calculation for word vectors ---------------------------------
 
   tar_eval(
-    values = tidyr::expand_grid(vectors = c("svd_word_vectors"),
-                                sources = c("decade_dfm")) %>%
-      tidyr::unite("sources", dplyr::everything()) %>%
-      dplyr::mutate(results = paste("sims", sources, sep = "_"),
-                    source_names = sources,
-                    dplyr::across(c(sources, results), rlang::syms)),
+    values = sims_svd_word_vectors,
     tar_target(
-      name = results,
+      name = result,
       command = wordVectors::closest_to(sources, "DEMOCRACY", n = Inf,
                                         fancy_names = FALSE) %>%
         dplyr::mutate(decade = decades,
