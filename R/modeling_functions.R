@@ -362,14 +362,14 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
 
     res <- preds %>%
       dplyr::mutate(truth = factor(truth, levels = c(0, 1)),
-                    class = factor(ifelse(estimate > 0.5, 0, 1), levels = c(0, 1))) %>%
+                    class = factor(ifelse(estimate < 0.5, 0, 1), levels = c(0, 1))) %>%
       yardstick::metrics(truth = truth, estimate = class,
                          estimate) %>%
       dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
 
     conf_mat <- preds %>%
       dplyr::mutate(truth = factor(truth, levels = c(0, 1)),
-                    class = factor(ifelse(estimate > 0.5, 0, 1), levels = c(0, 1))) %>%
+                    class = factor(ifelse(estimate < 0.5, 0, 1), levels = c(0, 1))) %>%
       yardstick::conf_mat(truth = truth, estimate = class) %>%
       yardstick::tidy()
 
