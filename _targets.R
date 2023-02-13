@@ -294,7 +294,13 @@ list(
 
   tar_target(
     name = pos_patterns,
-    command = c(".","(_nn|_NN)","(_vb|_VB)","(_jj|_JJ)", "ism_", "^[A-Z]"),
+    command = c(".","(_nn|_NN)","(_vb|_VB)","(_jj|_JJ)", "ism_", "^[A-Z].+NN"),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = lowercase,
+    command = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE),
     deployment = "main"
   ),
 
@@ -314,8 +320,9 @@ list(
                                    dplyr::filter(stringr::str_detect(word, pos_patterns)),
                                  top_n = max_per_decade,
                                  var = value,
-                                 max_n = max_num),
-    pattern = map(pos_patterns),
+                                 max_n = max_num,
+                                 lowercase = lowercase),
+    pattern = map(pos_patterns, lowercase),
     iteration = "list",
     deployment = "main"
   ),

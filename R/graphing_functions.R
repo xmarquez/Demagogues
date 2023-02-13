@@ -1,9 +1,10 @@
 graph_similarities <- function(df,
                                top_n = 8,
                                var = value,
-                               max_n = Inf) {
+                               max_n = Inf,
+                               lowercase = TRUE) {
 
-  df <- prep_df(df, top_n, {{var}}, max_n)
+  df <- prep_df(df, top_n, {{var}}, max_n = max_n, lowercase = lowercase)
 
   df %>%
     ggplot2::ggplot(ggplot2::aes(y = forcats::fct_reorder(word, decade_density_max))) +
@@ -24,7 +25,15 @@ weighted_density_max <- function(x, wt) {
 
 }
 
-prep_df <- function(df, top_n, var, max_n) {
+prep_df <- function(df, top_n, var, max_n, lowercase) {
+
+  if(lowercase) {
+    df <- df %>%
+      dplyr::mutate(word = stringr::str_to_lower(word)) %>%
+      dplyr::group_by(decade, word) %>%
+      dplyr::summarise({{var}} := mean({{var}})) %>%
+      dplyr::ungroup()
+  }
 
   terms_to_plot <- df  %>%
     dplyr::group_by(decade) %>%
