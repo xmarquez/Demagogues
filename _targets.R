@@ -157,7 +157,7 @@ list(
   tar_eval(
     values = tidyr::expand_grid(sources = c("decade_dfm"),
                                 engine = c("LiblineaR", "xgboost"),
-                                model_type = c("regression", "classification")) %>%
+                                model_type = c("classification")) %>%
       dplyr::mutate(splits = paste("splits", sources, sep = "_"),
                     results = paste("predictive", model_type, engine, sources, sep = "_"),
                     dplyr::across(dplyr::all_of(c("sources", "results", "splits")),
@@ -185,7 +185,7 @@ list(
 
   tar_eval(
     values = tidyr::crossing("predictive",
-                             c("regression", "classification"),
+                             c("classification"),
                              c("LiblineaR", "xgboost"),
                              c("decade_dfm")) %>%
       tidyr::unite("sources") %>%
@@ -209,7 +209,7 @@ list(
 
   tar_eval(
     values = tidyr::crossing(prefix = "predictive",
-                             model_type = c("regression", "classification"),
+                             model_type = c("classification"),
                              engine = c("LiblineaR", "xgboost"),
                              dfms = c("decade_dfm"),
                              use = c("testing", "training")) %>%
@@ -235,9 +235,7 @@ list(
   tar_target(
     name = predictive_model_weights,
     command = dplyr::bind_rows(weights_predictive_classification_LiblineaR_decade_dfm = weights_predictive_classification_LiblineaR_decade_dfm,
-                               weights_predictive_regression_LiblineaR_decade_dfm = weights_predictive_regression_LiblineaR_decade_dfm,
                                weights_predictive_classification_xgboost_decade_dfm = weights_predictive_classification_xgboost_decade_dfm,
-                               weights_predictive_regression_xgboost_decade_dfm = weights_predictive_regression_xgboost_decade_dfm,
                                .id = "id"),
     deployment = "main"
 
@@ -270,11 +268,7 @@ list(
 
   tar_target(
     name = combined_performance,
-    command = dplyr::bind_rows(regression_LiblineaR_decade_dfm_testing = performance_predictive_regression_LiblineaR_decade_dfm_testing,
-                               regression_LiblineaR_decade_dfm_training = performance_predictive_regression_LiblineaR_decade_dfm_training,
-                               regression_xgboost_decade_dfm_testing = performance_predictive_regression_xgboost_decade_dfm_testing,
-                               regression_xgboost_decade_dfm_training = performance_predictive_regression_xgboost_decade_dfm_training,
-                               classification_xgboost_decade_dfm_testing = performance_predictive_classification_xgboost_decade_dfm_testing,
+    command = dplyr::bind_rows(classification_xgboost_decade_dfm_testing = performance_predictive_classification_xgboost_decade_dfm_testing,
                                classification_xgboost_decade_dfm_trainig = performance_predictive_classification_xgboost_decade_dfm_training,
                                classification_LiblineaR_decade_dfm_testing = performance_predictive_classification_LiblineaR_decade_dfm_testing,
                                classification_LiblineaR_decade_dfm_training = performance_predictive_classification_LiblineaR_decade_dfm_training),
@@ -413,9 +407,7 @@ list(
                deployment = "main"),
     values = tibble::tibble(sources = c("ppmi_single_decade_dfm",
                                         "sims_svd_word_vectors_decade_dfm",
-                                        "weights_predictive_regression_LiblineaR_decade_dfm",
                                         "weights_predictive_classification_LiblineaR_decade_dfm",
-                                        "weights_predictive_regression_xgboost_decade_dfm",
                                         "weights_predictive_classification_xgboost_decade_dfm"),
                             graphs = paste("graph", sources, sep = "_")) %>%
       dplyr::mutate(dplyr::across(dplyr::everything(), rlang::syms))
