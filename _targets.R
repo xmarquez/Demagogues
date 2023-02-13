@@ -51,6 +51,7 @@ model_weights_df <- tidyr::nesting(prefix = "weights",
 
 model_performance_df <- tidyr::nesting(prefix = "performance",
                                     sources = models$result,
+                                    source_names = as.character(sources),
                                     dfms = models$sources,
                                     split = rep(splits$result, 2)) %>%
   tidyr::expand_grid(use = c("testing", "training")) %>%
