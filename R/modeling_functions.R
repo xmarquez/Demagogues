@@ -349,7 +349,7 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
 
   predictions <- xgboost:::predict.xgb.Booster(model, newdata = x_test)
 
-  preds <- tibble::tibble(truth = y_test, estimate = predictions)
+  preds <- tibble::tibble(truth = 1 - y_test, estimate = predictions)
 
   if(model_type == "regression") {
     res <- preds %>%
@@ -380,6 +380,71 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
   res
 
 }
+
+predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...) {
+
+  x_train <- get_x(training_dfm, feat = feat, weight = weight)
+
+  y_train <- get_y(training_dfm, feat, model_type = model_type)
+
+  if(model_type == "regression") {
+    glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "gaussian", ...)
+  } else {
+    glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "binomial", ...)
+  }
+
+  glmnet_model
+
+}
+
+model_weights.cv.glmnet <- function(model) {
+  glmnet::predict.cv.glmnet(model, s = "lambda.min", type = "coef") %>%
+    Matrix::rowMeans() %>%
+    tibble::enframe() %>%
+    dplyr::arrange(-value) %>%
+    dplyr::mutate(model_type = paste(class(model), class(model$glmnet.fit), collapse = " "))
+}
+
+model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
+                                        weight = c("ppmi", "tfidf", "none"),
+                                        use = "testing") {
+  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
+  use <- match.arg(use, c("testing", "training"))
+  if(use == "testing") {
+    testing_dfm <- get_test_sample(dfm, initial_split)
+  } else {
+    testing_dfm <- get_training_sample(dfm, initial_split)
+  }
+  if("lognet" %in% class(model$glmnet.fit)) {
+    model_type <- "classification"
+
+  } else if("elnet" %in% class(model$glmnet.fit)) {
+    model_type <- "regression"
+  }
+
+  x_test <- get_x(testing_dfm, feat = feat, weight = weight)
+
+  y_test <- get_y(testing_dfm, feat, model_type = model_type)
+
+  measures <- glmnet::assess.glmnet(model, newx = x_test, newy = y_test, s = "lambda.min")
+
+  measures <- tibble::tibble(.metric = names(measures),
+                             .estimator = "assess.glmnet",
+                             .estimate = unlist(measures))
+
+  if(model_type == "classification") {
+    conf_mat <- glmnet::confusion.glmnet(model, newx = x_test, newy = y_test, s = "lambda.min") %>%
+      tibble::as_tibble()
+    measures <- measures %>%
+      dplyr::mutate(conf_mat = list(conf_mat))
+
+  }
+
+  measures %>%
+    dplyr::mutate(model_type = paste("cv.glmnet", model_type))
+
+}
+
 
 get_x <- function(dfm, feature, weight = c("ppmi", "tfidf", "none")) {
   UseMethod("get_x", feature)
