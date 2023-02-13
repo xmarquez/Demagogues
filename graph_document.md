@@ -144,6 +144,21 @@ output: html_document
  
 ![sims ppmi decade dfm, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_ppmi_decade_dfm_uppercase_nouns-1.png)
 
+
+![combined weights, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_nn-1.png)
+
+ 
+![combined weights, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_vb-1.png)
+
+ 
+![combined weights, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_jj-1.png)
+
+ 
+![combined weights, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_ism-1.png)
+
+ 
+![combined weights, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_uppercase_nouns-1.png)
+
 ## Model performance graphs
 
 ![Predictive performance of classification models.](figure/combined_performance_graph_classification-1.png)
