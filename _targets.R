@@ -228,6 +228,12 @@ list(
                       sample = use),
       pattern = map(sources, dfms, splits, decades),
       packages = c("quanteda"),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = predictive_model_resources),
+        resources = predictive_model_resources)),
+      storage = "worker",
+      retrieval = "worker",
       deployment = "main"
     )
   ),
