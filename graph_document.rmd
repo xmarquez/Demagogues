@@ -668,8 +668,7 @@ graph[[6]]
 
 ## Model performance graphs
 
-```{r combined_performance_graph_classification, fig.cap="Predictive performance of classification models.",
-fig.height = 9, fig.width = 7}
+```{r combined_performance_graph_classification, fig.cap="Predictive performance of classification models.", fig.height = 9, fig.width = 7}
 tar_load(combined_performance)
 
 combined_performance %>% 
@@ -685,4 +684,5 @@ combined_performance %>%
   ggplot2::labs(alpha = "Sample", color = "Metric")
 
 ```
+
 
