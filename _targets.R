@@ -288,58 +288,6 @@ list(
   ),
 
 
-# Combined Targets ------------------------------------------------------------------------
-
-  tar_target(
-    name = predictive_model_weights,
-    command = do.call(dplyr::bind_rows, model_weights_df$result %>% setNames(nm = .)),
-    deployment = "main"
-
-  ),
-
-  tar_target(
-    name = svd_model_weights,
-    command = do.call(dplyr::bind_rows, sims_svd_word_vectors$result %>% setNames(nm = .)),
-    deployment = "main"
-
-  ),
-
-  tar_target(
-    name = ppmi_model_weights,
-    command = do.call(dplyr::bind_rows, ppmi_word_vectors$result %>% setNames(nm = .)),
-    deployment = "main"
-  ),
-
-  tar_target(
-    name = all_model_weights,
-    command = dplyr::bind_rows(svd_model_weights,
-                               ppmi_model_weights,
-                               predictive_model_weights),
-    deployment = "main"
-  ),
-
-  tar_target(
-    name = combined_performance,
-    command = do.call(dplyr::bind_rows, model_performance_df$result, list(id = "id")),
-    deployment = "main"
-  ),
-
-  tar_target(
-    name = combined_weights,
-    command = all_model_weights %>%
-      dplyr::filter(word != "DEMOCRACY") %>%
-      dplyr::group_by(id, decade) %>%
-      dplyr::mutate(value = scale(value)) %>%
-      dplyr::group_by(decade, word) %>%
-      dplyr::summarise(mean = list(as_tibble_row(Hmisc::smean.cl.normal(value)))) %>%
-      tidyr::unnest(mean) %>%
-      dplyr::arrange(desc(Mean), .by_group = TRUE) %>%
-      dplyr::rename(value = Mean, value_upper = Upper, value_lower = Lower) %>%
-      dplyr::mutate(pos = stringr::str_extract(word, "(?<=_)[NVBJnvbj]{2}")) ,
-    deployment = "main"
-
-  ),
-
 # Graphs ------------------------------------------------------------------
 
   tar_target(
@@ -447,5 +395,58 @@ list(
       pattern = map(sources, decades),
       deployment = "main"
     )
+  ),
+  # Combined Targets ------------------------------------------------------------------------
+
+  tar_target(
+    name = predictive_model_weights,
+    command = dplyr::bind_rows(!!!model_weights_df$result),
+    deployment = "main"
+
+  ),
+
+  tar_target(
+    name = svd_model_weights,
+    command = dplyr::bind_rows(!!!sims_svd_word_vectors$result),
+    deployment = "main"
+
+  ),
+
+  tar_target(
+    name = ppmi_model_weights,
+    command = dplyr::bind_rows(!!!ppmi_word_vectors$result),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = all_model_weights,
+    command = dplyr::bind_rows(svd_model_weights,
+                               ppmi_model_weights,
+                               predictive_model_weights),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = combined_performance,
+    command = dplyr::bind_rows(!!!model_performance_df$result),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = combined_weights,
+    command = all_model_weights %>%
+      dplyr::filter(word != "DEMOCRACY") %>%
+      dplyr::group_by(id, decade) %>%
+      dplyr::mutate(value = scale(value)) %>%
+      dplyr::group_by(decade, word) %>%
+      dplyr::summarise(mean = list(as_tibble_row(Hmisc::smean.cl.normal(value)))) %>%
+      tidyr::unnest(mean) %>%
+      dplyr::arrange(desc(Mean), .by_group = TRUE) %>%
+      dplyr::rename(value = Mean, value_upper = Upper, value_lower = Lower) %>%
+      dplyr::mutate(pos = stringr::str_extract(word, "(?<=_)[NVBJnvbj]{2}")) ,
+    deployment = "main"
+
   )
 )
+
+
