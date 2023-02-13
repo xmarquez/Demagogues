@@ -407,7 +407,8 @@ model_weights.cv.glmnet <- function(model) {
     Matrix::rowMeans() %>%
     tibble::enframe() %>%
     dplyr::arrange(-value) %>%
-    dplyr::mutate(model_type = paste(class(model), class(model$glmnet.fit), collapse = " "))
+    dplyr::mutate(model_type = paste(class(model), class(model$glmnet.fit), collapse = " ")) %>%
+    dplyr::rename(word = name)
 }
 
 model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
