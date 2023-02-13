@@ -3,8 +3,3 @@
 !meta
 meta/*
 !meta/meta
-!objects
-objects/*
-!objects/all_model_weights
-!objects/combined_weights
-!objects/combined_performance
