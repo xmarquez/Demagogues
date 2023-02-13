@@ -15,6 +15,8 @@ dfm_resources <- list(partition = "parallel", memory = "30G", ncpus = 2,
                       walltime = "0:40:00")
 predictive_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 6, walltime = "0:10:00")
+evaluation_model_resources <- list(partition = "parallel", memory = "15G",
+                                   ncpus = 6, walltime = "0:02:00")
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
                                    walltime = "0:10:00")
 
@@ -230,8 +232,8 @@ list(
       packages = c("quanteda"),
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = predictive_model_resources),
-        resources = predictive_model_resources)),
+                             resources = evaluation_model_resources),
+        resources = evaluation_model_resources)),
       storage = "worker",
       retrieval = "worker"
     )
