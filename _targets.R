@@ -233,8 +233,7 @@ list(
                              resources = predictive_model_resources),
         resources = predictive_model_resources)),
       storage = "worker",
-      retrieval = "worker",
-      deployment = "main"
+      retrieval = "worker"
     )
   ),
 
