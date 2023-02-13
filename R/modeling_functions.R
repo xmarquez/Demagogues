@@ -1,23 +1,126 @@
-train_test_splits <-function(dfm, feat) {
+train_test_splits <-function(dfm, feat, downsampled, downsample_type) {
   UseMethod("train_test_splits", feat)
 }
 
-train_test_splits.dictionary2 <- function(dfm, feat) {
-  df <- dfm %>%
-    quanteda::dfm_lookup(feat) %>%
-    quanteda::dfm_weight("boolean") %>%
-    quanteda::convert(to = "data.frame")
+train_test_splits.dictionary2 <- function(dfm, feat, downsampled, downsample_type) {
 
-  rsample::initial_split(df, strata = names(feat))
+  if(downsampled) {
+    UseMethod("train_test_splits_downsample", feat)
+  } else {
+    df <- dfm %>%
+      quanteda::dfm_lookup(feat) %>%
+      quanteda::dfm_weight("boolean") %>%
+      quanteda::convert(to = "data.frame")
+
+    res <- rsample::initial_split(df, strata = names(feat))
+    return(res)
+  }
+
 }
 
-train_test_splits.character <- function(dfm, feat) {
-  df <- dfm %>%
-    quanteda::dfm_select(feat) %>%
-    quanteda::dfm_weight("boolean") %>%
+train_test_splits.character <- function(dfm, feat, downsampled, downsample_type) {
+
+  df <- dfm%>%
+    quanteda::select(feat)%>%
+    quanteda::dfm_weight(scheme = "boolean")%>%
     quanteda::convert(to = "data.frame")
 
-  rsample::initial_split(df, strata = feat)
+  split <- rsample::initial_split(df, strata = names(feat))
+
+  if(downsample_type == "similarity") {
+    split <- most_similar_downsample(df, dfm, split)
+  } else if(downsample_type == "random") {
+    split <- random_downsample(df, dfm, split)
+  }
+
+  split
+
+}
+
+train_test_splits_downsample.dictionary2 <- function(dfm, feat, downsampled, downsample_type) {
+  downsample_type <- match.arg(downsample_type, c("similarity", "random"))
+
+  df <- dfm%>%
+    quanteda::dfm_lookup(feat)%>%
+    quanteda::dfm_weight(scheme = "boolean")%>%
+    quanteda::convert(to = "data.frame")
+
+  split <- rsample::initial_split(df, strata = names(feat))
+
+  if(downsample_type == "similarity") {
+    split <- most_similar_downsample(df, dfm, split)
+  } else if(downsample_type == "random") {
+    split <- random_downsample(df, dfm, split)
+  }
+
+  split
+}
+
+most_similar_downsample <- function(df, dfm, split) {
+
+  dfm_training <- dfm[ split$in_id, ]
+  df <- df[ split$in_id, ]
+
+  dfm_true <- dfm_training%>%
+    quanteda::dfm_subset(df[ ,2] == 1)
+
+  dfm_false <- dfm_training%>%
+    quanteda::dfm_subset(df[ ,2] == 0)
+
+  dfm_true_vec <- dfm_true%>%
+    Matrix::colMeans()%>%
+    as.matrix(nrow=1)%>%
+    Matrix::t()
+
+  sims <- cosine_sims(dfm_false, dfm_true_vec)%>%
+    quanteda::as.dfm()%>%
+    quanteda::convert(to = "data.frame")%>%
+    tibble::as_tibble()%>%
+    dplyr::arrange(-2)%>%
+    dplyr::slice_max(feat1, n = nrow(dfm_true))
+
+  ids_true <- quanteda::docnames(dfm_true)
+  ids_false <- sims$doc_id
+
+  all_ids <- c(ids_true, ids_false)
+
+  in_id <- which(split$data$doc_id %in% all_ids)
+
+  split$in_id <- in_id
+
+  split
+
+}
+
+random_downsample <- function(df, dfm, split) {
+
+  dfm_training <- dfm[ split$in_id, ]
+  df <- df[ split$in_id, ]
+
+  dfm_true <- dfm_training%>%
+    quanteda::dfm_subset(df[ ,2] == 1)
+
+  dfm_false <- dfm_training%>%
+    quanteda::dfm_subset(df[ ,2] == 0)
+
+  dfm_false <- dfm_false%>%
+    quanteda::dfm_sample(size = min(nrow(dfm_true), nrow(dfm_false)))
+
+  ids_true <- quanteda::docnames(dfm_true)
+  ids_false <- quanteda::docnames(dfm_false)
+
+  all_ids <- c(ids_true, ids_false)
+
+  in_id <- which(split$data$doc_id %in% all_ids)
+
+  split$in_id <- in_id
+
+  split
+
+}
+
+cosine_sims <- function(x, y) {
+  Matrix::tcrossprod(x, y)/(sqrt(Matrix::tcrossprod(Matrix::rowSums(x^2), Matrix::rowSums(y^2))))
 }
 
 predictive_model <- function(dfm, initial_split, feat,
@@ -259,7 +362,7 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
 
     res <- preds %>%
       dplyr::mutate(truth = factor(truth, levels = c(0, 1)),
-                    class = factor(ifelse(estimate > 0.5, 1, 0), levels = c(0, 1))) %>%
+                    class = factor(ifelse(estimate > 0.5, 0, 1), levels = c(0, 1))) %>%
       yardstick::metrics(truth = truth, estimate = class,
                          estimate) %>%
       dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
