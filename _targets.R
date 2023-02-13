@@ -181,8 +181,10 @@ list(
                                 split_type = c("", "similarity", "random"),
                                 engine = c("LiblineaR", "xgboost"),
                                 model_type = c("classification")) %>%
-      dplyr::mutate(splits = paste("splits", sources, split_type, sep = "_") %>% stringr::str_remove("_$"),
-                    results = paste("predictive", model_type, engine, sources, sep = "_"),
+      dplyr::mutate(splits = paste("splits", sources, split_type, sep = "_") %>%
+                      stringr::str_remove("_$"),
+                    results = paste("predictive", model_type, engine, sources, split_type, sep = "_") %>%
+                      stringr::str_remove("_$"),
                     dplyr::across(dplyr::all_of(c("sources", "results", "splits")),
                                   rlang::syms)),
     tar_target(
@@ -210,9 +212,11 @@ list(
     values = tidyr::crossing("predictive",
                              c("classification"),
                              c("LiblineaR", "xgboost"),
-                             c("decade_dfm")) %>%
+                             c("decade_dfm"),
+                             c("", "similarity", "random")) %>%
       tidyr::unite("sources") %>%
-      dplyr::mutate(results = paste("weights", sources, sep = "_"),
+      dplyr::mutate(sources = stringr::str_remove(sources, "_$"),
+                    results = paste("weights", sources, sep = "_"),
                     source_names = sources,
                     dplyr::across(dplyr::all_of(c("sources", "results")),
                                   rlang::syms)),
@@ -235,10 +239,13 @@ list(
                              model_type = c("classification"),
                              engine = c("LiblineaR", "xgboost"),
                              dfms = c("decade_dfm"),
+                             splits = c("", "similarity", "random"),
                              use = c("testing", "training")) %>%
-      dplyr::mutate(splits = paste("splits", dfms, sep = "_")) %>%
-      tidyr::unite(col = "sources", prefix, model_type, engine, dfms, remove = FALSE) %>%
-      dplyr::mutate(results = paste("performance", sources, use, sep = "_"),
+      dplyr::mutate(splits = paste("splits", dfms, splits, sep = "_") %>%
+                      stringr::str_remove("_$")) %>%
+      tidyr::unite(col = "sources", prefix, model_type, engine, dfms, splits, remove = FALSE) %>%
+      dplyr::mutate(sources = stringr::str_remove(sources, "_$"),
+                    results = paste("performance", sources, use, sep = "_"),
                     source_names = sources,
                     dplyr::across(dplyr::all_of(c("sources", "results", "splits", "dfms")),
                                   rlang::syms)),
