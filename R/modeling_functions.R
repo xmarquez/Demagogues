@@ -403,7 +403,7 @@ predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...)
 }
 
 model_weights.cv.glmnet <- function(model) {
-  glmnet::predict.cv.glmnet(model, s = "lambda.min", type = "coef") %>%
+  glmnet:::predict.cv.glmnet(model, s = "lambda.min", type = "coef") %>%
     Matrix::rowMeans() %>%
     tibble::enframe() %>%
     dplyr::arrange(-value) %>%
