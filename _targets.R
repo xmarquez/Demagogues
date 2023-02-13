@@ -24,19 +24,19 @@ svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus
 
 # Object parameters ----------------------------------------------------------------------------------
 
-dfms <- tibble::tibble(result = "decade_dfm") %>%
+dfms_df <- tibble::tibble(result = "decade_dfm") %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 splits <- tidyr::nesting(prefix = "splits",
-                         sources = dfms$result,
+                         sources = dfms_df$result,
                          downsample = c(FALSE, TRUE, TRUE),
                          type = c(NA, "random", "similarity")) %>%
   tidyr::unite(col = "result", prefix, sources, type, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
-models <- tidyr::nesting(prefix = "predictive",
+models_df <- tidyr::nesting(prefix = "predictive",
                          model_type = "classification",
-                         sources = dfms$result,
+                         sources = dfms_df$result,
                          engine = c("LiblineaR", "xgboost")) %>%
   tidyr::expand_grid(tidyr::nesting(split = splits$result,
                                     split_type = splits$type)) %>%
@@ -44,41 +44,42 @@ models <- tidyr::nesting(prefix = "predictive",
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 model_weights_df <- tidyr::nesting(prefix = "weights",
-                                sources = models$result,
+                                sources = models_df$result,
                                 source_names = as.character(sources))  %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 model_performance_df <- tidyr::nesting(prefix = "performance",
-                                    sources = models$result,
+                                    sources = models_df$result,
                                     source_names = as.character(sources),
-                                    dfms = models$sources,
+                                    dfms = models_df$sources,
                                     split = rep(splits$result, 2)) %>%
   tidyr::expand_grid(use = c("testing", "training")) %>%
   tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 svd_word_vectors_df <- tidyr::nesting(prefix = "svd_word_vectors",
-                                   sources = dfms$result,
+                                   sources = dfms_df$result,
                                    dims = 50) %>%
   tidyr::unite(col = "result", prefix, sources, dims, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
-sims_svd_word_vectors <- tidyr::nesting(prefix = "sims",
+sims_svd_word_vectors_df <- tidyr::nesting(prefix = "sims",
                                         sources = svd_word_vectors_df$result,
                                         source_names = as.character(sources)) %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
-ppmi_word_vectors <- tidyr::nesting(prefix = "ppmi_single",
-                                    sources = dfms$result,
+ppmi_word_vectors_df <- tidyr::nesting(prefix = c("ppmi_single", "sims_ppmi"),
+                                    sources = dfms_df$result,
+                                    funs = c("feature_ppmi", "ppmi_similarities"),
                                     source_names = as.character(sources)) %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split", "funs")), rlang::syms))
 
-graphs <- dplyr::bind_rows(sims_svd_word_vectors,
+graphs_df <- dplyr::bind_rows(sims_svd_word_vectors_df,
                            model_weights_df,
-                           ppmi_word_vectors) %>%
+                           ppmi_word_vectors_df) %>%
   dplyr::mutate(prefix = "graph",
                 sources = .$result) %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
@@ -231,7 +232,7 @@ list(
 # Predictive models -------------------------------------------------------
 
   tar_eval(
-    values = models,
+    values = models_df,
     tar_target(
       name = result,
       command = predictive_model(dfm = sources,
@@ -334,7 +335,7 @@ list(
   ),
 
   tar_eval(
-    values = graphs,
+    values = graphs_df,
     tar_target(name = result,
                command = graph_similarities(sources %>%
                                               dplyr::filter(word != "DEMOCRACY") %>%
@@ -351,13 +352,13 @@ list(
     )
   ),
 
-# PPMI single feature calculation --------------------------------------------------------
+# PPMI sims and WVs --------------------------------------------------------
 
   tar_eval(
-    values = ppmi_word_vectors,
+    values = ppmi_word_vectors_df,
     tar_target(
       name = result,
-      command = feature_ppmi(sources, democracy_feature) %>%
+      command = funs(sources, democracy_feature) %>%
         dplyr::mutate(decade = decades,
                       measure = "PPMI of 'DEMOCRACY' with other terms",
                       source = source_names) %>%
@@ -390,7 +391,7 @@ list(
 # Similarity calculation for word vectors ---------------------------------
 
   tar_eval(
-    values = sims_svd_word_vectors,
+    values = sims_svd_word_vectors_df,
     tar_target(
       name = result,
       command = wordVectors::closest_to(sources, "DEMOCRACY", n = Inf,
@@ -409,21 +410,27 @@ list(
 
   tar_target(
     name = predictive_model_weights,
-    command = dplyr::bind_rows(!!!model_weights_df$result),
+    command = dplyr::bind_rows(!!!model_weights_df$result, .id = "id") %>%
+      dplyr::mutate(id = as.numeric(id),
+                    id = as.character(model_weights_df$result[id])),
     deployment = "main"
 
   ),
 
   tar_target(
     name = svd_model_weights,
-    command = dplyr::bind_rows(!!!sims_svd_word_vectors$result),
+    command = dplyr::bind_rows(!!!sims_svd_word_vectors_df$result, .id = "id") %>%
+      dplyr::mutate(id = as.numeric(id),
+                    id = as.character(model_weights_df$result[id])),
     deployment = "main"
 
   ),
 
   tar_target(
     name = ppmi_model_weights,
-    command = dplyr::bind_rows(!!!ppmi_word_vectors$result),
+    command = dplyr::bind_rows(!!!ppmi_word_vectors_df$result, .id = "id") %>%
+      dplyr::mutate(id = as.numeric(id),
+                    id = as.character(model_weights_df$result[id])),
     deployment = "main"
   ),
 
