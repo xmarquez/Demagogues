@@ -3,6 +3,6 @@
 !meta
 meta/*
 !meta/meta
-!meta/objects/all_model_weights
-!meta/objects/combined_weights
-!meta/objects/combined_performance
+!objects/all_model_weights
+!objects/combined_weights
+!objects/combined_performance
