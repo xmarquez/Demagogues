@@ -44,7 +44,7 @@ prep_df <- function(df, top_n, var, max_n) {
   word_years_df <- df %>%
     dplyr::filter(word %in% terms_to_plot) %>%
     dplyr::group_by(word) %>%
-    dplyr::filter(dplyr::n() > 2) %>%
+    dplyr::filter(!is.nan({{var}}), dplyr::n() > 2) %>%
     dplyr::mutate(wt = ({{var}} - min({{var}}))/sum({{var}} - min({{var}}))) %>%
     dplyr::summarise(decade_min = min(decade),
                      decade_max = max(decade),
