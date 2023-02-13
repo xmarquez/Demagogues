@@ -67,6 +67,156 @@ graph[[6]]
 ```
 
 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_nn}
+#| fig-cap: weights predictive classification decade dfm glmnet, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+graph <- tar_read(graph_weights_predictive_classification_decade_dfm_glmnet)
+
+graph[[2]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_vb}
+#| fig-cap: weights predictive classification decade dfm glmnet, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[3]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_jj}
+#| fig-cap: weights predictive classification decade dfm glmnet, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[4]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_ism}
+#| fig-cap: weights predictive classification decade dfm glmnet, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[5]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_uppercase_nouns}
+#| fig-cap: weights predictive classification decade dfm glmnet, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[6]]
+
+```
+
+
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_nn}
+#| fig-cap: weights predictive classification decade dfm glmnet random, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+graph <- tar_read(graph_weights_predictive_classification_decade_dfm_glmnet_random)
+
+graph[[2]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_vb}
+#| fig-cap: weights predictive classification decade dfm glmnet random, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[3]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_jj}
+#| fig-cap: weights predictive classification decade dfm glmnet random, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[4]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_ism}
+#| fig-cap: weights predictive classification decade dfm glmnet random, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[5]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_uppercase_nouns}
+#| fig-cap: weights predictive classification decade dfm glmnet random, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[6]]
+
+```
+
+
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_similarity_nn}
+#| fig-cap: weights predictive classification decade dfm glmnet similarity, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+graph <- tar_read(graph_weights_predictive_classification_decade_dfm_glmnet_similarity)
+
+graph[[2]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_similarity_vb}
+#| fig-cap: weights predictive classification decade dfm glmnet similarity, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[3]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_similarity_jj}
+#| fig-cap: weights predictive classification decade dfm glmnet similarity, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[4]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_similarity_ism}
+#| fig-cap: weights predictive classification decade dfm glmnet similarity, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[5]]
+
+```
+
+ 
+```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_similarity_uppercase_nouns}
+#| fig-cap: weights predictive classification decade dfm glmnet similarity, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[6]]
+
+```
+
+
 ```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_nn}
 #| fig-cap: weights predictive classification decade dfm LiblineaR, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
