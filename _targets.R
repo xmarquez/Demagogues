@@ -16,7 +16,7 @@ dfm_resources <- list(partition = "parallel", memory = "30G", ncpus = 2,
 predictive_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 10, walltime = "0:10:00")
 evaluation_model_resources <- list(partition = "parallel", memory = "15G",
-                                   ncpus = 6, walltime = "0:02:00")
+                                   ncpus = 2, walltime = "0:02:00")
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
                                    walltime = "0:10:00")
 
@@ -42,7 +42,7 @@ tar_source()
 # Replace the target list below with your own:
 list(
 
-  # Decade selection --------------------------------------------------------
+# Decade selection --------------------------------------------------------
 
 
   tar_target(
@@ -51,7 +51,7 @@ list(
     deployment = "main"
   ),
 
-  # Tracking of big catalog HathiFile ---------------------------------------
+# Tracking of big catalog HathiFile ---------------------------------------
 
   tar_target(
     name = hathi_catalog,
@@ -60,7 +60,7 @@ list(
     deployment = "main"
   ),
 
-  # Workset creation and metadata addition ----------------------------------
+# Workset creation and metadata addition ----------------------------------
 
   tar_target(
     name = democracy_worksets,
@@ -112,6 +112,8 @@ list(
     deployment = "main"
   ),
 
+# File caching -------------------------------------------------------------
+
   tar_target(
     name = democracy_files,
     command = hathiTools::cache_htids(democracy_samples, attempt_rsync = TRUE,
@@ -125,6 +127,8 @@ list(
     retrieval = "worker"
 
   ),
+
+# DFM creation -------------------------------------------------------------
 
   tar_target(
     name = decade_dfm,
@@ -141,18 +145,34 @@ list(
 
   tar_target(
     name = democracy_feature,
-    command = quanteda::dictionary(list(democracy = c("democracy_nn", "democracy_nnp", "democracy_nns")), tolower = FALSE),
+    command = quanteda::dictionary(list(democracy = c("democracy_nn", "democracy_nnp", "democracy_nns")),
+                                   tolower = FALSE),
     deployment = "main"
   ),
 
-  tar_target(
-      name = splits_decade_dfm,
-      command = train_test_splits(decade_dfm, democracy_feature),
-      pattern = map(decade_dfm),
+# Compute test-train splits -----------------------------------------
+
+  tar_eval(
+    values = tidyr::nesting(sources = c("decade_dfm"),
+                                downsample = c(FALSE, TRUE, TRUE),
+                                downsample_type = c(NA, "similarity", "random"),
+                                split_type = c("", "downsampled_by_similarity", "downsampled_random")) %>%
+      dplyr::mutate(results = paste("splits", sources, split_type, sep = "_") %>%
+                      stringr::str_remove("_$"),
+                    dplyr::across(dplyr::all_of(c("sources", "results")),
+                                  rlang::syms)),
+    tar_target(
+      name = results,
+      command = train_test_splits(sources,
+                                  feat = democracy_feature,
+                                  downsample = downsample,
+                                  donwsample_type = NA),
+      pattern = map(sources),
+      packages = c("quanteda"),
       iteration = "list",
       deployment = "main"
-    ),
-
+    )
+  ),
 
 # Predictive models -------------------------------------------------------
 
