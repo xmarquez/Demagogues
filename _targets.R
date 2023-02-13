@@ -14,7 +14,7 @@ democracy_files_resources <- list(partition = "parallel", memory = "10G", ncpus 
 dfm_resources <- list(partition = "parallel", memory = "30G", ncpus = 2,
                       walltime = "0:40:00")
 predictive_model_resources <- list(partition = "parallel", memory = "15G",
-                                   ncpus = 6, walltime = "0:10:00")
+                                   ncpus = 10, walltime = "0:10:00")
 evaluation_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 6, walltime = "0:02:00")
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
