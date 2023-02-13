@@ -299,7 +299,7 @@ list(
 
   tar_target(
     name = svd_model_weights,
-    command = do.call(dplyr::bind_rows, sims_svd_word_vectors$result, list(id = "id")),
+    command = dplyr::bind_rows(sims_svd_word_vectors$result, id = "id"),
     deployment = "main"
 
   ),
