@@ -466,6 +466,56 @@ graph[[6]]
 
 ```
 
+
+```{r fig-graph_combined_weights_nn}
+#| fig-cap: combined weights, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+graph <- tar_read(graph_combined_weights)
+
+graph[[2]]
+
+```
+
+ 
+```{r fig-graph_combined_weights_vb}
+#| fig-cap: combined weights, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[3]]
+
+```
+
+ 
+```{r fig-graph_combined_weights_jj}
+#| fig-cap: combined weights, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[4]]
+
+```
+
+ 
+```{r fig-graph_combined_weights_ism}
+#| fig-cap: combined weights, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[5]]
+
+```
+
+ 
+```{r fig-graph_combined_weights_uppercase_nouns}
+#| fig-cap: combined weights, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[6]]
+
+```
+
 ## Model performance graphs
 
 ```{r combined_performance_graph_classification, fig.cap="Predictive performance of classification models."}
