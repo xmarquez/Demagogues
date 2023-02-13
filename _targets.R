@@ -178,9 +178,10 @@ list(
 
   tar_eval(
     values = tidyr::expand_grid(sources = c("decade_dfm"),
+                                split_type = c("", "similarity", "random"),
                                 engine = c("LiblineaR", "xgboost"),
                                 model_type = c("classification")) %>%
-      dplyr::mutate(splits = paste("splits", sources, sep = "_"),
+      dplyr::mutate(splits = paste("splits", sources, split_type, sep = "_") %>% stringr::str_remove("_$"),
                     results = paste("predictive", model_type, engine, sources, sep = "_"),
                     dplyr::across(dplyr::all_of(c("sources", "results", "splits")),
                                   rlang::syms)),
