@@ -1,8 +1,8 @@
-train_test_splits <-function(dfm, feat, downsampled, downsample_type) {
+train_test_splits <-function(dfm, feat, downsampled, type) {
   UseMethod("train_test_splits", feat)
 }
 
-train_test_splits.dictionary2 <- function(dfm, feat, downsampled, downsample_type) {
+train_test_splits.dictionary2 <- function(dfm, feat, downsampled, type) {
 
   if(downsampled) {
     UseMethod("train_test_splits_downsample", feat)
@@ -18,7 +18,7 @@ train_test_splits.dictionary2 <- function(dfm, feat, downsampled, downsample_typ
 
 }
 
-train_test_splits.character <- function(dfm, feat, downsampled, downsample_type) {
+train_test_splits.character <- function(dfm, feat, downsampled, type) {
 
   df <- dfm%>%
     quanteda::select(feat)%>%
@@ -27,9 +27,9 @@ train_test_splits.character <- function(dfm, feat, downsampled, downsample_type)
 
   split <- rsample::initial_split(df, strata = names(feat))
 
-  if(downsample_type == "similarity") {
+  if(type == "similarity") {
     split <- most_similar_downsample(df, dfm, split)
-  } else if(downsample_type == "random") {
+  } else if(type == "random") {
     split <- random_downsample(df, dfm, split)
   }
 
@@ -37,8 +37,8 @@ train_test_splits.character <- function(dfm, feat, downsampled, downsample_type)
 
 }
 
-train_test_splits_downsample.dictionary2 <- function(dfm, feat, downsampled, downsample_type) {
-  downsample_type <- match.arg(downsample_type, c("similarity", "random"))
+train_test_splits_downsample.dictionary2 <- function(dfm, feat, downsampled, type) {
+  type <- match.arg(type, c("similarity", "random"))
 
   df <- dfm%>%
     quanteda::dfm_lookup(feat)%>%
@@ -47,9 +47,9 @@ train_test_splits_downsample.dictionary2 <- function(dfm, feat, downsampled, dow
 
   split <- rsample::initial_split(df, strata = names(feat))
 
-  if(downsample_type == "similarity") {
+  if(type == "similarity") {
     split <- most_similar_downsample(df, dfm, split)
-  } else if(downsample_type == "random") {
+  } else if(type == "random") {
     split <- random_downsample(df, dfm, split)
   }
 

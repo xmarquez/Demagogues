@@ -155,7 +155,7 @@ list(
   tar_eval(
     values = tidyr::nesting(sources = c("decade_dfm"),
                                 downsample = c(FALSE, TRUE, TRUE),
-                                downsample_type = c(NA, "similarity", "random"),
+                                type = c(NA, "similarity", "random"),
                                 split_type = c("", "similarity", "random")) %>%
       dplyr::mutate(results = paste("splits", sources, split_type, sep = "_") %>%
                       stringr::str_remove("_$"),
@@ -166,7 +166,7 @@ list(
       command = train_test_splits(sources,
                                   feat = democracy_feature,
                                   downsample = downsample,
-                                  donwsample_type = downsample_type),
+                                  type = type),
       pattern = map(sources),
       packages = c("quanteda"),
       iteration = "list",
