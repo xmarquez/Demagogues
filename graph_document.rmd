@@ -528,7 +528,7 @@ combined_performance %>%
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = .metric, alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
-  ggplot2::facet_wrap(.metric~ stringr::str_extract(source, "(xgboost|LiblineaR)(_sampled)?"),
+  ggplot2::facet_wrap(.metric~ stringr::str_extract(source, "(xgboost|LiblineaR)(_random|_similarity)?"),
                       scales = "free_y") +
   ggplot2::theme_bw() +
   ggplot2::labs(alpha = "Sample", color = "Metric")
