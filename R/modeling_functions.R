@@ -252,6 +252,7 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
 
 
 model_weights <- function(model) {
+  print("Re-doing model weights")
   UseMethod("model_weights")
 }
 
