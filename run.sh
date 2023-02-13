@@ -27,6 +27,9 @@ if [ $exit_value -ne 0 ]; then
 fi
 
 git add graph_document.md _targets/meta/meta figure/
+git add meta/objects/all_model_weights
+git add meta/objects/combined_weights
+git add meta/objects/combined_performance
 git commit -m "graph document, figures, and metadata about targets"
 git push https://github.com/xmarquez/Demagogues.git master
 
