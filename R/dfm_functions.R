@@ -14,7 +14,7 @@ compute_dfm <- function(dataset, cache_format = "rds",
     dplyr::count(doc_id, token, wt = count) %>%
     dplyr::mutate(token = stringr::str_remove(token, "(?<=_[NJVB]{2}).+")) %>%
     tidytext::cast_dfm(doc_id, token, n) %>%
-    quanteda::dfm_tolower() %>%
+    # quanteda::dfm_tolower() %>%
     quanteda::dfm_trim(max_features, termfreq_type = "rank")
 
   dfm
