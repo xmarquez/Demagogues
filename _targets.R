@@ -9,6 +9,8 @@ library(tidyverse)
 library(hathiTools)
 library(tarchetypes) # Load other packages as needed. # nolint
 
+# Resources for cluster ---------------------------------------------------------------------
+
 democracy_files_resources <- list(partition = "parallel", memory = "10G", ncpus = 2,
                                   walltime = "2:00:00")
 dfm_resources <- list(partition = "parallel", memory = "30G", ncpus = 2,
@@ -20,6 +22,65 @@ evaluation_model_resources <- list(partition = "parallel", memory = "15G",
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
                                    walltime = "0:10:00")
 
+# Object parameters ----------------------------------------------------------------------------------
+
+dfms <- tibble::tibble(result = "decade_dfm") %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+splits <- tidyr::nesting(prefix = "splits",
+                         sources = dfms$result,
+                         downsample = c(FALSE, TRUE, TRUE),
+                         type = c(NA, "random", "similarity")) %>%
+  tidyr::unite(col = "result", prefix, sources, type, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+models <- tidyr::nesting(prefix = "predictive",
+                         model_type = "classification",
+                         sources = dfms$result,
+                         engine = c("LiblineaR", "xgboost")) %>%
+  tidyr::expand_grid(tidyr::nesting(split = splits$result,
+                                    split_type = splits$type)) %>%
+  tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+model_weights_df <- tidyr::nesting(prefix = "weights",
+                                sources = models$result,
+                                source_names = as.character(sources))  %>%
+  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+model_performance_df <- tidyr::nesting(prefix = "performance",
+                                    sources = models$result,
+                                    dfms = models$sources,
+                                    split = rep(splits$result, 2)) %>%
+  tidyr::expand_grid(use = c("testing", "training")) %>%
+  tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+svd_word_vectors <- tidyr::nesting(prefix = "svd_word_vectors",
+                                   sources = dfms$result,
+                                   dims = 50) %>%
+  tidyr::unite(col = "result", prefix, sources, dims, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+sims_svd_word_vectors <- tidyr::nesting(prefix = "sims",
+                                        sources = svd_word_vectors$result,
+                                        source_names = as.character(sources)) %>%
+  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+ppmi_word_vectors <- tidyr::nesting(prefix = "ppmi_single",
+                                    sources = dfms$result) %>%
+  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+graphs <- dplyr::bind_rows(sims_svd_word_vectors,
+                           model_weights_df,
+                           ppmi_word_vectors) %>%
+  dplyr::mutate(prefix = "graph",
+                sources = .$result) %>%
+  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 # Set target options:
 tar_option_set(
@@ -69,8 +130,6 @@ list(
     pattern = map(decades),
     deployment = "main"
   ),
-
-
 
   tar_target(
     name = cached_hathi_catalog,
@@ -153,16 +212,9 @@ list(
 # Compute test-train splits -----------------------------------------
 
   tar_eval(
-    values = tidyr::nesting(sources = c("decade_dfm"),
-                                downsample = c(FALSE, TRUE, TRUE),
-                                type = c(NA, "similarity", "random"),
-                                split_type = c("", "similarity", "random")) %>%
-      dplyr::mutate(results = paste("splits", sources, split_type, sep = "_") %>%
-                      stringr::str_remove("_$"),
-                    dplyr::across(dplyr::all_of(c("sources", "results")),
-                                  rlang::syms)),
+    values = splits,
     tar_target(
-      name = results,
+      name = result,
       command = train_test_splits(sources,
                                   feat = democracy_feature,
                                   downsample = downsample,
@@ -177,24 +229,15 @@ list(
 # Predictive models -------------------------------------------------------
 
   tar_eval(
-    values = tidyr::expand_grid(sources = c("decade_dfm"),
-                                split_type = c("", "similarity", "random"),
-                                engine = c("LiblineaR", "xgboost"),
-                                model_type = c("classification")) %>%
-      dplyr::mutate(splits = paste("splits", sources, split_type, sep = "_") %>%
-                      stringr::str_remove("_$"),
-                    results = paste("predictive", model_type, engine, sources, split_type, sep = "_") %>%
-                      stringr::str_remove("_$"),
-                    dplyr::across(dplyr::all_of(c("sources", "results", "splits")),
-                                  rlang::syms)),
+    values = models,
     tar_target(
-      name = results,
+      name = result,
       command = predictive_model(dfm = sources,
-                                 initial_split = splits,
+                                 initial_split = split,
                                  feat = democracy_feature,
                                  engine = engine,
                                  model_type = model_type),
-      pattern = map(sources, splits),
+      pattern = map(sources, split),
       packages = c("quanteda"),
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
@@ -209,19 +252,9 @@ list(
 # Predictive model weight extraction ---------------------------------
 
   tar_eval(
-    values = tidyr::crossing("predictive",
-                             c("classification"),
-                             c("LiblineaR", "xgboost"),
-                             c("decade_dfm"),
-                             c("", "similarity", "random")) %>%
-      tidyr::unite("sources") %>%
-      dplyr::mutate(sources = stringr::str_remove(sources, "_$"),
-                    results = paste("weights", sources, sep = "_"),
-                    source_names = sources,
-                    dplyr::across(dplyr::all_of(c("sources", "results")),
-                                  rlang::syms)),
+    values = model_weights_df,
     tar_target(
-      name = results,
+      name = result,
       command = model_weights(sources) %>%
         dplyr::mutate(source = source_names,
                       decade = decades,
@@ -235,28 +268,15 @@ list(
 # Predictive model evaluation ---------------------------------------------
 
   tar_eval(
-    values = tidyr::crossing(prefix = "predictive",
-                             model_type = c("classification"),
-                             engine = c("LiblineaR", "xgboost"),
-                             dfms = c("decade_dfm"),
-                             splits = c("", "similarity", "random"),
-                             use = c("testing", "training")) %>%
-      tidyr::unite(col = "sources", prefix, model_type, engine, dfms, splits, remove = FALSE) %>%
-      dplyr::mutate(splits = paste("splits", dfms, splits, sep = "_") %>%
-                      stringr::str_remove("_$")) %>%
-      dplyr::mutate(sources = stringr::str_remove(sources, "_$"),
-                    results = paste("performance", sources, use, sep = "_"),
-                    source_names = sources,
-                    dplyr::across(dplyr::all_of(c("sources", "results", "splits", "dfms")),
-                                  rlang::syms)),
+    values = model_performance_df,
     tar_target(
-      name = results,
-      command = model_performance(sources, dfms, splits, feat = democracy_feature, use = use) %>%
+      name = result,
+      command = model_performance(sources, dfms, split, feat = democracy_feature, use = use) %>%
         dplyr::mutate(source = source_names,
                       decade = decades,
                       model_type = model_type,
                       sample = use),
-      pattern = map(sources, dfms, splits, decades),
+      pattern = map(sources, dfms, split, decades),
       packages = c("quanteda"),
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
@@ -267,29 +287,27 @@ list(
     )
   ),
 
+
+# Combined Targets ------------------------------------------------------------------------
+
   tar_target(
     name = predictive_model_weights,
-    command = dplyr::bind_rows(weights_predictive_classification_LiblineaR_decade_dfm = weights_predictive_classification_LiblineaR_decade_dfm,
-                               weights_predictive_classification_xgboost_decade_dfm = weights_predictive_classification_xgboost_decade_dfm,
-                               .id = "id"),
+    command = do.call(dplyr::bind_rows, model_weights_df$result, list(id = "id")),
     deployment = "main"
 
   ),
 
   tar_target(
     name = svd_model_weights,
-    command = dplyr::bind_rows(sims_svd_word_vectors_decade_dfm = sims_svd_word_vectors_decade_dfm,
-                               .id = "id"),
+    command = do.call(dplyr::bind_rows, sims_svd_word_vectors$result, list(id = "id")),
     deployment = "main"
 
   ),
 
   tar_target(
     name = ppmi_model_weights,
-    command = dplyr::bind_rows(ppmi_single_decade_dfm = ppmi_single_decade_dfm,
-                               .id = "id"),
+    command = do.call(dplyr::bind_rows, ppmi_word_vectors$result, list(id = "id")),
     deployment = "main"
-
   ),
 
   tar_target(
@@ -298,17 +316,12 @@ list(
                                ppmi_model_weights,
                                predictive_model_weights),
     deployment = "main"
-
   ),
 
   tar_target(
     name = combined_performance,
-    command = dplyr::bind_rows(classification_xgboost_decade_dfm_testing = performance_predictive_classification_xgboost_decade_dfm_testing,
-                               classification_xgboost_decade_dfm_trainig = performance_predictive_classification_xgboost_decade_dfm_training,
-                               classification_LiblineaR_decade_dfm_testing = performance_predictive_classification_LiblineaR_decade_dfm_testing,
-                               classification_LiblineaR_decade_dfm_training = performance_predictive_classification_LiblineaR_decade_dfm_training),
+    command = do.call(dplyr::bind_rows, model_performance_df$result, list(id = "id")),
     deployment = "main"
-
   ),
 
   tar_target(
@@ -331,7 +344,7 @@ list(
 
   tar_target(
     name = pos_patterns,
-    command = c(".","_nn","_vb","_jj", "ism_"),
+    command = c(".","_nn","_vb","_jj", "ism_", "^[A-Z]"),
     deployment = "main"
   ),
 
@@ -363,14 +376,30 @@ list(
     deployment = "main"
   ),
 
+  tar_eval(
+    values = graphs,
+    tar_target(name = result,
+               command = graph_similarities(sources %>%
+                                              dplyr::filter(word != "DEMOCRACY") %>%
+                                              dplyr::group_by(decade) %>%
+                                              dplyr::mutate(value = scale(value)) %>%
+                                              dplyr::ungroup() %>%
+                                              dplyr::filter(stringr::str_detect(word, pos_patterns)),
+                                            top_n = max_per_decade,
+                                            var = value,
+                                            max_n = max_num),
+               pattern = map(pos_patterns),
+               iteration = "list",
+               deployment = "main"
+    )
+  ),
+
 # PPMI single feature calculation --------------------------------------------------------
 
   tar_eval(
-    values = list(sources = rlang::syms("decade_dfm"),
-                  results = rlang::syms("ppmi_single_decade_dfm"),
-                  source_names = "decade_dfm"),
+    values = ppmi_word_vectors,
     tar_target(
-      name = results,
+      name = result,
       command = feature_ppmi(sources, democracy_feature) %>%
         dplyr::mutate(decade = decades,
                       measure = "PPMI of 'DEMOCRACY' with other terms",
@@ -424,31 +453,5 @@ list(
       pattern = map(sources, decades),
       deployment = "main"
     )
-  ),
-
-  tar_eval(
-    tar_target(name = graphs,
-               command = graph_similarities(sources %>%
-                                              dplyr::filter(word != "DEMOCRACY") %>%
-                                              dplyr::group_by(decade) %>%
-                                              dplyr::mutate(value = scale(value)) %>%
-                                              dplyr::ungroup() %>%
-                                              dplyr::filter(stringr::str_detect(word, pos_patterns)),
-                                            top_n = max_per_decade,
-                                            var = value,
-                                            max_n = max_num),
-               pattern = map(pos_patterns),
-               iteration = "list",
-               deployment = "main"),
-    values = tibble::tibble(sources = c("ppmi_single_decade_dfm",
-                                        "sims_svd_word_vectors_decade_dfm",
-                                        "weights_predictive_classification_LiblineaR_decade_dfm",
-                                        "weights_predictive_classification_xgboost_decade_dfm"),
-                            graphs = paste("graph", sources, sep = "_")) %>%
-      dplyr::mutate(dplyr::across(dplyr::everything(), rlang::syms))
   )
-
-
-
-
 )
