@@ -71,7 +71,8 @@ sims_svd_word_vectors <- tidyr::nesting(prefix = "sims",
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 ppmi_word_vectors <- tidyr::nesting(prefix = "ppmi_single",
-                                    sources = dfms$result) %>%
+                                    sources = dfms$result,
+                                    source_names = as.character(sources)) %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
