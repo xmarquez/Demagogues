@@ -383,14 +383,19 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
 
 predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...) {
 
+  n_cores <- parallel::detectCores()
+  doParallel::registerDoParallel(cores = n_cores)
+
   x_train <- get_x(training_dfm, feat = feat, weight = weight)
 
   y_train <- get_y(training_dfm, feat, model_type = model_type)
 
   if(model_type == "regression") {
-    glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "gaussian", ...)
+    glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "gaussian",
+                                      parallel = TRUE, ...)
   } else {
-    glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "binomial", ...)
+    glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "binomial",
+                                      parallel = TRUE, ...)
   }
 
   glmnet_model
