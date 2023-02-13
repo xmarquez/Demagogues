@@ -384,7 +384,7 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
 predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...) {
 
   n_cores <- parallel::detectCores()
-  doParallel::registerDoParallel(cores = n_cores)
+  doParallel::registerDoParallel(n_cores)
 
   x_train <- get_x(training_dfm, feat = feat, weight = weight)
 
