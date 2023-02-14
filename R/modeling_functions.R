@@ -280,7 +280,6 @@ model_weights.xgb.Booster <- function(model) {
 }
 
 model_performance <- function(model, dfm, initial_split, feat, weight, use = "testing") {
-  print("invalidating")
   UseMethod("model_performance")
 }
 
