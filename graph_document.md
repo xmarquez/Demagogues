@@ -212,5 +212,5 @@ output: html_document
 ![Predictive performance of classification models, Cohen's Kappa measure.](figure/fig-combined_performance_graph_classification_kap-1.png)
 
 
-![Predictive performance of classification models, log loss.](figure/fig-combined_performance_graph_classification_log_loss-1.png)
+![Predictive performance of classification models, log loss measure.](figure/fig-combined_performance_graph_classification_log_loss-1.png)
 
