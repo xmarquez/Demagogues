@@ -668,21 +668,84 @@ graph[[6]]
 
 ## Model performance graphs
 
-```{r combined_performance_graph_classification, fig.cap="Predictive performance of classification models.", fig.height = 9, fig.width = 7}
+```{r fig-combined_performance_graph_classification_auc, fig.cap="Predictive performance of classification models, AUC measure.", fig.width = 9}
 tar_load(combined_performance)
 
 combined_performance %>% 
-  dplyr::filter(.estimator == "binary") %>% 
-  # dplyr::mutate(.estimate = case_when(.metric == "roc_auc" ~ 1 - .estimate,
-  #                                     TRUE ~ .estimate)) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = .metric, alpha = forcats::fct_rev(sample))) + 
+  dplyr::filter(stringr::str_detect(.metric, "auc")) %>%
+  dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
+                                                   "Downsampled majority class, at random",
+                                                 stringr::str_detect(source, "_similarity") ~ 
+                                                   "Downsampled majority class, \nmost similar texts by PPMI",
+                                                 TRUE ~ "No downsampling")) %>%
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = model_type, alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
-  ggplot2::facet_wrap(.metric~ stringr::str_extract(source, "(xgboost|LiblineaR)(_random|_similarity)?"),
-                      scales = "free_y") +
+  ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
-  ggplot2::labs(alpha = "Sample", color = "Metric")
+  ggplot2::labs(alpha = "Sample", color = "Model") +
+  theme(legend.position = "bottom")+
+  guides(colour = guide_legend(nrow = 2),
+         alpha = guide_legend(nrow = 2))
 
 ```
+```{r fig-combined_performance_graph_classification_acc, fig.cap="Predictive performance of classification models, accuracy measure.", fig.width = 9}
+combined_performance %>% 
+  dplyr::filter(stringr::str_detect(.metric, "accuracy")) %>%
+  dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
+                                                   "Downsampled majority class, at random",
+                                                 stringr::str_detect(source, "_similarity") ~ 
+                                                   "Downsampled majority class, \nmost similar texts by PPMI",
+                                                 TRUE ~ "No downsampling")) %>%
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = model_type, alpha = forcats::fct_rev(sample))) + 
+  ggplot2::geom_point() + 
+  ggplot2::geom_line() + 
+  ggplot2::facet_wrap( ~ sampling_type) +
+  ggplot2::theme_bw() +
+  ggplot2::labs(alpha = "Sample", color = "Model") +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(nrow = 3),
+         alpha = guide_legend(nrow = 2))
+```
 
+```{r fig-combined_performance_graph_classification_kap, fig.cap="Predictive performance of classification models, Cohen's Kappa measure.", fig.width = 9}
+combined_performance %>% 
+  dplyr::filter(stringr::str_detect(.metric, "kap")) %>%
+  dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
+                                                   "Downsampled majority class, at random",
+                                                 stringr::str_detect(source, "_similarity") ~ 
+                                                   "Downsampled majority class, \nmost similar texts by PPMI",
+                                                 TRUE ~ "No downsampling")) %>%
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = model_type, alpha = forcats::fct_rev(sample))) + 
+  ggplot2::geom_point() + 
+  ggplot2::geom_line() + 
+  ggplot2::facet_wrap( ~ sampling_type) +
+  ggplot2::theme_bw() +
+  ggplot2::labs(alpha = "Sample", color = "Model") +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(nrow = 2),
+         alpha = guide_legend(nrow = 2))
+```
+
+
+```{r fig-combined_performance_graph_classification_log_loss, fig.cap="Predictive performance of classification models, log loss.", fig.width = 9}
+combined_performance %>% 
+  dplyr::filter(stringr::str_detect(.metric, "deviance|mae|mn|mse")) %>%
+  dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
+                                                   "Downsampled majority class, at random",
+                                                 stringr::str_detect(source, "_similarity") ~ 
+                                                   "Downsampled majority class, \nmost similar texts by PPMI",
+                                                 TRUE ~ "No downsampling")) %>%
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = model_type, 
+                                shape = .metric, alpha = forcats::fct_rev(sample))) + 
+  ggplot2::geom_point() + 
+  ggplot2::geom_line() + 
+  ggplot2::facet_wrap( ~ sampling_type) +
+  ggplot2::theme_bw() +
+  ggplot2::labs(alpha = "Sample", color = "Model") +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(nrow = 2),
+         alpha = guide_legend(nrow = 2),
+         shape = guide_legend(nrow = 2))
+```
 
