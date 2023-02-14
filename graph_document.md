@@ -206,6 +206,11 @@ output: html_document
 
 ## Model performance graphs
 
-![Predictive performance of classification models.](figure/combined_performance_graph_classification-1.png)
+![Predictive performance of classification models, AUC measure.](figure/fig-combined_performance_graph_classification_auc-1.png)
+![Predictive performance of classification models, accuracy measure.](figure/fig-combined_performance_graph_classification_acc-1.png)
 
+![Predictive performance of classification models, Cohen's Kappa measure.](figure/fig-combined_performance_graph_classification_kap-1.png)
+
+
+![Predictive performance of classification models, log loss.](figure/fig-combined_performance_graph_classification_log_loss-1.png)
 
