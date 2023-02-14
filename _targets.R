@@ -346,7 +346,7 @@ list(
                                             top_n = max_per_decade,
                                             var = value,
                                             max_n = max_num),
-               pattern = map(pos_patterns),
+               pattern = map(pos_patterns, lowercase),
                iteration = "list",
                deployment = "main"
     )
