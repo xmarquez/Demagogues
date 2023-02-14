@@ -668,7 +668,11 @@ graph[[6]]
 
 ## Model performance graphs
 
-```{r fig-combined_performance_graph_classification_auc, fig.cap="Predictive performance of classification models, AUC measure.", fig.width = 9}
+```{r fig-combined_performance_graph_classification_auc}
+#| fig-cap: "Predictive performance of classification models, AUC measure."
+#| fig-width: 9
+
+
 tar_load(combined_performance)
 
 combined_performance %>% 
@@ -689,7 +693,10 @@ combined_performance %>%
          alpha = guide_legend(nrow = 2))
 
 ```
-```{r fig-combined_performance_graph_classification_acc, fig.cap="Predictive performance of classification models, accuracy measure.", fig.width = 9}
+```{r fig-combined_performance_graph_classification_acc}
+#| fig-cap: "Predictive performance of classification models, accuracy measure."
+#| fig-width: 9
+
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "accuracy")) %>%
   dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
@@ -708,7 +715,10 @@ combined_performance %>%
          alpha = guide_legend(nrow = 2))
 ```
 
-```{r fig-combined_performance_graph_classification_kap, fig.cap="Predictive performance of classification models, Cohen's Kappa measure.", fig.width = 9}
+```{r fig-combined_performance_graph_classification_kap}
+#| fig-cap: "Predictive performance of classification models, Cohen's Kappa measure."
+#| fig-width: 9
+
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "kap")) %>%
   dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
@@ -728,7 +738,10 @@ combined_performance %>%
 ```
 
 
-```{r fig-combined_performance_graph_classification_log_loss, fig.cap="Predictive performance of classification models, log loss.", fig.width = 9}
+```{r fig-combined_performance_graph_classification_log_loss}
+#| fig-cap: "Predictive performance of classification models, log loss measure."
+#| fig-width: 9
+
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "deviance|mae|mn|mse")) %>%
   dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
