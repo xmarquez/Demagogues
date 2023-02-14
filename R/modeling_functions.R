@@ -308,8 +308,7 @@ model_performance.LiblineaR <- function(model, dfm, initial_split, feat,
   preds <- tibble::tibble(truth = y_test, estimate = predictions$predictions)
 
   res <- preds %>%
-    yardstick::metrics(truth = truth, estimate = estimate) %>%
-    dplyr::mutate(model_type = model$TypeDetail)
+    yardstick::metrics(truth = truth, estimate = estimate)
 
   if(model_type == "classification") {
     conf_mat <- preds %>%
@@ -320,7 +319,8 @@ model_performance.LiblineaR <- function(model, dfm, initial_split, feat,
       dplyr::mutate(conf_mat = list(conf_mat))
   }
 
-  res
+  res  %>%
+    dplyr::mutate(model_type = model$TypeDetail)
 
 }
 
@@ -350,12 +350,11 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
 
   predictions <- xgboost:::predict.xgb.Booster(model, newdata = x_test)
 
-  preds <- tibble::tibble(truth = 1 - y_test, estimate = predictions)
+  preds <- tibble::tibble(truth = y_test, estimate = predictions)
 
   if(model_type == "regression") {
     res <- preds %>%
-      yardstick::metrics(truth = truth, estimate = estimate) %>%
-      dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
+      yardstick::metrics(truth = truth, estimate = estimate)
 
   }
 
@@ -364,21 +363,11 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
     res <- preds %>%
       dplyr::mutate(truth = factor(truth, levels = c(0, 1)),
                     class = factor(ifelse(estimate < 0.5, 0, 1), levels = c(0, 1))) %>%
-      yardstick::metrics(truth = truth, estimate = class,
-                         estimate) %>%
-      dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
-
-    conf_mat <- preds %>%
-      dplyr::mutate(truth = factor(truth, levels = c(0, 1)),
-                    class = factor(ifelse(estimate < 0.5, 0, 1), levels = c(0, 1))) %>%
-      yardstick::conf_mat(truth = truth, estimate = class) %>%
-      yardstick::tidy()
-
-    res <- res %>%
-      dplyr::mutate(conf_mat = list(conf_mat))
+      binary_metrics()
   }
 
-  res
+  res %>%
+    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
 
 }
 
@@ -433,25 +422,52 @@ model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
 
   y_test <- get_y(testing_dfm, feat, model_type = model_type)
 
-  measures <- glmnet::assess.glmnet(model, newx = x_test, newy = y_test, s = "lambda.min")
+  predictions_estimate <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "response") %>%
+    as.vector()
 
-  measures <- tibble::tibble(.metric = names(measures),
-                             .estimator = "assess.glmnet",
-                             .estimate = unlist(measures))
+  predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
+    factor(levels = c("FALSE", "TRUE"))
 
-  if(model_type == "classification") {
-    conf_mat <- glmnet::confusion.glmnet(model, newx = x_test, newy = y_test, s = "lambda.min") %>%
-      tibble::as_tibble()
-    measures <- measures %>%
-      dplyr::mutate(conf_mat = list(conf_mat))
+  preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)
+
+  if(model_type == "regression") {
+    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate)
+    res <- preds %>%
+      yardstick::metrics(truth = truth, estimate = estimate)
 
   }
 
-  measures %>%
+  if(model_type == "classification") {
+    predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
+      factor(levels = c("FALSE", "TRUE"))
+
+    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)
+    res <- binary_metrics(preds)
+  }
+
+  res  %>%
     dplyr::mutate(model_type = paste("cv.glmnet", model_type))
 
 }
 
+binary_metrics <- function(preds) {
+  res <- preds %>%
+    yardstick::metrics(truth = truth, estimate = class,
+                       estimate) %>%
+    dplyr::filter(.metric != "roc_auc") %>%
+    dplyr::bind_rows(yardstick::roc_auc(preds,
+                                        estimate, truth = truth,
+                                        event_level = "second"))
+
+  conf_mat <- preds %>%
+    yardstick::conf_mat(truth = truth, estimate = class) %>%
+    yardstick::tidy()
+
+  res <- res %>%
+    dplyr::mutate(conf_mat = list(conf_mat))
+
+  res
+}
 
 get_x <- function(dfm, feature, weight = c("ppmi", "tfidf", "none")) {
   UseMethod("get_x", feature)
