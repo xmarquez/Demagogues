@@ -10,19 +10,49 @@ output: html_document
 ## Combined Graphs
 
 
-![sims svd word vectors decade dfm 50, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_nn-1.png)
+![sims svd word vectors decade dfm 50 ppmi, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_nn-1.png)
 
  
-![sims svd word vectors decade dfm 50, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_vb-1.png)
+![sims svd word vectors decade dfm 50 ppmi, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_vb-1.png)
 
  
-![sims svd word vectors decade dfm 50, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_jj-1.png)
+![sims svd word vectors decade dfm 50 ppmi, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_jj-1.png)
 
  
-![sims svd word vectors decade dfm 50, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_ism-1.png)
+![sims svd word vectors decade dfm 50 ppmi, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_ism-1.png)
 
  
-![sims svd word vectors decade dfm 50, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_uppercase_nouns-1.png)
+![sims svd word vectors decade dfm 50 ppmi, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_uppercase_nouns-1.png)
+
+
+![sims svd word vectors decade dfm random 50 ppmi, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_nn-1.png)
+
+ 
+![sims svd word vectors decade dfm random 50 ppmi, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_vb-1.png)
+
+ 
+![sims svd word vectors decade dfm random 50 ppmi, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_jj-1.png)
+
+ 
+![sims svd word vectors decade dfm random 50 ppmi, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_ism-1.png)
+
+ 
+![sims svd word vectors decade dfm random 50 ppmi, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_uppercase_nouns-1.png)
+
+
+![sims svd word vectors decade dfm similarity 50 ppmi, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_similarity_50_ppmi_nn-1.png)
+
+ 
+![sims svd word vectors decade dfm similarity 50 ppmi, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_similarity_50_ppmi_vb-1.png)
+
+ 
+![sims svd word vectors decade dfm similarity 50 ppmi, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_similarity_50_ppmi_jj-1.png)
+
+ 
+![sims svd word vectors decade dfm similarity 50 ppmi, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_similarity_50_ppmi_ism-1.png)
+
+ 
+![sims svd word vectors decade dfm similarity 50 ppmi, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_similarity_50_ppmi_uppercase_nouns-1.png)
 
 
 ![weights predictive classification decade dfm glmnet, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_weights_predictive_classification_decade_dfm_glmnet_nn-1.png)
@@ -188,21 +218,6 @@ output: html_document
 
  
 ![sims ppmi decade dfm, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_ppmi_decade_dfm_uppercase_nouns-1.png)
-
-
-![combined weights, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_nn-1.png)
-
- 
-![combined weights, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_vb-1.png)
-
- 
-![combined weights, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_jj-1.png)
-
- 
-![combined weights, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_ism-1.png)
-
- 
-![combined weights, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_uppercase_nouns-1.png)
 
 ## Model performance graphs
 
