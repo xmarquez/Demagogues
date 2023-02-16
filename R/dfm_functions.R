@@ -132,8 +132,8 @@ dfm_svd_wvs <- function(dfm, nv = 50) {
   embeddings
 }
 
-svd_word_vectors <- function(dfm, split, nv = 50, weight = c("ppmi", "tfidf", "none")) {
-  dfm <- get_training_sample(dfm, split)
+svd_word_vectors <- function(dfm, initial_split, nv = 50, weight = c("ppmi", "tfidf", "none")) {
+  dfm <- get_training_sample(dfm, initial_split)
   if(is.na(weight) || is.null(weight)) {
     weight <- "none"
   }
