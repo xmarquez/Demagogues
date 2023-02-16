@@ -201,7 +201,7 @@ embed_docs.dictionary2 <- function(dfm, embeddings, feat) {
   feature <- dfm %>%
     quanteda::dfm_lookup(feat)
 
-  res <- Matrix::crossprod(Matrix::t(decade_dfm_1337a159), (svd_word_vectors_decade_dfm_50_b1d74606))
+  res <- Matrix::crossprod(Matrix::t(dfm), embeddings)
   res <- quanteda::as.dfm(res)
 
   feature %>% quanteda:::cbind.dfm(res)
