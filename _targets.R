@@ -532,7 +532,8 @@ list(
 
   tar_target(
     name = combined_performance,
-    command = dplyr::bind_rows(!!!model_performance_df$result),
+    command = dplyr::bind_rows(!!!model_performance_df$result,
+                               !!!model_performance_embedded_docs_df$result),
     deployment = "main"
   ),
 
