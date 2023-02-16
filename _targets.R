@@ -34,6 +34,22 @@ splits <- tidyr::nesting(prefix = "splits",
   tidyr::unite(col = "result", prefix, sources, type, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
+svd_word_vectors_df <- tidyr::nesting(prefix = "svd_word_vectors",
+                                      sources = dfms_df$result,
+                                      split = splits$result,
+                                      split_type = splits$type,
+                                      dims = 50) %>%
+  tidyr::expand_grid(weight = c("ppmi")) %>%
+  tidyr::unite(col = "result", prefix, sources, split_type, dims, weight, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+embedded_docs_df <- tidyr::nesting(prefix = "embedded_docs",
+                                   sources = svd_word_vectors_df$result,
+                                   split = svd_word_vectors_df$split,
+                                   docs = svd_word_vectors_df$sources) %>%
+  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
 models_df <- tidyr::nesting(prefix = "predictive",
                          model_type = "classification",
                          sources = dfms_df$result,
@@ -56,12 +72,6 @@ model_performance_df <- tidyr::nesting(prefix = "performance",
                                     split = models_df$split) %>%
   tidyr::expand_grid(use = c("testing", "training")) %>%
   tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-svd_word_vectors_df <- tidyr::nesting(prefix = "svd_word_vectors",
-                                   sources = dfms_df$result,
-                                   dims = 50) %>%
-  tidyr::unite(col = "result", prefix, sources, dims, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 sims_svd_word_vectors_df <- tidyr::nesting(prefix = "sims",
@@ -376,7 +386,7 @@ list(
       name = result,
       command = sources %>%
         quanteda::dfm_lookup(democracy_feature, exclusive = FALSE) %>%
-        svd_word_vectors(nv = dims, weight = "ppmi"),
+        svd_word_vectors(split = split, nv = dims, weight = weight),
       pattern = map(sources),
       iteration = "list",
       resources = tar_resources(future = tar_resources_future(
@@ -385,6 +395,17 @@ list(
         resources = svd_word_vectors_resources)),
       storage = "worker",
       retrieval = "worker"
+    )
+  ),
+
+  tar_eval(
+    values = embedded_docs_df,
+    tar_target(
+      name = result,
+      command = embed_docs(docs, sources, democracy_feature),
+      pattern = map(sources),
+      iteration = "list",
+      deployment = "main"
     )
   ),
 
