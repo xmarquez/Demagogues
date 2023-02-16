@@ -132,7 +132,12 @@ dfm_svd_wvs <- function(dfm, nv = 50) {
   embeddings
 }
 
-svd_word_vectors <- function(dfm, nv = 50, weight = c("ppmi", "tfidf")) {
+svd_word_vectors <- function(dfm, split, nv = 50, weight = c("ppmi", "tfidf", "none")) {
+  dfm <- get_training_sample(dfm, split)
+  if(is.na(weight) || is.null(weight)) {
+    weight <- "none"
+  }
+
   weight <- match.arg(weight, c("ppmi", "tfidf"))
   if(weight == "ppmi") {
     embeddings <- dfm %>%
@@ -142,6 +147,10 @@ svd_word_vectors <- function(dfm, nv = 50, weight = c("ppmi", "tfidf")) {
   } else if(weight == "tfidf") {
     embeddings <- dfm %>%
       quanteda::dfm_tfidf() %>%
+      dfm_svd_wvs(nv = nv) %>%
+      wordVectors::as.VectorSpaceModel()
+  } else if(weight == "none") {
+    embeddings <- dfm %>%
       dfm_svd_wvs(nv = nv) %>%
       wordVectors::as.VectorSpaceModel()
   }
@@ -180,5 +189,33 @@ ppmi_similarities.character <- function(dfm, feat) {
     dplyr::select(-name)
 
   ppmi_sims
+
+}
+
+embed_docs <- function(dfm, embeddings, feat) {
+  UseMethod("embed_docs", feat)
+}
+
+embed_docs.dictionary2 <- function(dfm, embeddings, feat) {
+
+  feature <- dfm %>%
+    quanteda::dfm_lookup(feat)
+
+  res <- Matrix::crossprod(Matrix::t(decade_dfm_1337a159), (svd_word_vectors_decade_dfm_50_b1d74606))
+  res <- quanteda::as.dfm(res)
+
+  feature %>% quanteda:::cbind.dfm(res)
+
+}
+
+embed_docs.character <- function(dfm, embeddings, feat) {
+
+  feature <- dfm %>%
+    quanteda::dfm_select(feat)
+
+  res <- Matrix::crossprod(Matrix::t(decade_dfm_1337a159), (svd_word_vectors_decade_dfm_50_b1d74606))
+  res <- quanteda::as.dfm(res)
+
+  feature %>% quanteda:::cbind.dfm(res)
 
 }
