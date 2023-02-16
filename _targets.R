@@ -65,8 +65,8 @@ models_embedded_docs_df <- tidyr::nesting(prefix = "predictive",
                                           sources = embedded_docs_df$result,
                                           split = embedded_docs_df$split,
                                           split_type = embedded_docs_df$split_type,
-                                          engine = c("LiblineaR", "xgboost", "glmnet"),
                                           weight = "none")  %>%
+  tidyr::expand_grid(engine = c("LiblineaR", "xgboost", "glmnet")) %>%
   tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 

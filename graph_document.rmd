@@ -721,6 +721,7 @@ graph[[6]]
 ```{r fig-combined_performance_graph_classification_auc}
 #| fig-cap: "Predictive performance of classification models, AUC measure."
 #| fig-width: 9
+#| fig-height: 9
 
 
 tar_load(combined_performance)
@@ -732,20 +733,22 @@ combined_performance %>%
                                                  stringr::str_detect(source, "_similarity") ~ 
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
                                                  TRUE ~ "No downsampling")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = model_type, alpha = forcats::fct_rev(sample))) + 
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(source, model_type), 
+                                alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
   ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
   ggplot2::labs(alpha = "Sample", color = "Model") +
   theme(legend.position = "bottom")+
-  guides(colour = guide_legend(nrow = 2),
+  guides(colour = guide_legend(ncol = 1),
          alpha = guide_legend(nrow = 2))
 
 ```
 ```{r fig-combined_performance_graph_classification_acc}
 #| fig-cap: "Predictive performance of classification models, accuracy measure."
 #| fig-width: 9
+#| fig-height: 9
 
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "accuracy")) %>%
@@ -754,14 +757,15 @@ combined_performance %>%
                                                  stringr::str_detect(source, "_similarity") ~ 
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
                                                  TRUE ~ "No downsampling")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = model_type, alpha = forcats::fct_rev(sample))) + 
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(source, model_type), 
+                                alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
   ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
   ggplot2::labs(alpha = "Sample", color = "Model") +
   theme(legend.position = "bottom") +
-  guides(colour = guide_legend(nrow = 3),
+  guides(colour = guide_legend(ncol = 1),
          alpha = guide_legend(nrow = 2))
 ```
 
