@@ -201,6 +201,9 @@ embed_docs.dictionary2 <- function(dfm, embeddings, feat) {
   feature <- dfm %>%
     quanteda::dfm_lookup(feat)
 
+  print(dims(dfm))
+  print(dims(embeddings))
+
   res <- Matrix::crossprod(Matrix::t(dfm), embeddings)
   res <- quanteda::as.dfm(res)
 
