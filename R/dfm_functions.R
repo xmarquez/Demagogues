@@ -193,6 +193,9 @@ ppmi_similarities.character <- function(dfm, feat) {
 }
 
 embed_docs <- function(dfm, embeddings, feat) {
+  print(dim(dfm))
+  print(dim(embeddings))
+
   UseMethod("embed_docs", feat)
 }
 
@@ -201,8 +204,12 @@ embed_docs.dictionary2 <- function(dfm, embeddings, feat) {
   feature <- dfm %>%
     quanteda::dfm_lookup(feat)
 
+  dfm <- dfm %>%
+    quanteda::dfm_match(rownames(embeddings))
+
   print(dim(dfm))
   print(dim(embeddings))
+
 
   res <- Matrix::crossprod(Matrix::t(dfm), embeddings)
   res <- quanteda::as.dfm(res)
