@@ -279,9 +279,10 @@ list(
       name = result,
       command = predictive_model(dfm = sources,
                                  initial_split = split,
-                                 feat = democracy_feature,
+                                 feat = names(democracy_feature),
                                  engine = engine,
-                                 model_type = model_type),
+                                 model_type = model_type,
+                                 weight = "none"),
       pattern = map(sources, split),
       packages = c("quanteda"),
       resources = tar_resources(future = tar_resources_future(
