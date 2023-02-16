@@ -403,7 +403,7 @@ list(
     tar_target(
       name = result,
       command = embed_docs(docs, sources, democracy_feature),
-      pattern = map(sources),
+      pattern = map(docs, sources),
       iteration = "list",
       deployment = "main"
     )
