@@ -387,7 +387,7 @@ list(
       command = sources %>%
         quanteda::dfm_lookup(democracy_feature, exclusive = FALSE) %>%
         svd_word_vectors(initial_split = split, nv = dims, weight = weight),
-      pattern = map(sources),
+      pattern = map(sources, split),
       iteration = "list",
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
