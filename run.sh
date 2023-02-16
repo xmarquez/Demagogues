@@ -33,4 +33,4 @@ git push https://github.com/xmarquez/Demagogues.git master
 module load dropbox
 dbxcli put _targets/objects/all_model_weights Research/Demagogues/_targets/objects/all_model_weights
 dbxcli put _targets/objects/combined_weights Research/Demagogues/_targets/objects/combined_weights
-dbxcli put _targets/objects/combined_weights Research/Demagogues/_targets/objects/combined_performance
+dbxcli put _targets/objects/combined_performance Research/Demagogues/_targets/objects/combined_performance
