@@ -85,6 +85,15 @@ model_performance_df <- tidyr::nesting(prefix = "performance",
   tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
+model_performance_embedded_docs_df <- tidyr::nesting(prefix = "performance",
+                                                     sources = models_embedded_docs_df$result,
+                                                     source_names = as.character(sources),
+                                                     dfms = models_embedded_docs_df$sources,
+                                                     split = models_embedded_docs_df$split) %>%
+  tidyr::expand_grid(use = c("testing", "training")) %>%
+  tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
 sims_svd_word_vectors_df <- tidyr::nesting(prefix = "sims",
                                         sources = svd_word_vectors_df$result,
                                         source_names = as.character(sources)) %>%
@@ -333,6 +342,26 @@ list(
     )
   ),
 
+  tar_eval(
+    values = model_performance_embedded_docs_df,
+    tar_target(
+      name = result,
+      command = model_performance(sources, dfms, split, feat = names(democracy_feature),
+                                  use = use, weight = "none") %>%
+        dplyr::mutate(source = source_names,
+                      decade = decades,
+                      model_type = model_type,
+                      sample = use),
+      pattern = map(sources, dfms, split, decades),
+      packages = c("quanteda"),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = evaluation_model_resources),
+        resources = evaluation_model_resources)),
+      storage = "worker",
+      retrieval = "worker"
+    )
+  ),
 
 # Graphs ------------------------------------------------------------------
 
