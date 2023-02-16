@@ -46,6 +46,7 @@ svd_word_vectors_df <- tidyr::nesting(prefix = "svd_word_vectors",
 embedded_docs_df <- tidyr::nesting(prefix = "embedded_docs",
                                    sources = svd_word_vectors_df$result,
                                    split = svd_word_vectors_df$split,
+                                   split_type = svd_word_vectors_df$split_type,
                                    docs = svd_word_vectors_df$sources) %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
@@ -56,6 +57,16 @@ models_df <- tidyr::nesting(prefix = "predictive",
                          engine = c("LiblineaR", "xgboost", "glmnet")) %>%
   tidyr::expand_grid(tidyr::nesting(split = splits$result,
                                     split_type = splits$type)) %>%
+  tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+models_embedded_docs_df <- tidyr::nesting(prefix = "predictive",
+                                          model_type = "classification",
+                                          sources = embedded_docs_df$result,
+                                          split = embedded_docs_df$split,
+                                          split_type = embedded_docs_df$split_type,
+                                          engine = c("LiblineaR", "xgboost", "glmnet"),
+                                          weight = "none")  %>%
   tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
@@ -262,6 +273,27 @@ list(
     )
   ),
 
+  tar_eval(
+    values = models_embedded_docs_df,
+    tar_target(
+      name = result,
+      command = predictive_model(dfm = sources,
+                                 initial_split = split,
+                                 feat = democracy_feature,
+                                 engine = engine,
+                                 model_type = model_type),
+      pattern = map(sources, split),
+      packages = c("quanteda"),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = predictive_model_resources),
+        resources = predictive_model_resources)),
+      storage = "worker",
+      retrieval = "worker",
+      iteration = "list"
+    )
+  ),
+
 # Predictive model weight extraction ---------------------------------
 
   tar_eval(
@@ -405,7 +437,12 @@ list(
       command = embed_docs(docs, sources, democracy_feature),
       pattern = map(docs, sources),
       iteration = "list",
-      deployment = "main"
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = svd_word_vectors_resources),
+        resources = svd_word_vectors_resources)),
+      storage = "worker",
+      retrieval = "worker"
     )
   ),
 
