@@ -253,10 +253,12 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
 
 model_weights <- function(model) {
 
+  recalculate <- TRUE
   UseMethod("model_weights")
 }
 
 model_weights.LiblineaR <- function(model) {
+
   ret <- tibble::tibble(colnames(model$W), model$W[1, ])
   colnames(ret) <- c("word", "value")
 
@@ -266,13 +268,26 @@ model_weights.LiblineaR <- function(model) {
   ret %>%
     dplyr::filter(word != "Bias") %>%
     dplyr::arrange(desc(value)) %>%
-    dplyr::mutate(model_type = model$TypeDetail)
+    dplyr::mutate(model_type = model$TypeDetail,
+                  scaled_value = as.numeric(scale(value)),
+                  pnormed_value = pnorm(scaled_value),
+                  sigmoid_value = plogis(scaled_value))
 
 }
 
 model_weights.xgb.Booster <- function(model) {
+
   ret <- tibble::as_tibble(xgboost::xgb.importance(model = model))
   colnames(ret) <- c("word", "value", "cover", "frequency")
+
+  other_features <- tibble::tibble(word = model$feature_names)
+
+  ret <- ret %>%
+    dplyr::full_join(other_features, by = "word") %>%
+    dplyr::mutate(dplyr::across(value:frequency, ~ifelse(is.na(.), 0, .)),
+                  scaled_value = as.numeric(scale(value)),
+                  pnormed_value = pnorm(scaled_value),
+                  sigmoid_value = plogis(scaled_value))
 
   ret %>%
     dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
@@ -393,11 +408,15 @@ predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...)
 }
 
 model_weights.cv.glmnet <- function(model) {
+
   glmnet:::predict.cv.glmnet(model, s = "lambda.min", type = "coef") %>%
     Matrix::rowMeans() %>%
     tibble::enframe() %>%
     dplyr::arrange(-value) %>%
-    dplyr::mutate(model_type = paste(class(model), class(model$glmnet.fit), collapse = " ")) %>%
+    dplyr::mutate(model_type = paste(class(model), class(model$glmnet.fit), collapse = " "),
+                  scaled_value = as.numeric(scale(value)),
+                  pnormed_value = pnorm(scaled_value),
+                  sigmoid_value = plogis(scaled_value)) %>%
     dplyr::rename(word = name)
 }
 
@@ -556,4 +575,3 @@ get_test_sample <- function(dfm, initial_split) {
   testing <- rsample::testing(initial_split)
   dfm[ quanteda::docnames(dfm) %in% testing$doc_id, ]
 }
-
