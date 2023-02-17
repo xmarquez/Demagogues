@@ -469,10 +469,14 @@ list(
     tar_target(
       name = result,
       command = funs(sources, democracy_feature) %>%
+        dplyr::filter(word != stringr::str_to_upper(names(democracy_feature))) %>%
         dplyr::mutate(name = object_names,
                       decade = decades,
                       measure = "PPMI of 'DEMOCRACY' with other terms",
-                      source = source_names) %>%
+                      source = source_names,
+                      scaled_value = as.numeric(scale(value)),
+                      pnormed_value = pnorm(scaled_value),
+                      sigmoid_value = plogis(scaled_value)) %>%
         dplyr::arrange(desc(value)),
       pattern = map(sources, decades),
       deployment = "main"
@@ -528,7 +532,10 @@ list(
                       decade = decades,
                       dimensions = ncol(sources),
                       measure = "Cosine similarity to 'DEMOCRACY'",
-                      source = source_names) %>%
+                      source = source_names,
+                      scaled_value = as.numeric(scale(value)),
+                      pnormed_value = pnorm(scaled_value),
+                      sigmoid_value = plogis(scaled_value)) %>%
         dplyr::rename(value = similarity) %>%
         tibble::as_tibble(),
       pattern = map(sources, decades),
@@ -576,11 +583,10 @@ list(
     name = combined_weights,
     command = all_model_weights %>%
       dplyr::filter(word != stringr::str_to_upper(names(democracy_feature))) %>%
-      dplyr::group_by(name, decade) %>%
-      dplyr::mutate(value = scale(value) %>%
-                      as.numeric()) %>%
       dplyr::group_by(decade, word) %>%
-      dplyr::summarise(mean = list(as_tibble_row(Hmisc::smean.cl.normal(value)))) %>%
+      dplyr::summarise(mean_scaled = list(as_tibble_row(Hmisc::smean.cl.boot(scaled_value))),
+                       mean_pnormed = list(as_tibble_row(Hmisc::smean.cl.boot(pnormed_value))),
+                       mean_sigmoid = list(as_tibble_row(Hmisc::smean.cl.boot(sigmoid_value)))) %>%
       tidyr::unnest(mean) %>%
       dplyr::arrange(desc(Mean), .by_group = TRUE) %>%
       dplyr::rename(value = Mean, value_upper = Upper, value_lower = Lower) %>%
