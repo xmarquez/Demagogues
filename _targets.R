@@ -587,9 +587,6 @@ list(
       dplyr::summarise(mean_scaled = list(as_tibble_row(Hmisc::smean.cl.boot(scaled_value))),
                        mean_pnormed = list(as_tibble_row(Hmisc::smean.cl.boot(pnormed_value))),
                        mean_sigmoid = list(as_tibble_row(Hmisc::smean.cl.boot(sigmoid_value)))) %>%
-      tidyr::unnest(mean) %>%
-      dplyr::arrange(desc(Mean), .by_group = TRUE) %>%
-      dplyr::rename(value = Mean, value_upper = Upper, value_lower = Lower) %>%
       dplyr::mutate(pos = stringr::str_extract(word, "(?<=_)[NVBJnvbj]{2}")) ,
     deployment = "main"
 
