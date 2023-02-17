@@ -533,7 +533,7 @@ list(
                       dimensions = ncol(sources),
                       measure = "Cosine similarity to 'DEMOCRACY'",
                       source = source_names,
-                      scaled_value = as.numeric(scale(value)),
+                      scaled_value = as.numeric(scale(similarity)),
                       pnormed_value = pnorm(scaled_value),
                       sigmoid_value = plogis(scaled_value)) %>%
         dplyr::rename(value = similarity) %>%
