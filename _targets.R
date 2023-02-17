@@ -448,14 +448,11 @@ list(
     values = graphs_df,
     tar_target(name = result,
                command = graph_similarities(sources %>%
-                                              dplyr::filter(word != "DEMOCRACY") %>%
-                                              dplyr::group_by(decade) %>%
-                                              dplyr::mutate(value = scale(value)) %>%
-                                              dplyr::ungroup() %>%
                                               dplyr::filter(stringr::str_detect(word, pos_patterns)),
                                             top_n = max_per_decade,
                                             var = value,
-                                            max_n = max_num),
+                                            max_n = max_num,
+                                            lowercase = lowercase),
                pattern = map(pos_patterns, lowercase),
                iteration = "list",
                deployment = "main"
