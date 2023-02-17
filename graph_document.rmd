@@ -732,19 +732,25 @@ combined_performance %>%
                                                    "Downsampled majority class, at random",
                                                  stringr::str_detect(source, "_similarity") ~ 
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
-                                                 TRUE ~ "No downsampling")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(source, model_type), 
-                                alpha = forcats::fct_rev(sample))) + 
+                                                 TRUE ~ "No downsampling"),
+                model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
+                                              TRUE ~ "Original DFM, 30,000 features")) %>%
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
+                                shape = model_data, alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
   ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
-  ggplot2::labs(alpha = "Sample", color = "Model") +
+  ggplot2::labs(alpha = "Sample", color = "Model", shape = "Model data", linetype = "Model data",
+                title = "Predictive performance of classification models, AUC measure.") +
   theme(legend.position = "bottom")+
-  guides(colour = guide_legend(ncol = 1),
-         alpha = guide_legend(nrow = 2))
+  guides(colour = guide_legend(ncol = 1, title.position = "top"),
+         alpha = guide_legend(ncol = 1, title.position = "top"),
+         linetype = guide_legend(ncol = 1, title.position = "top"),
+         shape = guide_legend(ncol = 1, title.position = "top"))
 
 ```
+
 ```{r fig-combined_performance_graph_classification_acc}
 #| fig-cap: "Predictive performance of classification models, accuracy measure."
 #| fig-width: 9
@@ -756,22 +762,28 @@ combined_performance %>%
                                                    "Downsampled majority class, at random",
                                                  stringr::str_detect(source, "_similarity") ~ 
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
-                                                 TRUE ~ "No downsampling")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(source, model_type), 
-                                alpha = forcats::fct_rev(sample))) + 
+                                                 TRUE ~ "No downsampling"),
+                model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
+                                              TRUE ~ "Original DFM, 30,000 features")) %>%
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
+                                shape = model_data, alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
   ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
-  ggplot2::labs(alpha = "Sample", color = "Model") +
-  theme(legend.position = "bottom") +
-  guides(colour = guide_legend(ncol = 1),
-         alpha = guide_legend(nrow = 2))
+  ggplot2::labs(alpha = "Sample", color = "Model", shape = "Model data", linetype = "Model data",
+                title = "Predictive performance of classification models, accuracy measure.") +
+  theme(legend.position = "bottom")+
+  guides(colour = guide_legend(ncol = 1, title.position = "top"),
+         alpha = guide_legend(ncol = 1, title.position = "top"),
+         linetype = guide_legend(ncol = 1, title.position = "top"),
+         shape = guide_legend(ncol = 1, title.position = "top"))
 ```
 
 ```{r fig-combined_performance_graph_classification_kap}
 #| fig-cap: "Predictive performance of classification models, Cohen's Kappa measure."
 #| fig-width: 9
+#| fig-height: 9
 
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "kap")) %>%
@@ -779,22 +791,29 @@ combined_performance %>%
                                                    "Downsampled majority class, at random",
                                                  stringr::str_detect(source, "_similarity") ~ 
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
-                                                 TRUE ~ "No downsampling")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = model_type, alpha = forcats::fct_rev(sample))) + 
+                                                 TRUE ~ "No downsampling"),
+                model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
+                                              TRUE ~ "Original DFM, 30,000 features")) %>%
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
+                                shape = model_data, alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
   ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
-  ggplot2::labs(alpha = "Sample", color = "Model") +
-  theme(legend.position = "bottom") +
-  guides(colour = guide_legend(nrow = 2),
-         alpha = guide_legend(nrow = 2))
+  ggplot2::labs(alpha = "Sample", color = "Model", shape = "Model data", linetype = "Model data",
+                title = "Predictive performance of classification models, Cohen's Kappa measure.") +
+  theme(legend.position = "bottom")+
+  guides(colour = guide_legend(ncol = 1, title.position = "top"),
+         alpha = guide_legend(ncol = 1, title.position = "top"),
+         linetype = guide_legend(ncol = 1, title.position = "top"),
+         shape = guide_legend(ncol = 1, title.position = "top"))
 ```
 
 
 ```{r fig-combined_performance_graph_classification_log_loss}
 #| fig-cap: "Predictive performance of classification models, log loss measure."
 #| fig-width: 9
+#| fig-height: 9
 
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "deviance|mae|mn|mse")) %>%
@@ -802,17 +821,21 @@ combined_performance %>%
                                                    "Downsampled majority class, at random",
                                                  stringr::str_detect(source, "_similarity") ~ 
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
-                                                 TRUE ~ "No downsampling")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = model_type, 
-                                shape = .metric, alpha = forcats::fct_rev(sample))) + 
+                                                 TRUE ~ "No downsampling"),
+                model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
+                                              TRUE ~ "Original DFM, 30,000 features")) %>%
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
+                                shape = model_data, alpha = forcats::fct_rev(sample))) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
   ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
-  ggplot2::labs(alpha = "Sample", color = "Model") +
-  theme(legend.position = "bottom") +
-  guides(colour = guide_legend(nrow = 2),
-         alpha = guide_legend(nrow = 2),
-         shape = guide_legend(nrow = 2))
+  ggplot2::labs(alpha = "Sample", color = "Model", shape = "Model data", linetype = "Model data",
+                title = "Predictive performance of classification models, log loss measure.") +
+  theme(legend.position = "bottom")+
+  guides(colour = guide_legend(ncol = 1, title.position = "top"),
+         alpha = guide_legend(ncol = 1, title.position = "top"),
+         linetype = guide_legend(ncol = 1, title.position = "top"),
+         shape = guide_legend(ncol = 1, title.position = "top"))
 ```
 

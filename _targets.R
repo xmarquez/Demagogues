@@ -71,8 +71,16 @@ models_embedded_docs_df <- tidyr::nesting(prefix = "predictive",
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 model_weights_df <- tidyr::nesting(prefix = "weights",
-                                sources = models_df$result,
-                                source_names = as.character(sources))  %>%
+                                   sources = models_df$result,
+                                   source_names = as.character(sources),
+                                   engine_names = paste(stringr::str_extract(source_names, "glmnet|LiblineaR|xgboost"), "engine"),
+                                   sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
+                                                                        stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
+                                                                        TRUE ~ "no downsampling"),
+                                   weight_names = dplyr::case_when(stringr::str_detect(source_names, "glmnet") ~ "Coefficients of logistic regression",
+                                                                   stringr::str_detect(source_names, "LiblineaR") ~ "Weights of SVM model",
+                                                                   stringr::str_detect(source_names, "xgboost") ~ "Weights of gradient-boosted random forest model"),
+                                   object_names = paste(weight_names, engine_names, sampling_strategy, sep = ", "))  %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
@@ -83,7 +91,15 @@ model_performance_df <- tidyr::nesting(prefix = "performance",
                                     split = models_df$split) %>%
   tidyr::expand_grid(use = c("testing", "training")) %>%
   tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms),
+                engine_names = paste(stringr::str_extract(source_names, "glmnet|LiblineaR|xgboost"), "engine"),
+                sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
+                                                     stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
+                                                     TRUE ~ "no downsampling"),
+                model_names = dplyr::case_when(stringr::str_detect(source_names, "glmnet") ~ "Logistic regression",
+                                               stringr::str_detect(source_names, "LiblineaR") ~ "SVM",
+                                               stringr::str_detect(source_names, "xgboost") ~ "Gradient-boosted random forest model"),
+                object_names = paste(model_names, engine_names, sampling_strategy, paste(use, "data"), sep = ", "))
 
 model_performance_embedded_docs_df <- tidyr::nesting(prefix = "performance",
                                                      sources = models_embedded_docs_df$result,
@@ -92,24 +108,43 @@ model_performance_embedded_docs_df <- tidyr::nesting(prefix = "performance",
                                                      split = models_embedded_docs_df$split) %>%
   tidyr::expand_grid(use = c("testing", "training")) %>%
   tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms),
+                engine_names = paste(stringr::str_extract(source_names, "glmnet|LiblineaR|xgboost"), "engine"),
+                sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
+                                                     stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
+                                                     TRUE ~ "no downsampling"),
+                model_names = dplyr::case_when(stringr::str_detect(source_names, "glmnet") ~ "Logistic regression on SVD-embedded docs",
+                                               stringr::str_detect(source_names, "LiblineaR") ~ "SVM on SVD-embedded docs",
+                                               stringr::str_detect(source_names, "xgboost") ~ "Gradient-boosted random forest model on SVD-embedded docs"),
+                object_names = paste(model_names, engine_names, sampling_strategy, paste(use, "data"), sep = ", "))
 
 sims_svd_word_vectors_df <- tidyr::nesting(prefix = "sims",
                                         sources = svd_word_vectors_df$result,
                                         source_names = as.character(sources)) %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms),
+                sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
+                                                     stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
+                                                     TRUE ~ "no downsampling"),
+                weight_names = "Cosine similarity to target term in SVD word vector space, PPMI weights",
+                object_names = paste(weight_names, sampling_strategy, sep = ", "))
 
 ppmi_word_vectors_df <- tidyr::nesting(prefix = c("ppmi_single", "sims_ppmi"),
                                     sources = dfms_df$result,
                                     funs = c("feature_ppmi", "ppmi_similarities"),
                                     source_names = as.character(sources)) %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split", "funs")), rlang::syms))
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split", "funs")), rlang::syms),
+                sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
+                                                     stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
+                                                     TRUE ~ "no downsampling"),
+                weight_names = dplyr::case_when(stringr::str_detect(as.character(result), "ppmi_single") ~ "Single-feature PPMI to target feature",
+                                                stringr::str_detect(as.character(result), "sims_ppmi") ~ "Cosine similarity to target feature across PPMI-weighted DFM"),
+                object_names = paste(weight_names, sampling_strategy, sep = ", "))
 
 graphs_df <- dplyr::bind_rows(sims_svd_word_vectors_df,
-                           model_weights_df,
-                           ppmi_word_vectors_df) %>%
+                              model_weights_df,
+                              ppmi_word_vectors_df) %>%
   dplyr::mutate(prefix = "graph",
                 sources = .$result) %>%
   tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
@@ -311,7 +346,8 @@ list(
     tar_target(
       name = result,
       command = model_weights(sources) %>%
-        dplyr::mutate(source = source_names,
+        dplyr::mutate(name = object_names,
+                      source = source_names,
                       decade = decades,
                       measure = "Model Weights"),
       pattern = map(sources, decades),
@@ -327,7 +363,8 @@ list(
     tar_target(
       name = result,
       command = model_performance(sources, dfms, split, feat = democracy_feature, use = use) %>%
-        dplyr::mutate(source = source_names,
+        dplyr::mutate(name = object_names,
+                      source = source_names,
                       decade = decades,
                       model_type = model_type,
                       sample = use),
@@ -348,7 +385,8 @@ list(
       name = result,
       command = model_performance(sources, dfms, split, feat = names(democracy_feature),
                                   use = use, weight = "none") %>%
-        dplyr::mutate(source = source_names,
+        dplyr::mutate(name = object_names,
+                      source = source_names,
                       decade = decades,
                       model_type = model_type,
                       sample = use),
@@ -431,7 +469,8 @@ list(
     tar_target(
       name = result,
       command = funs(sources, democracy_feature) %>%
-        dplyr::mutate(decade = decades,
+        dplyr::mutate(name = object_names,
+                      decade = decades,
                       measure = "PPMI of 'DEMOCRACY' with other terms",
                       source = source_names) %>%
         dplyr::arrange(desc(value)),
@@ -482,9 +521,11 @@ list(
     values = sims_svd_word_vectors_df,
     tar_target(
       name = result,
-      command = wordVectors::closest_to(sources, "DEMOCRACY", n = Inf,
+      command = wordVectors::closest_to(sources, stringr::str_to_upper(names(democracy_feature)), n = Inf,
                                         fancy_names = FALSE) %>%
-        dplyr::mutate(decade = decades,
+        dplyr::filter(word != stringr::str_to_upper(names(democracy_feature))) %>%
+        dplyr::mutate(name = object_names,
+                      decade = decades,
                       dimensions = ncol(sources),
                       measure = "Cosine similarity to 'DEMOCRACY'",
                       source = source_names) %>%
@@ -498,27 +539,21 @@ list(
 
   tar_target(
     name = predictive_model_weights,
-    command = dplyr::bind_rows(!!!model_weights_df$result, .id = "id") %>%
-      dplyr::mutate(id = as.numeric(id),
-                    id = as.character(model_weights_df$result[id])),
+    command = dplyr::bind_rows(!!!model_weights_df$result),
     deployment = "main"
 
   ),
 
   tar_target(
     name = svd_model_weights,
-    command = dplyr::bind_rows(!!!sims_svd_word_vectors_df$result, .id = "id") %>%
-      dplyr::mutate(id = as.numeric(id),
-                    id = as.character(model_weights_df$result[id])),
+    command = dplyr::bind_rows(!!!sims_svd_word_vectors_df$result),
     deployment = "main"
 
   ),
 
   tar_target(
     name = ppmi_model_weights,
-    command = dplyr::bind_rows(!!!ppmi_word_vectors_df$result, .id = "id") %>%
-      dplyr::mutate(id = as.numeric(id),
-                    id = as.character(model_weights_df$result[id])),
+    command = dplyr::bind_rows(!!!ppmi_word_vectors_df$result),
     deployment = "main"
   ),
 
@@ -540,9 +575,10 @@ list(
   tar_target(
     name = combined_weights,
     command = all_model_weights %>%
-      dplyr::filter(word != "DEMOCRACY") %>%
-      dplyr::group_by(id, decade) %>%
-      dplyr::mutate(value = scale(value)) %>%
+      dplyr::filter(word != stringr::str_to_upper(names(democracy_feature))) %>%
+      dplyr::group_by(name, decade) %>%
+      dplyr::mutate(value = scale(value) %>%
+                      as.numeric()) %>%
       dplyr::group_by(decade, word) %>%
       dplyr::summarise(mean = list(as_tibble_row(Hmisc::smean.cl.normal(value)))) %>%
       tidyr::unnest(mean) %>%
