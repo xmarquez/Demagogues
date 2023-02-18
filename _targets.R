@@ -587,7 +587,115 @@ list(
       dplyr::mutate(pos = stringr::str_extract(word, "(?<=_)[NVBJnvbj]{2}")) ,
     deployment = "main"
 
+  ),
+
+# Basic corpus stats ------------------------------------------------------
+
+  tar_target(
+    name = democracy_word_counts,
+    command = query_bookworm(c("democracy"), counttype = c("WordCount"),
+                             lims = c(1700, 2020)),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = democracy_words_per_million,
+    command = query_bookworm(c("democracy"), counttype = c("WordsPerMillion"),
+                             lims = c(1700, 2020)),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = total_words,
+    command = query_bookworm(counttype = c("TotalWords"),
+                             lims = c(1700, 2020)),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = democracy_text_counts,
+    command = query_bookworm(c("democracy"), counttype = c("TextCount"),
+                             lims = c(1700, 2020)),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = democracy_text_percent,
+    command = query_bookworm(c("democracy"), counttype = c("TextPercent"),
+                             lims = c(1700, 2020)),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = total_texts,
+    command = query_bookworm(counttype = "TotalTexts",
+                             lims = c(1700, 2020)),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = num_ht_bib_keys,
+    command = cached_hathi_catalog %>%
+      dplyr::pull(ht_bib_key) %>%
+      dplyr::n_distinct(),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = num_author_title,
+    command = cached_hathi_catalog %>%
+      dplyr::mutate(author_title = paste(author, title)) %>%
+      dplyr::pull(author_title) %>%
+      dplyr::n_distinct(),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = num_htids,
+    command = cached_hathi_catalog %>%
+      dplyr::group_by(ht_bib_key) %>%
+      dplyr::summarise(num_htids = dplyr::n_distinct(htid)) %>%
+      dplyr::count(num_htids),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = num_htids_per_author,
+    command = cached_hathi_catalog %>%
+      dplyr::group_by(author, title) %>%
+      dplyr::summarise(num_htids = dplyr::n_distinct(htid)) %>%
+      dplyr::ungroup() %>%
+      dplyr::count(num_htids),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = num_libraries,
+    command = cached_hathi_catalog %>%
+      dplyr::count(source),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = date_info,
+    command = cached_hathi_catalog %>%
+      dplyr::count(rights_date_used),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = democracy_translations,
+    command = here::here("democracy_translations.xlsx"),
+    format = "file",
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = democracy_translations_freqs,
+    command = democracy_translations_freqs(democracy_translations),
+    deployment = "main"
   )
+
 )
 
 
