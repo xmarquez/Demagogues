@@ -430,7 +430,7 @@ list(
     command = graph_similarities(combined_weights %>%
                                    dplyr::filter(stringr::str_detect(word, pos_patterns)),
                                  top_n = max_per_decade,
-                                 var = value,
+                                 var = mean_pnormed,
                                  max_n = max_num,
                                  lowercase = lowercase),
     pattern = map(pos_patterns, lowercase),
@@ -581,9 +581,10 @@ list(
     command = all_model_weights %>%
       dplyr::filter(word != stringr::str_to_upper(names(democracy_feature))) %>%
       dplyr::group_by(decade, word) %>%
-      dplyr::summarise(mean_scaled = list(as_tibble_row(Hmisc::smean.cl.boot(scaled_value))),
-                       mean_pnormed = list(as_tibble_row(Hmisc::smean.cl.boot(pnormed_value))),
-                       mean_sigmoid = list(as_tibble_row(Hmisc::smean.cl.boot(sigmoid_value)))) %>%
+      dplyr::summarise(mean_value = mean(value),
+                       mean_scaled = mean(scaled_value),
+                       mean_pnormed = mean(pnormed_value),
+                       mean_sigmoid = mean(sigmoid_value)) %>%
       dplyr::mutate(pos = stringr::str_extract(word, "(?<=_)[NVBJnvbj]{2}")) ,
     deployment = "main"
 
