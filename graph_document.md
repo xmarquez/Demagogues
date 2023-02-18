@@ -9,6 +9,19 @@ output: html_document
 
 ## Combined Graphs
 
+![Combined weights, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_nn-1.png)
+
+![Combined weights, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_vb-1.png)
+
+![Combined weights, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_jj-1.png)
+
+![Combined weights, isms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_ism-1.png)
+
+![Combined weights, nouns starting with uppercase. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_combined_weights_uppercase-1.png)
+
+
+
+## Other graphs
 
 ![sims svd word vectors decade dfm 50 ppmi, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.](figure/fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_nn-1.png)
 
