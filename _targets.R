@@ -60,6 +60,11 @@ models_df <- tidyr::nesting(prefix = "predictive",
   tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
+models_simplified_eval_df <- tidyr::expand_grid(sources = "predictive_classification_decade_dfm_glmnet",
+                                                decades_model = seq(1700, 2010, by = 5),
+                                                dfms = "decade_dfm",
+                                                decades_dfms = seq(1700, 2010, by = 5))
+
 models_embedded_docs_df <- tidyr::nesting(prefix = "predictive",
                                           model_type = "classification",
                                           sources = embedded_docs_df$result,
@@ -399,6 +404,27 @@ list(
       storage = "worker",
       retrieval = "worker"
     )
+  ),
+
+  tar_target(
+    name = decades_2,
+    command = seq(1700, 2010, by = 5),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = glmnet_predictive_eval,
+    command = model_performance_simplified(predictive_classification_decade_dfm_glmnet,
+                                           decade_dfm) %>%
+      dplyr::mutate(decade1 = decades, decade2 = decades_2),
+    packages = c("quanteda", "Matrix"),
+    resources = tar_resources(future = tar_resources_future(
+      plan = future::tweak(future.batchtools::batchtools_slurm,
+                           resources = evaluation_model_resources),
+      resources = evaluation_model_resources)),
+    storage = "worker",
+    retrieval = "worker",
+    pattern = cross(map(predictive_classification_decade_dfm_glmnet, decades), map(decade_dfm, decades_2))
   ),
 
 # Graphs ------------------------------------------------------------------

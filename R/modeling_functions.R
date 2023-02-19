@@ -294,6 +294,130 @@ model_weights.xgb.Booster <- function(model) {
 
 }
 
+model_performance_simplified <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+  UseMethod("model_performance_simplified")
+}
+
+model_performance_simplified.cv.glmnet <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+
+  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
+  if("lognet" %in% class(model$glmnet.fit)) {
+    model_type <- "classification"
+
+  } else if("elnet" %in% class(model$glmnet.fit)) {
+    model_type <- "regression"
+  }
+
+  x_test <- get_x(dfm, feat = feat, weight = weight)
+
+  x_test <- quanteda::dfm_match(x_test, model$glmnet.fit$beta@Dimnames[[1]])
+
+  y_test <- get_y(dfm, feat, model_type = model_type)
+
+  predictions_estimate <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "response") %>%
+    as.vector()
+
+  predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
+    factor(levels = c("FALSE", "TRUE"))
+
+  preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)
+
+  if(model_type == "regression") {
+    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate)
+    res <- preds %>%
+      yardstick::metrics(truth = truth, estimate = estimate)
+
+  }
+
+  if(model_type == "classification") {
+    predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
+      factor(levels = c("FALSE", "TRUE"))
+
+    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)
+    res <- binary_metrics(preds)
+  }
+
+  res  %>%
+    dplyr::mutate(model_type = paste("cv.glmnet", model_type))
+
+}
+
+model_performance_simplified.LiblineaR <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+
+  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
+  model_type <- ifelse(model$Type %in% c(0:7), "classification",
+                       "regression")
+
+  x_test <- quanteda::dfm_match(get_x(dfm, feat = feat, weight = weight),
+                                colnames(model$W)[colnames(model$W) != "Bias"]) %>%
+    as("dgCMatrix") %>%
+    as("RsparseMatrix") %>%
+    as("dgRMatrix")
+
+  y_test <- get_y(dfm, feat, model_type = model_type)
+
+  predictions <- LiblineaR:::predict.LiblineaR(model, newx = x_test)
+
+  preds <- tibble::tibble(truth = y_test, estimate = predictions$predictions)
+
+  res <- preds %>%
+    yardstick::metrics(truth = truth, estimate = estimate)
+
+  if(model_type == "classification") {
+    conf_mat <- preds %>%
+      yardstick::conf_mat(truth = truth, estimate = estimate) %>%
+      yardstick::tidy()
+
+    res <- res %>%
+      dplyr::mutate(conf_mat = list(conf_mat))
+  }
+
+  res  %>%
+    dplyr::mutate(model_type = model$TypeDetail)
+}
+
+model_performance_simplified.xgb.Booster <-  function(model, dfm, feat,
+                                                      weight = c("ppmi", "tfidf", "none")) {
+
+  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
+
+  model_type <- ifelse(stringr::str_detect(model$params$objective, "reg:"), "regression",
+                       "classification")
+
+  x_test <- get_x(dfm, feat = feat, weight = weight) %>%
+    quanteda::dfm_match(model$feature_names)
+
+  y_test <- get_y(dfm, feat, model_type = model_type)
+
+  if(model_type == "classification") {
+    y_test <- y_test %>%
+      as.numeric()
+    y_test <- y_test - 1
+  }
+
+  predictions <- xgboost:::predict.xgb.Booster(model, newdata = x_test)
+
+  preds <- tibble::tibble(truth = y_test, estimate = predictions)
+
+  if(model_type == "regression") {
+    res <- preds %>%
+      yardstick::metrics(truth = truth, estimate = estimate)
+
+  }
+
+  if(model_type == "classification") {
+
+    res <- preds %>%
+      dplyr::mutate(truth = factor(truth, levels = c(0, 1)),
+                    class = factor(ifelse(estimate < 0.5, 0, 1), levels = c(0, 1))) %>%
+      binary_metrics()
+  }
+
+  res %>%
+    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
+
+}
+
 model_performance <- function(model, dfm, initial_split, feat, weight, use = "testing") {
   UseMethod("model_performance")
 }
