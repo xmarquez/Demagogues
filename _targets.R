@@ -415,7 +415,7 @@ list(
   tar_target(
     name = glmnet_predictive_eval,
     command = model_performance_simplified(predictive_classification_decade_dfm_glmnet,
-                                           decade_dfm) %>%
+                                           decade_dfm, feat = democracy_feature, weight = "ppmi") %>%
       dplyr::mutate(decade1 = decades, decade2 = decades_2),
     packages = c("quanteda", "Matrix"),
     resources = tar_resources(future = tar_resources_future(
@@ -718,7 +718,7 @@ list(
   ),
 
   tar_target(
-    name = democracy_translations_freqs,
+    name = democracy_trans,
     command = democracy_translations_freqs(democracy_translations),
     deployment = "main"
   )
