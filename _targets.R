@@ -26,8 +26,8 @@ evaluation_model_resources <- list(partition = "parallel", memory = "15G",
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
                                    walltime = "0:10:00")
 
-glove_word_vectors_resources <- list(partition = "bigmem", memory = "20G", ncpus = 20,
-                                     walltime = "0:20:00")
+glove_word_vectors_resources <- list(partition = "bigmem", memory = "8G", ncpus = 40,
+                                     walltime = "0:40:00")
 
 # Object parameters ----------------------------------------------------------------------------------
 
