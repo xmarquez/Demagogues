@@ -15,6 +15,10 @@ democracy_files_resources <- list(partition = "parallel", memory = "10G", ncpus 
                                   walltime = "2:00:00")
 dfm_resources <- list(partition = "parallel", memory = "30G", ncpus = 2,
                       walltime = "0:40:00")
+
+fcm_resources <- list(partition = "highmem", memory = "128G", ncpus = 2,
+                      walltime = "0:40:00")
+
 predictive_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 20, walltime = "0:50:00")
 evaluation_model_resources <- list(partition = "parallel", memory = "15G",
@@ -281,6 +285,24 @@ list(
                                    tolower = FALSE),
     deployment = "main"
   ),
+
+# FCM Creation ------------------------------------------------------------
+
+
+tar_target(
+  name = decade_fcm,
+  command = decade_dfm %>%
+    quanteda::dfm_lookup(democracy_feature, exclusive = FALSE)  %>%
+    compute_fcm(weight = "ppmi"),
+  pattern = map(decade_dfm),
+  resources = tar_resources(future = tar_resources_future(
+    plan = future::tweak(future.batchtools::batchtools_slurm,
+                         resources = fcm_resources),
+    resources = fcm_resources)),
+  storage = "worker",
+  retrieval = "worker",
+  iteration = "list"
+),
 
 # Compute test-train splits -----------------------------------------
 
