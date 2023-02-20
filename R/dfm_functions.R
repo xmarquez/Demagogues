@@ -253,3 +253,34 @@ compute_fcm <- function(dfm,
   fcm
 
 }
+
+fcm_ppmi <- function(fcm, dfm, base = 10) {
+
+  feat_sum <- Matrix::colSums(dfm)
+  total_sum <- sum(dfm)
+
+  p_x_y <- fcm / sum(fcm)
+  p_x <- feat_sum / total_sum
+  p_y <- feat_sum / total_sum
+
+  pp = fcm@p+1
+  ip = fcm@i+1
+  tmpx = rep(0,length(fcm@x)) # new values go here, just a numeric vector
+  # iterate through sparse matrix:
+  all_zeros <- which(feat_sum == 0)
+  col_indexes_used <- 1:(length(fcm@p)-1)
+  col_indexes_used <- col_indexes_used[ !col_indexes_used %in% all_zeros ]
+  for(i in col_indexes_used){
+    ind = pp[i]:(pp[i+1]-1)
+    not0 = ip[ind]
+    icol = fcm@x[ind]
+    tmp = log( (icol/total_sum) / (p_x[not0] * p_y[i] ), base = base) # PMI
+    tmpx[ind] = tmp
+  }
+  fcm@x = tmpx
+  fcm@x[which(fcm@x < 0)] <- 0
+  fcm <- Matrix::drop0(fcm)
+  fcm
+
+}
+
