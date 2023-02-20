@@ -254,33 +254,32 @@ compute_fcm <- function(dfm,
 
 }
 
-fcm_ppmi <- function(fcm, dfm, base = 10) {
+fcm_glove_wvs <- function(fcm, nv = 50,
+                          n_iter = 10L,
+                          convergence_tol = -1,
+                          n_threads = parallel::detectCores(),
+                          x_max = 10,
+                          learning_rate = 0.15,
+                          alpha = 0.75,
+                          lambda = 0,
+                          shuffle = TRUE,
+                          init = list(w_i = NULL, b_i = NULL, w_j = NULL, b_j = NULL)) {
 
-  feat_sum <- Matrix::colSums(dfm)
-  total_sum <- sum(dfm)
+  model <- rsparse::GloVe$new(rank = nv, x_max = x_max,
+                              learning_rate = learning_rate,
+                              alpha = alpha,
+                              lambda = lambda,
+                              shuffle = shuffle,
+                              init = init)
 
-  p_x_y <- fcm / sum(fcm)
-  p_x <- feat_sum / total_sum
-  p_y <- feat_sum / total_sum
+  embeddings <- model$fit_transform(fcm, n_iter = n_iter,
+                                    convergence_tol = convergence_tol,
+                                    n_threads = n_threads)
 
-  pp = fcm@p+1
-  ip = fcm@i+1
-  tmpx = rep(0,length(fcm@x)) # new values go here, just a numeric vector
-  # iterate through sparse matrix:
-  all_zeros <- which(feat_sum == 0)
-  col_indexes_used <- 1:(length(fcm@p)-1)
-  col_indexes_used <- col_indexes_used[ !col_indexes_used %in% all_zeros ]
-  for(i in col_indexes_used){
-    ind = pp[i]:(pp[i+1]-1)
-    not0 = ip[ind]
-    icol = fcm@x[ind]
-    tmp = log( (icol/total_sum) / (p_x[not0] * p_y[i] ), base = base) # PMI
-    tmpx[ind] = tmp
-  }
-  fcm@x = tmpx
-  fcm@x[which(fcm@x < 0)] <- 0
-  fcm <- Matrix::drop0(fcm)
-  fcm
+  embeddings <- embeddings + t(model$components)
+
+  embeddings %>%
+    wordVectors::as.VectorSpaceModel()
 
 }
 
