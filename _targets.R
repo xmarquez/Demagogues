@@ -333,7 +333,7 @@ tar_eval(
   tar_target(
     name = result,
     command = fcm_glove_wvs(sources, nv = dims, n_iter = 30),
-    pattern = map(sources, dims),
+    pattern = map(sources),
     iteration = "list",
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
