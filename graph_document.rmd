@@ -23,34 +23,6 @@ graph <- tar_read(graph_combined_weights)
 graph[[2]]
 ```
 
-```{r fig-graph_combined_weights_vb}
-#| fig-cap: Combined weights, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph[[3]]
-```
-
-```{r fig-graph_combined_weights_jj}
-#| fig-cap: Combined weights, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph[[4]]
-```
-
-```{r fig-graph_combined_weights_ism}
-#| fig-cap: Combined weights, isms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph[[5]]
-```
-
-```{r fig-graph_combined_weights_uppercase}
-#| fig-cap: Combined weights, nouns starting with uppercase. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph[[6]]
-```
-
-
-
-## Other graphs
-
 ```{r fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_nn}
 #| fig-cap: sims svd word vectors decade dfm 50 ppmi, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
@@ -193,6 +165,56 @@ graph[[5]]
  
 ```{r fig-graph_sims_svd_word_vectors_decade_dfm_similarity_50_ppmi_uppercase_nouns}
 #| fig-cap: sims svd word vectors decade dfm similarity 50 ppmi, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[6]]
+
+```
+
+
+```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_nn}
+#| fig-cap: sims glove word vectors decade fcm 50, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+graph <- tar_read(graph_sims_glove_word_vectors_decade_fcm_50)
+
+graph[[2]]
+
+```
+
+ 
+```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_vb}
+#| fig-cap: sims glove word vectors decade fcm 50, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[3]]
+
+```
+
+ 
+```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_jj}
+#| fig-cap: sims glove word vectors decade fcm 50, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[4]]
+
+```
+
+ 
+```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_ism}
+#| fig-cap: sims glove word vectors decade fcm 50, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+#| fig-height: 9
+
+
+graph[[5]]
+
+```
+
+ 
+```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_uppercase_nouns}
+#| fig-cap: sims glove word vectors decade fcm 50, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
 
 
