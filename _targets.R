@@ -26,9 +26,15 @@ evaluation_model_resources <- list(partition = "parallel", memory = "15G",
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
                                    walltime = "0:10:00")
 
+glove_word_vectors_resources <- list(partition = "bigmem", memory = "40G", ncpus = 30,
+                                     walltime = "0:20:00")
+
 # Object parameters ----------------------------------------------------------------------------------
 
 dfms_df <- tibble::tibble(result = "decade_dfm") %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+fcms_df <- tibble::tibble(result = "decade_fcm") %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 splits <- tidyr::nesting(prefix = "splits",
@@ -45,6 +51,12 @@ svd_word_vectors_df <- tidyr::nesting(prefix = "svd_word_vectors",
                                       dims = 50) %>%
   tidyr::expand_grid(weight = c("ppmi")) %>%
   tidyr::unite(col = "result", prefix, sources, split_type, dims, weight, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+glove_word_vectors_df <- tidyr::nesting(prefix = "glove_word_vectors",
+                                        sources = fcms_df$result,
+                                        dims = 50) %>%
+  tidyr::unite(col = "result", prefix, sources, dims, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 embedded_docs_df <- tidyr::nesting(prefix = "embedded_docs",
@@ -138,6 +150,15 @@ sims_svd_word_vectors_df <- tidyr::nesting(prefix = "sims",
                 weight_names = "Cosine similarity to target term in SVD word vector space, PPMI weights",
                 object_names = paste(weight_names, sampling_strategy, sep = ", "))
 
+sims_glove_word_vectors_df <- tidyr::nesting(prefix = "sims",
+                                             sources = glove_word_vectors_df$result,
+                                             source_names = as.character(sources)) %>%
+  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms),
+                weight_names = "Cosine similarity to target term in GLOVE word vector space, PPMI weights",
+                object_names = paste(weight_names, sep = ", "))
+
+
 ppmi_word_vectors_df <- tidyr::nesting(prefix = c("ppmi_single", "sims_ppmi"),
                                     sources = dfms_df$result,
                                     funs = c("feature_ppmi", "ppmi_similarities"),
@@ -152,6 +173,7 @@ ppmi_word_vectors_df <- tidyr::nesting(prefix = c("ppmi_single", "sims_ppmi"),
                 object_names = paste(weight_names, sampling_strategy, sep = ", "))
 
 graphs_df <- dplyr::bind_rows(sims_svd_word_vectors_df,
+                              sims_glove_word_vectors_df,
                               model_weights_df,
                               ppmi_word_vectors_df) %>%
   dplyr::mutate(prefix = "graph",
@@ -302,6 +324,24 @@ tar_target(
   storage = "worker",
   retrieval = "worker",
   iteration = "list"
+),
+
+# Compute GLOVE word vectors -----------------------------------------
+
+tar_eval(
+  values = glove_word_vectors_df,
+  tar_target(
+    name = result,
+    command = fcm_glove_wvs(sources, nv = dims, n_iter = 30),
+    pattern = map(sources, dims),
+    iteration = "list",
+    resources = tar_resources(future = tar_resources_future(
+      plan = future::tweak(future.batchtools::batchtools_slurm,
+                           resources = glove_word_vectors_resources),
+      resources = glove_word_vectors_resources)),
+    storage = "worker",
+    retrieval = "worker"
+  )
 ),
 
 # Compute test-train splits -----------------------------------------
@@ -567,7 +607,8 @@ tar_target(
 # Similarity calculation for word vectors ---------------------------------
 
   tar_eval(
-    values = sims_svd_word_vectors_df,
+    values = dplyr::bind_rows(sims_svd_word_vectors_df,
+                              sims_glove_word_vectors_df),
     tar_target(
       name = result,
       command = wordVectors::closest_to(sources, stringr::str_to_upper(names(democracy_feature)), n = Inf,
