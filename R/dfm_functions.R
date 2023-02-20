@@ -229,3 +229,27 @@ embed_docs.character <- function(dfm, embeddings, feat) {
   feature %>% quanteda:::cbind.dfm(res)
 
 }
+
+compute_fcm <- function(dfm,
+                        weight = c("ppmi", "none"),
+                        count = c("frequency", "boolean"),
+                        tri = FALSE) {
+  weight <- match.arg(weight, c("ppmi", "none"))
+  count <- match.arg(count, c("frequency", "boolean"))
+
+  if(count == "boolean") {
+    dfm <- quanteda::dfm_weight(dfm, "boolean")
+  }
+
+  fcm <- Matrix::crossprod(dfm)
+
+  if(tri) {
+    fcm <- Matrix::triu(fcm)
+  }
+
+  if(weight == "ppmi") {
+    fcm <- fcm_ppmi(fcm, dfm)
+  }
+  fcm
+
+}
