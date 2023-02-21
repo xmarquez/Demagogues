@@ -21,12 +21,14 @@ fcm_resources <- list(partition = "bigmem", memory = "128G", ncpus = 2,
 
 predictive_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 20, walltime = "0:50:00")
+
 evaluation_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 2, walltime = "0:02:00")
+
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
                                    walltime = "0:10:00")
 
-glove_word_vectors_resources <- list(partition = "bigmem", memory = "8G", ncpus = 40,
+glove_word_vectors_resources <- list(partition = "parallel", memory = "2G", ncpus = 40,
                                      walltime = "0:40:00")
 
 # Object parameters ----------------------------------------------------------------------------------
@@ -539,12 +541,6 @@ tar_eval(
     deployment = "main"
   ),
 
-  tar_knit(
-    name = graph_document,
-    path = "graph_document.rmd",
-    deployment = "main"
-  ),
-
   tar_eval(
     values = graphs_df,
     tar_target(name = result,
@@ -797,7 +793,17 @@ tar_eval(
     name = democracy_trans,
     command = democracy_translations_freqs(democracy_translations),
     deployment = "main"
+  ),
+
+## Paper and appendixes ------------------------------------------------
+
+  tar_knit(
+    name = graph_document,
+    path = "Paper/graph_document.rmd",
+    deployment = "main"
   )
+
+
 
 )
 
