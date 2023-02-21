@@ -34,3 +34,7 @@ module load dropbox
 dbxcli put _targets/objects/all_model_weights Research/Demagogues/_targets/objects/all_model_weights
 dbxcli put _targets/objects/combined_weights Research/Demagogues/_targets/objects/combined_weights
 dbxcli put _targets/objects/combined_performance Research/Demagogues/_targets/objects/combined_performance
+dbxcli put _targets/objects/num_htids_per_author Research/Demagogues/_targets/objects/num_htids_per_author
+dbxcli put _targets/objects/num_libraries Research/Demagogues/_targets/objects/num_libraries
+dbxcli put _targets/objects/num_ht_bib_keys Research/Demagogues/_targets/objects/num_ht_bib_keys
+dbxcli put _targets/objects/num_author_title Research/Demagogues/_targets/objects/num_author_title

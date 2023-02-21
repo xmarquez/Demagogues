@@ -22,7 +22,6 @@ library(magrittr)
 library(targets)
 
 theme_set(theme_bw())
-tar_config_set(store = here::here("_targets"))
 ```
 
 ## Introduction {.unnumbered}
@@ -41,17 +40,17 @@ This paper is organized as follows. We first describe the Hathi Trust digital li
 
 ```{r corpusDescription}
 
-num_titles <- tar_read(num_htids_per_author)
+num_titles <- tar_read(num_htids_per_author, store = here::here("_targets"))
 
-num_libraries <- tar_read(num_libraries)
+num_libraries <- tar_read(num_libraries, store = here::here("_targets"))
 
-num_1700_2020 <- tar_read(date_info) |> 
+num_1700_2020 <- tar_read(date_info, store = here::here("_targets")) |> 
   filter(rights_date_used >= 1700, rights_date_used <= 2020) |>
   pull(n) |>
   sum()
 ```
 
-The Hathi Trust corpus contains over 17 million digitized volumes in many languages, comprising `r format(tar_read(num_ht_bib_keys), big.mark = ",")` distinct "bibliographic records" (including multivolume works) and `r format(tar_read(num_author_title), big.mark = ",")` distinct author-title combinations (including works in more than one edition at different times). These were digitized first by the original Google Books project and later by major University and public libraries. The corpus has extensive metadata, but older books (especially those published before 1800, which are not as well represented) have worse OCR and more missing or uncertain metadata.
+The Hathi Trust corpus contains over 17 million digitized volumes in many languages, comprising `r format(tar_read(num_ht_bib_keys, store = here::here("_targets")), big.mark = ",")` distinct "bibliographic records" (including multivolume works) and `r format(tar_read(num_author_title, store = here::here("_targets")), big.mark = ",")` distinct author-title combinations (including works in more than one edition at different times). These were digitized first by the original Google Books project and later by major University and public libraries. The corpus has extensive metadata, but older books (especially those published before 1800, which are not as well represented) have worse OCR and more missing or uncertain metadata.
 
 This corpus is not, and cannot be, fully representative of all the books published in the period under study in this paper (1700-2020). It reflects the acquisition practices of about 30 major British and American libraries (including Harvard, the University of California, Oxford University, the British Library, and the New York Public Library), and thus contains a disproportionate number of English-language works.[^2] Moreover, certain kinds of works are digitized at higher rates than expected from their known frequency in the population of published books for reasons ranging from collecting practices to the physical format of a given book; for example, larger-format and multivolume works of fiction are known to be less well-represented than their estimated frequency in the past [@RidellBassett2020]. Nevertheless, the corpus is large enough that it may represent a substantial fraction (perhaps 4-5%) of all books published in the period of study.[^3]
 
