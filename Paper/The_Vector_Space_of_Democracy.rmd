@@ -1,0 +1,717 @@
+---
+title: "The Vector Space of Democracy, 1700-2020"
+author: "Xavier Marquez"
+format: html
+editor: source
+bibliography: "bibfile.bib"
+biblio-style: apsr
+echo: false
+warning: false
+message: false
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidytext)
+library(tidygraph)
+library(ggraph)
+library(quanteda)
+library(wordVectors)
+library(hathiTools)
+library(magrittr)
+library(targets)
+
+theme_set(theme_bw())
+tar_config_set(store = here::here("_targets"))
+```
+
+## Introduction {.unnumbered}
+
+The meaning of "democracy" has changed enormously over the last two centuries. In the late 18th and early 19th century the term had a negative valence, redolent of mob rule, but it was then taken up by opponents of aristocracy and eventually came to acquire its current positive associations with freedom and equality [@Dunn2005; @Markoff1999; @Markoff2015; @Przeworski2010]. Today, most constitutions throughout the world mention "democracy"; public opinion, as expressed in surveys, is strongly "pro-democratic" everywhere, even in places far from the West where the concept is thought to have emerged [@Inglehart2003]; and the public culture of many places understands itself as democratic, even as people's conceptions of democracy are sometimes far from liberal [@alvarez2017values]. The historian John Dunn has argued that today the word "democracy" (brought into many languages directly from the Greek root) symbolizes the only legitimate political system [@Dunn2005, p. 15].
+
+Studies of the changing meaning of "democracy" in history and political theory are nevertheless limited by their focus on a small number of (generally canonical) works. Alan Ryan's magisterial *On Politics*, which among other themes focuses on the development of ideas about democracy, discusses perhaps a hundred different authors in any depth [@Ryan2012]; and of the more than 900 entries in the *Encyclopedia of Political Thought* [@gibbons2015encyclopedia], barely a third are proper names, not all of whom would have written about democracy. Even works that attempt to expand the standard democratic canon [e.g., @Keane2009; @marquez2018democratic] at best add a few not obviously representative texts to the typical list.[^1]
+
+[^1]: There are some exceptions. @Gagnon2018, for example, catalogues more than 2,200 different descriptions of democracy and discusses many now-obscure works where these descriptors are used. It is also worth noting here the approach of the *Begriffsgeschichte* [@Koselleck2011; @Sheehan1978], which attempts to trace the history of concepts over a much larger set of sources than the canon for the period 1700-1850. Koselleck's monumental historical *Lexikon* of fundamental political concepts [@Lexikon1972] is limited by its focus on German-language, manually collected sources, though its entry on *Demokratie* [@Demokratie1972] is well worth reading.
+
+In this paper, we explore the evolution of conceptions of "democracy" by a "distant reading" [@Moretti2013] of hundreds of thousands of books. Taking advantage of the large corpus of digitized books in the Hathi Trust digital library, we use word vector embeddings and topic models to describe the evolution of the language of "democracy" over the last three centuries, mostly in English books but also in a variety of other languages. We document multiple changes in the scope and valence of the concept, and identify several periods of conceptual innovation in the second decade of the 19th century and the first decades of the 20th. We conclude that though the overall view of the history of the concept of democracy that results from this "distant reading" is not dramatically different from the view that traditional historical scholarship provides, we do find overlooked moments in this history that are only visible with this larger-scale perspective.
+
+This paper is organized as follows. We first describe the Hathi Trust digital library and document the rise of "democracy" in this corpus across a number of different contexts. We then use word vector embeddings to describe the change in the associations between democracy and other words, and document a change in the "ideological" valence of democracy since the 1700s. Finally, we quantify periods of conceptual innovation and change, and measure the degree of novelty and influence of particular books in this corpus.
+
+## Corpus description {.unnumbered}
+
+```{r corpusDescription}
+
+num_titles <- tar_read(num_htids_per_author)
+
+num_libraries <- tar_read(num_libraries)
+
+num_1700_2020 <- tar_read(date_info) |> 
+  filter(rights_date_used >= 1700, rights_date_used <= 2020) |>
+  pull(n) |>
+  sum()
+```
+
+The Hathi Trust corpus contains over 17 million digitized volumes in many languages, comprising `r format(tar_read(num_ht_bib_keys), big.mark = ",")` distinct "bibliographic records" (including multivolume works) and `r format(tar_read(num_author_title), big.mark = ",")` distinct author-title combinations (including works in more than one edition at different times). These were digitized first by the original Google Books project and later by major University and public libraries. The corpus has extensive metadata, but older books (especially those published before 1800, which are not as well represented) have worse OCR and more missing or uncertain metadata.
+
+This corpus is not, and cannot be, fully representative of all the books published in the period under study in this paper (1700-2020). It reflects the acquisition practices of about 30 major British and American libraries (including Harvard, the University of California, Oxford University, the British Library, and the New York Public Library), and thus contains a disproportionate number of English-language works.[^2] Moreover, certain kinds of works are digitized at higher rates than expected from their known frequency in the population of published books for reasons ranging from collecting practices to the physical format of a given book; for example, larger-format and multivolume works of fiction are known to be less well-represented than their estimated frequency in the past [@RidellBassett2020]. Nevertheless, the corpus is large enough that it may represent a substantial fraction (perhaps 4-5%) of all books published in the period of study.[^3]
+
+[^2]: `r nrow(num_libraries)` libraries have contributed digitized volumes to Hathi Trust, but only about 30 of these have contributed more than 10,000 works. More than 9 million volumes come from the libraries of just two Universities, the University of Michigan and the University of California, with a further million each from Harvard and the University of Illinois at Urbana-Champaign.
+
+[^3]: @Google2011 estimated that the Google books corpus in 2011 (about 8 million books at the time) represented about 4% of all books ever published; since the Hathi trust corpus is even larger, the same considerations would apply to it, though this number should not be taken too seriously. A full description of the Hathi Trust digital library and its limitations is found in @RidellBassett2020.
+
+The structure of the corpus is well-suited for research into changes over time in the concept of democracy, since it contains a vast number of scholarly works and government documents where the idea of democracy is articulated, discussed in context, and sometimes defended. Moreover, the corpus allows us to identify where each mention of democracy comes from, since the Hathi Trust provides both volume metadata (including publication information) and page-level word frequency and part-of-speech information, unlike, for example, the Google Books ngram corpus [@Google2011], which makes available only word frequency lists by year. We can therefore examine not only large-scale patterns of word usage across millions of volumes, but drill down to the individual volumes and even pages where the concept is mentioned to enhance our understanding of these patterns.
+
+Despite its size and structure, however, the corpus cannot give us unbiased information about the overall cultural impact of specific words, since prolific but uninfluential authors contribute about equally to the corpus as less prolific but more popular or influential authors (though more popular or influential authors are often represented by multiple editions of their work). As @Pechenick2015 argue with respect to the Google books corpus, the Hathi Trust dataset is still in effect "a reflection of a library in which only one of each book is available" (p. 2 - though in this case sometimes more than one copy of each book is available).
+
+## The frequency of democracy {.unnumbered}
+
+About `r format(num_1700_2020, big.mark = ",")` of the Hathi Trust volumes have approximate publication date information between 1700 and 2020, and of these about `r nrow(tar_read(democracy_worksets)) |> format(big.mark = ",")` mention the word "democracy." (This includes books in any language; if we restrict ourselves to books primarily written in English, `r tar_read(democracy_worksets_meta) |> filter(lang == "eng") |> nrow() |> format(big.mark = ",")` mention "democracy" at least once). A striking fact evident in this corpus is the rise of 'democracy' as a topic, both in terms of the number of books in which the word is mentioned, and in terms of the number of words per million in the corpus (fig. \@ref(fig:percentTextsDemocracy) and \@ref(fig:wordsPerMillionDemocracy)).
+
+```{r fig-percentTextsDemocracy}
+#| fig-cap: "Percent of texts in the HathiTrust corpus mentioning 'democracy'. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
+
+democracy_text_percent <- tar_read(democracy_text_percent) 
+
+wars <- tibble(xmin = c(1775, 1789, 1848, 1861, 1914, 1939, 1989), 
+                      xmax = c(1787, 1810, 1849, 1865, 1918, 1945, 1991),
+                      ymin = -Inf, ymax = Inf)
+
+ggplot() +
+  geom_rect(data = wars, aes(xmin = xmin, 
+                      xmax = xmax,
+                      ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) +
+  geom_line(data = democracy_text_percent, aes(x = date_year, 
+                                               y = slider::slide_dbl(value, .f = mean, .before = 5, .after = 5)))  +
+  geom_line(data = democracy_text_percent, aes(x = date_year, y = value), alpha = 0.2)  +
+  labs(title = "Frequency of 'democracy' in HathiTrust texts",
+       subtitle = "Percent of texts in HathiTrust, 10-year moving average",
+       y = "", x = "Approximate publication date")
+  
+  
+```
+
+```{r, fig-ordsPerMillionDemocracy}
+#| fig-cap: "Frequency of mentions of 'democracy' in the HathiTrust corpus, per million words. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
+
+democracy_words_per_million <- tar_read(democracy_words_per_million) 
+
+ggplot() +
+  geom_rect(data = wars, aes(xmin = xmin, 
+                      xmax = xmax,
+                      ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) +
+  geom_line(data = democracy_words_per_million, aes(x = date_year, 
+                                               y = slider::slide_dbl(value, 
+                                                                     .f = mean, 
+                                                                     .before = 5, 
+                                                                     .after = 5)))  +
+  geom_line(data = democracy_words_per_million, aes(x = date_year, y = value), alpha = 0.2)  +
+  labs(title = "Frequency of 'democracy' in HathiTrust texts",
+       subtitle = "Words per million in HathiTrust, 10-year moving average",
+       y = "", x = "Approximate publication date")
+```
+
+The frequency of "democracy" in English-language books increases slowly throughout the 18th century, with a sharp jump after the American Revolution, around the time of the French Revolution. Its usage is then relatively stable until the Jacksonian period (in the USA) and the Reform era and the Chartist period (in the UK), with another step-jump in frequency until 1848 (and the European revolutions of that year). It then remains relatively stable until the First World War, when "democracy" increases in salience again, only to decline sharply until the eve of the Second World War. The end of the Second World War brings another sharp jump in the frequency of mentions of "democracy", and there is again a decline until the end of the Cold War, when "democracy" becomes fashionable again.
+
+These patterns make good historical sense. It is unsurprising to see an increased use of the term after the French Revolution reintroduced the concept into common discourse; it is perhaps a bit surprising that we do *not* see such an increase with the American revolution, though this may have more to do with the characteristics of the corpus (there are many fewer books represented in the corpus for the 18th century than for the 19th). The age of Jackson and the Chartist period are both periods of democratic experimentation, when democracy shed some of its negative connotations (as we shall see in more detail later). And democracy, the form of government of many of the victorious powers in the World Wars, was on the ascendant at the end of the wars (as well as at the end of the Cold War), appearing as something to be emulated [@gunitsky2017aftershocks].
+
+We should nevetheless not expect the same patterns to be present in every language. Although some other European languages also show peaks after the First and Second World Wars (fig. \@ref(fig:multilingualDemocracy)), the frequency graphs for "democracy" in many other languages reflect the particularities of the histories of the countries where the books were published. For example, in Chinese, the frequency of "democracy" spikes after the Revolution in 1949, and again in the years leading to the Tiannanmen Square massacre, while in Japanese we observe the sharpest increase in the usage of the term during and after the American occupation. Among the romance languages, in French and Spanish the peaks after the World Wars are muted, even indistinguishable from a general upward trend, but French shows a clear increase in the usage of the term during the Revolution, while Italian shows a sharp increase after the Fascist period.
+
+These pictures are only illustrative, and cannot tell the full picture. Multiple terms are used for "democracy" in some languages, and some languages have agglutinative structures or declensions that prevent us from capturing the frequency of a term without looking at all its forms. Indeed, the nature of a "word" in some languages is still an object of controversy, and word segmentation algorithms are not perfect. But we can nevertheless say both that "democracy" has generally increased in salience in many languages and countries, and that the specific patterns of that salience have varied in response to events.
+
+```{r fig-multilingualDemocracy}
+#| fig-dpi: 300
+#| fig-cap: "Frequency of the term 'democracy' in other languages. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
+#| fig-width: 9
+#| fig-height: 9
+
+democracy_translations_freqs <- tar_read(democracy_translations_freqs) |>
+  pivot_wider(names_from = counttype, values_from = value) |>
+  group_by(language_long, date_year) |>
+  summarise(TotalWords = unique(TotalWords),
+            WordCount = sum(WordCount, na.rm = TRUE),
+            WordsPerMillion = WordCount * 1e6/TotalWords,
+            label = paste0(unique(language_long), " (", str_trunc(paste(unique(word), collapse = ", "), 40), ")")) |>
+  filter(!is.na(WordCount)) |>
+  group_by(language_long) |>
+  mutate(sl_value = slider::slide_dbl(WordsPerMillion, .f = mean, .before = 5, .after = 5))
+
+ggplot(data = democracy_translations_freqs)  +
+  geom_line(data = democracy_translations_freqs , aes(x = date_year, y = sl_value)) +
+  geom_rect(data = wars, aes(xmin = xmin, 
+                      xmax = xmax,
+                      ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) +
+  geom_point(data = democracy_translations_freqs , aes(x = date_year, y = WordsPerMillion), alpha = 0.3) +
+  labs(title = "Frequency of 'democracy' in HathiTrust texts",
+       y = "", x = "Approximate publication date",
+       subtitle = "Words per million. Shaded areas denote major wars and revolutions. \n10-year rolling average, case-insensitive search.") +
+  facet_wrap(~label, scales = "free_y") 
+```
+
+## Word Vector Embeddings {.unnumbered}
+
+In order to understand whether and when there have been deeper conceptual changes associated with the increased usage of the word 'democracy' over time, we need to look at the *contexts* in which 'democracy' is discussed. For this purpose, I use a variety of word embedding models to extract the words most likely to appear in similar contexts, and then use Hathi Trust's search facilities to dig deeper into the books that contain such words.
+
+Word vector embeddings encode semantic and linguistic information about words within a specific context window, enabling us to define a measure of "similarity" between words [@glove2014]. Words that are "close" in the vector space (by a metric such as cosine similarity) are typically close in meaning, occurring in similar contexts. Though Hathi Trust does not make the full text of all the books in the corpus freely available, it makes available page-level word frequencies. Using this page context, we can calculate word vectors that encode information about which words occur near each other within a page context. Page contexts do not allow us to capture syntactic or even semantic relatedness, but they do allow us to capture *conceptual* association: words that tend to occur together within the same page will tend to be used to discuss similar concepts.
+
+```{r readSample}
+democracy_samples <- tar_read(democracy_samples)
+
+```
+
+Since the total number of books in the HathiTrust corpus is very large, imposing some computational and budgetary constraints on this project, and we are only interested in the contexts around the word "democracy", I begin by selecting a random sample of `r format(nrow(democracy_samples), big.mark = ",")` English-language volumes that mention the word 'democracy'. I build this sample by first finding all the English-language books that mention 'democracy' using HathiTrust's [Workset Builder 2.0](https://solr2.htrc.illinois.edu/solr-ef/). I then exclude works whose publication date is clearly incorrect or missing (e.g., books with a much earlier publication date in their metadata than their other publication information indicates) and randomly sample 5,000 books per decade from the remaining volumes.[^4]
+
+[^4]: Books with the wrong metadata can have a big influence on results in decades where few volumes mention democracy (e.g., the early 1700s), so it is important to exclude them to avoid spurious associations of democracy with concepts not in wide use at the particular time. Note that in decades between 1700-1800 and after 2000 there are fewer than 5,000 books digitized per decade, and some of the books in later decades do not have freely available "extracted features" files even if they appear in the workset, so there are not always 5,000 books per decade in the sample. A full description of this sample can be found in the appendix.
+
+The mentions of "democracy" in this sample correlate well with the mentions of "democracy" in the larger Hathi Trust corpus, increasing our confidence that the sample reflects the overall corpus well. It also shows a similar pattern: books that mention the word "democracy" mention it *more often* during the French Revolution and the First and Second World Wars, indicating the increasing salience of the concept during those periods (fig. \@ref(fig:freqDemocracyInDemocracyBooks)). There is also a generally increasing trend from the second decade of the 19th century, which suggests that the concept is discussed in both more contexts and more depth.
+
+To calculate the word vector embeddings, we first clean up the Hathi Trust extracted features files, excluding words that include numbers or punctuation as well as common English stopwords and words of less than 2 characters (which include many OCR artifacts). We then build the document-term matrix for each decade, restricting it to the top 30,000 terms, and use it to compute several different word vector embeddings, using different methods and parameters.
+
+There are several sources of uncertainty for these word vector models. First, and most importantly, these word vectors only encode information about the books in the sample; a different sample, or a larger sample, would lead to slightly different results. Since the sample is selected at random from all the books that mention the word "democracy", concerns about bias should be mitigated. And since our purpose here is not to investigate general language change but only language change surrounding the term "democracy", it is also appropriate to only look at books that mention the word 'democracy' rather than a random sample of all books. Nevertheless, I also look at results using a full random sample of English books (whether or not they mention democracy), as well as the word vectors computed by Hamilton, William, Leskovec, and Jurafsky [-@hamiltondiachronic2016] from the Google Books 5-gram dataset.
+
+Second, different algorithms and context windows for calculating these word vectors yield slightly different results. I calculate word vectors using two different algorithms. First, I compute approximate word vectors using the GLoVe algorithm [@glove2014] implemented in the R package `text2vec` [@text2vec2020]. The GLoVe vectors are the result of a predictive model, so they tend to provide good estimates of context similarity, but the algorithm is more computationally intensive (and we are calculating many hundreds of models). Second, I also use a fast algorithm to approximate the singular value decomposition of the document-term matrix using the "augmented implicitly restarted Lanczos bidiagonalization algorithm" of Baglama and Reichel [-@BaglamaReichel2005] implemented in the R package `irlba` [@irlba2019]. This algorithm provides serviceable word vectors, but it tends to overestimate the similarities between distant words. I also check these results against a simple calculation of the pointwise mutual information between "democracy" and other words in each decade.
+
+Finally, results may also differ depending on the dimensionality of the resulting vectors or the cutoff for the number of tokens in the document-term matrix. I experimented with 50-dimensional and 100-dimensional word vectors, and with word vectors including the top 50,000 and 100,000 terms in each decade. I also calculated separate word vector models for words tagged with and without their part of speech; in what follows I use part-of-speech tagged models, and focus on the GLoVe models.
+
+## The language of democracy {.unnumbered}
+
+We begin by plotting the changing frequency of the most similar words to "democracy" over time (fig. \@ref(fig:similarityToDemocracyGeneral)). The story these words trace is recognizable in its broadest strokes. Democracy is at first a disputed concept, as indicated by the prominence of "demagogue" among the most similar terms in the late 18th and early 19th centuries. The mid-19th century sees the emergence of debates on the relationship between democracy, federalism, and republicanism; as we shall see, the prominence of these terms reflects the importance of the American Civil War in our sample, where this relationship was heavily disputed. In the 1910s (WWI), democracy is increasingly discussed in the context of discussions of nationalism and socialism, while in the 1940s (WWII) the relationship between democracy and freedom acquires newfound importance. Finally, by the mid-20th century the relationship between ideology and democracy becomes increasingly thematized in scholarly discussions.
+
+```{r similarityToDemocracyGeneral, eval = FALSE, fig.cap = "Words with the highest cosine similarity to 'democracy' in the GLoVe vector space (at least 0.9)."}
+
+graph_similarities(0.9, closest_to_democracy_glove_pos, term_type = "all", method = "GLoVe") 
+graph_similarities(0.9, closest_to_democracy_svd_pos, term_type = "all", method = "SVD") 
+
+```
+
+```{r, eval = FALSE}
+
+terms_df <- calculate_word_years(0.9, closest_to_democracy_glove_pos) 
+
+read_pmi_mat <- function(filename, pattern) {
+  pmi_file <- read_rds(filename)
+  pmi_file <- pmi_file %>% 
+    dfm_select(pattern = pattern, valuetype = "regex") 
+  
+  year <- str_extract(filename, "[0-9]{4}") %>%
+    as.integer()
+  
+  books_df <- convert(pmi_file, to = "data.frame") %>%
+    as_tibble() %>%
+    rename(ht_bib_key = doc_id) %>%
+    rowwise() %>%
+    mutate(total_pmi = sum(c_across(-ht_bib_key))) %>%
+    ungroup() %>%
+    left_join(democracy_sample_random) %>%
+    filter(rights_date_used >= year, rights_date_used < (year + 10)) %>% 
+    mutate(html = str_glue("https://babel.hathitrust.org/cgi/pt?id={htid}"),
+           democ_query = str_glue("https://babel.hathitrust.org/cgi/pt/search?q1=democracy;id={htid}"))
+  
+  books_df
+  
+}
+
+extract_books_from_pmi_mat <- function(terms_df) {
+  terms_df <- terms_df %>%
+    mutate(filename = str_glue("pmi-matrices/pmi_matrix_{decade_min}.rds")) %>%
+    group_by(decade_min, filename) %>%
+    summarise(pattern = paste(paste0("^", word, "$"), collapse = "|")) %>%
+    mutate(pattern = paste0(pattern, "|^democracy_")) %>%
+    ungroup() 
+  
+  books_from_pmi_mat <- map2_df(.x = terms_df$filename, 
+                                .y = terms_df$pattern, 
+                                read_pmi_mat)
+  
+  books_from_pmi_mat
+
+}
+
+terms_link <- terms_df %>%
+  rename(decade = decade_min) %>%
+  group_by(decade) %>%
+  summarise(terms = paste(word, collapse = ", "))  %>%
+  ungroup() 
+  
+books_0.9 <- extract_books_from_pmi_mat(terms_df)
+
+top_books <- books_0.9 %>%
+  group_by(decade) %>%
+  slice_max(order_by = total_pmi, n = 10) %>%
+  left_join(terms_link) %>%
+  select(decade, terms, rights_date_used, htid, total_pmi, title, author, html, democ_query)
+
+write_csv(top_books, "other-objects/top_books.csv")
+
+```
+
+We can dig down into the individual volumes that contribute to this result. In the 1910s, "Democracy" has the highest positive pointwise mutual information with "socialism", "patriotism", "nationalism", "nation", "ideals", and "americanism" in the New York Times Book Review and Magazine. In 1918 the review (digitized by Google from a volume housed at the University of Pennsylvania)
+
+We can add detail to this story by focusing on the similarities to democracy of specific types of words: adjectives (fig. \@ref(fig:similarityToDemocracyAdjectives)), nouns (fig. \@ref(fig:similarityToDemocracyNouns)), verbs (fig. \@ref(fig:similarityToDemocracyVerbs)), terms for other forms of government (fig. \@ref(fig:similarityToOtherGov)), and "ideology" terms (words ending in "ism", fig. \@ref(fig:similarityToIdeology)). In most of these graphs we see big clusters of words emerge in three specific periods: in the 1840s, during the Chartist Movement in the UK and just as debates over the place of slavery in the US constitution intensify before the US Civil War; in the 1910s, before the and during the First World War; and during the Second World War.
+
+```{r similarityToDemocracyAdjectives, eval = FALSE, fig.height=10, fig.cap = "Adjectives with the highest cosine similarity to 'democracy' in the GLoVe vector space (at least 0.8)."}
+graph_similarities(0.8, adjectives, term_type = "adjectives", method = "GLoVe")
+```
+
+These periods are identified in the vector space by the degree to which they contain words that appear closely related to "democracy". More words have a large cosine similarity to "democracy" in 1910 and the 1840s than at any other time.
+
+```{r similarityToDemocracyNouns, eval = FALSE, fig.height=10, fig.cap = "Nouns reaching cosine similarity of at least 0.85 to 'democracy' in the GLoVe vector space of the top 50,000 POS-tagged words."}
+graph_similarities(0.85, nouns, term_type = "nouns", method = "GLoVe")
+```
+
+```{r similarityToDemocracyVerbs, eval = FALSE, fig.height=10, fig.cap = "Nouns with the highest cosine similarity to 'democracy' in the GLoVe vector space (at least 0.8)."}
+graph_similarities(0.8, verbs, term_type = "verbs", method = "GLoVe")
+```
+
+```{r similarityToOtherGov, eval = FALSE, fig.height=10, fig.cap = "Words for forms of government with the highest cosine similarity to 'democracy' in the GLoVe vector space (at least 0.8)."}
+graph_similarities(0.8, constitutional, term_type = "other words for government forms", method = "GLoVe")
+```
+
+```{r similarityToIdeology, eval = FALSE, fig.height=10, fig.cap = "Nouns with the highest cosine similarity to 'democracy' in the GLoVe vector space (at least 0.8)."}
+graph_similarities(0.8, ideologies, term_type = "'-ism' words", method = "GLoVe")
+```
+
+```{r innovationPeriods, eval = FALSE, fig.cap = "Number of words with a similarity of 0.1 or above to democracy."}
+# clusters_list <- seq(0.5, 0.9, by = 0.1) %>%
+#   map(calculate_clusters, df = nouns)
+
+calculate_word_years <- function(threshold, df) {
+  word_years_df <- df %>%
+    filter(similarity > threshold) %>%
+    group_by(word) %>%
+    summarise(decade_min = min(decade),
+              decade_max = max(decade))
+
+}
+
+thresholds <- seq(0.5, 0.9, by = 0.05) 
+names(thresholds) <- seq(0.5, 0.9, by = 0.05) 
+
+word_years_df_glove <- thresholds %>%
+  map_df(calculate_word_years, df = closest_to_democracy_glove_pos,.id = "threshold") %>%
+  mutate(threshold = as.numeric(threshold),
+         type = "GloVE")
+
+word_years_df_svd <- thresholds %>%
+  map_df(calculate_word_years, df = closest_to_democracy_svd_pos,.id = "threshold") %>%
+  mutate(threshold = as.numeric(threshold),
+         type = "SVD")
+
+word_years_df <- bind_rows(word_years_df_glove, word_years_df_svd) %>% 
+  mutate(pos = str_extract(word, "_[a-z]{2}"),
+         pos = case_when(pos == "_jj" ~ "Adjective",
+                         pos == "_vb" ~ "Verb",
+                         TRUE ~ "Noun"))
+
+ggplot() +
+  geom_rect(data = wars, 
+            aes(xmin = xmin, xmax = xmax,
+                ymin = -Inf, ymax = Inf), 
+            fill = "red", alpha = 0.3) +
+  geom_bar(data = word_years_df, 
+           aes(x = decade_min, fill = type), position = "dodge") +
+  facet_wrap(~as.factor(threshold), scales = "free_y") +
+  labs(y = "Number of words with similarity\n to 'democracy' at least n",
+       x = "First decade in which word achieves similarity of at least n",
+       title = "Periods of conceptual innovation",
+       fill = "Vector space model")
+```
+
+```{r, eval = FALSE}
+ggplot() +
+  geom_rect(data = wars, 
+            aes(xmin = xmin, xmax = xmax,
+                ymin = -Inf, ymax = Inf), 
+            fill = "red", alpha = 0.3) +
+  geom_bar(data = word_years_df %>%
+             filter(str_detect(word, "_nn|_jj|vb"), threshold == 0.7), 
+           aes(x = decade_min, fill = paste(type, pos)), position = "dodge") +
+  scale_fill_viridis_d()  +
+  labs(y = "Number of words with similarity \nat least 0.7 to 'democracy'",
+       x = "First decade in which word achieves similarity of at least 0.7",
+       title = "Periods of conceptual innovation",
+       fill = "Vector space model")
+```
+
+```{r, eval = FALSE}
+data <- closest_to_democracy_glove_pos %>% 
+  mutate(type = "GloVE") %>% 
+  bind_rows(closest_to_democracy_svd_pos %>%
+              mutate(type = "SVD")) %>% 
+  filter(str_detect(word, "_nn|_jj|_vb")) %>%
+  mutate(pos = str_extract(word, "_[a-z]{2}"),
+         pos = case_when(pos == "_jj" ~ "Adjective",
+                         pos == "_vb" ~ "Verb",
+                         TRUE ~ "Noun")) %>% 
+  filter(similarity > 0) %>%
+  mutate(sim_bucket = cut(similarity, 4)) %>%
+  group_by(decade, type, sim_bucket) %>% 
+  summarise(total_sim = sum(similarity),
+            total_words = n()) 
+  
+ggplot() +
+  geom_rect(data = wars, 
+            aes(xmin = xmin, xmax = xmax,
+                ymin = -Inf, ymax = Inf), 
+            fill = "red", alpha = 0.3) + 
+  geom_line(data = data, aes(x = decade, y = total_words, color = type)) + 
+  geom_smooth(data = data, aes(x = decade, y = total_words)) +
+  facet_wrap(~sim_bucket, scales = "free_y") +
+  labs(y = "Number of words with similarity in interval\n(out of 50,000 word vocabulary per decade)",
+       color = "Vector space model",
+       title = "Distribution of words in vocabulary by similarity to democracy")
+
+library(ggridges)
+
+data <- closest_to_democracy_glove_pos %>% 
+  mutate(type = "GloVE") %>% 
+  bind_rows(closest_to_democracy_svd_pos %>%
+              mutate(type = "SVD"))
+
+```
+
+Unfortunately these results are only a little bit similar to those using the other embeddings, including those using the Google 5-gram corpus. Here we use a threshold of similarity of 0.4, since the similarity is lower when calculated over a smaller context window (not the page but the 5-gram). (Not included here).
+
+```{r, include = FALSE, cache.lazy=FALSE, eval = FALSE}
+rm(list = ls(pattern = "vecs_"))
+
+filenames <- paste0("google-embeddings/", seq(1800, 1990, by = 10), "-embeddings.rds") 
+for(file in filenames) {
+  message(stringr::str_glue("Reading {file}..."))
+  tic(stringr::str_glue("Reading {file}..."))
+  fname <- stringr::str_remove(file, "google-embeddings/")
+  fname <- stringr::str_remove(fname, ".rds")
+  assign(fname, read_rds(file))  
+  assign(fname, as.VectorSpaceModel(get(fname)))
+  toc()
+}
+
+filenames <- paste0(seq(1800, 1990, by = 10), "-embeddings")
+
+names(filenames) <- seq(1800, 1990, by = 10)
+
+```
+
+```{r, message = FALSE, warning = FALSE, eval = FALSE}
+closest_to_democracy <- filenames %>%
+  map(get) %>%
+  map_df(closest_to, "democracy", n = Inf, fancy_names = FALSE, .id = "decade") %>%
+  mutate(decade = as.integer(decade)) %>%
+  filter(str_detect(word, "ism$")) %>%
+  filter(!is.nan(similarity))
+
+threshold <- 0.4
+
+clusters <- calculate_clusters(threshold)
+
+word_years <- closest_to_democracy %>%
+  filter(similarity > threshold) %>%
+  group_by(word) %>%
+  summarise(decade_min = min(decade),
+            decade_max = max(decade))
+```
+
+```{r, message = FALSE, warning = FALSE, eval = FALSE}
+closest_to_democracy %>%
+  filter(word %in% clusters$labels) %>%
+  left_join(word_years) %>%
+  ggplot(aes(y = fct_reorder(word, decade_min))) +
+  geom_tile(aes(fill = similarity, x = decade)) +
+  geom_text(aes(x = decade_min, label = decade_min), size = 2) +
+  theme_bw() +
+  labs(y = "") +
+  scale_fill_gradient2(midpoint = 0.2) +
+  labs(title = "Cosine similarity to 'democracy' of '-ism' words over time",
+       subtitle = str_glue("Calculated in each decade's vector spacem for words that reach similarity of at least {threshold}"))
+```
+
+```{r, message = FALSE, warning = FALSE, eval = FALSE}
+closest_to_democracy <- filenames %>%
+  map(get) %>%
+  map_df(closest_to, "democracy", n = Inf, fancy_names = FALSE, .id = "decade") %>%
+  mutate(decade = as.integer(decade)) %>%
+  filter(!is.nan(similarity)) %>%
+  mutate(word = char_wordstem(word)) %>%
+  group_by(decade, word) %>%
+  summarise(similarity = mean(similarity))
+
+threshold <- 0.4
+
+clusters <- calculate_clusters(threshold)
+
+word_years <- closest_to_democracy %>%
+filter(similarity > threshold) %>%
+group_by(word) %>%
+summarise(decade_min = min(decade),
+          decade_max = max(decade))
+```
+
+```{r, message = FALSE, warning = FALSE, eval = FALSE}
+
+closest_to_democracy %>%
+  filter(word %in% clusters$labels) %>%
+  left_join(word_years) %>%
+  filter(!word %in% c("cracy", "democracy")) %>%
+  ggplot(aes(y = fct_reorder(word, decade_min))) +
+  geom_tile(aes(fill = similarity, x = decade)) +
+  geom_text(aes(label = decade_min, x = decade_min)) +
+  theme_bw() +
+  labs(y = "") +
+  scale_fill_gradient2(midpoint = 0.2) +
+  labs(title = "Cosine similarity to 'democracy' of words over time",
+       subtitle = str_glue("Calculated in each decade's vector space, for words that reach {threshold} similarity"))
+```
+
+I think this is fine - the word vectors calculated using the Google 5-gram corpus only encode info about the 8-word window around a given word, which means that you get weird artifacts (like the word "Kallen", an author's last name, being closely associated with democracy- probably because of his book "Democracy vs the melting pot", which appears to have been popular in 1915).
+
+## Conceptual Innovation {.unnumbered}
+
+One thing that I would like to do is to measure in some way the degree of conceptual innovation that is happening in this corpus. One idea I had is that it is possible to measure the divergence across individual books of the pointwise mutual information between 'democracy'and other terms, relative to the overall pointwise mutual information for a whole year or decade. A larger divergence implies 'democracy' is being discussed in more diverse contexts. Consider an example (I haven't finsihed this work, so this is only indicative) using the 108,000 books sample.
+
+```{r functions, include=FALSE, eval = FALSE}
+create_local_network <- function(matrix, threshold, term, order = 1) {
+
+  as_tbl_graph(matrix, directed = FALSE) %>%
+    activate(edges) %>%
+    filter(weight > threshold) %>%
+    activate(nodes) %>%
+    mutate(neighbors = local_members(order = order)) %>%
+    activate(edges) %>%
+    filter(to %in% (unlist(.N()$neighbors[ .N()$name %in% term ]))) %>%
+    activate(nodes) %>%
+    filter(centrality_degree() > threshold)
+  
+}
+
+pmi_sim_approx_2 <- function(dfm, term) {
+  n <- sum(dfm)
+  c_term <- colSums(dfm[ , term])
+  c_feature <- colSums(dfm[])
+  c_term_feature <- Matrix::crossprod(dfm[], dfm[ ,term]) 
+  result <- log((n * c_term_feature)/(c_term * c_feature))
+  result[ result < 0 ] <- 0
+  result[ ,1]
+  
+  }
+
+```
+
+```{r, message = FALSE, warning = FALSE, eval = FALSE}
+
+rm(list = ls(pattern = "vecs_"))
+
+dtm_year_1700 <- readRDS("calculated-dtm-files/dtm_year_1700.rds")
+
+dtm_year_1700 <- dfm_trim(dtm_year_1700, 
+                          min_termfreq = min(50, colSums(dtm_year_1700[ ,                                                                        "democracy"])))
+
+democracy_pmi_1700 <- pmi_sim_approx_2(dtm_year_1700, "democracy")
+
+
+```
+
+In the year 1700, there were only `r # democracy_sample_random_large %>% filter(downloaded, lang == "eng", rights_date_used == 1700) %>% nrow()` books that mention the word democracy. If we look at terms that appear at least 50 times, these books contain `r # dim(dtm_year_1700)[2]` distinct terms. But most of these don't appear in contexts that mention 'democracy', and only some of these terms have a high PMI with 'democracy'. What I propose to do is to calculate the Gini index of inequality for the PMI with 'democracy' of all the terms in a year; for 1700 this is `r # DescTools::Gini(democracy_pmi_1700)`.
+
+```{r, include = FALSE, eval = FALSE}
+
+rm(democracy_pmi_1700, dtm_year_1700)
+
+dtms <- fs::dir_ls(regexp = "dtm_year")
+
+extract_pmi <- function(dtm_path) {
+  tic(str_glue("Reading {dtm_path}"))
+  dtm <- read_rds(dtm_path)
+  toc()
+  tic("Calculating PMIs")
+  dtm <- dfm_trim(dtm, min_termfreq = min(50, colSums(dtm[ , "democracy"])))
+  democracy_pmi <- pmi_sim_approx_2(dtm, "democracy")
+  toc()
+  tibble(word = names(democracy_pmi), pmi = democracy_pmi)
+
+}
+
+all_pmis <- dtms %>%
+  map_df(extract_pmi, .id = "dtm")
+
+ginis <- all_pmis %>% 
+  group_by(dtm) %>% 
+  summarise(gini = DescTools::Gini(pmi)) %>%
+  mutate(year = str_extract(dtm, "[0-9]+") %>% as.integer())
+```
+
+The lower the Gini, the higher the diversity (lower inequality) of words that achieve a high PMI with democracy; here's what that looks like across all years in the large 108,000 book sample:
+
+```{r, eval = FALSE, message = FALSE, warning = FALSE}
+democracy_ginis <- readRDS("democracy_ginis.rds")
+
+ggplot() +
+  geom_rect(data = wars, aes(xmin = xmin, 
+                      xmax = xmax,
+                      ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) + 
+  geom_line(data = democracy_ginis, aes(x = year, y = gini), alpha = 0.3) +
+  geom_line(data = democracy_ginis, aes(x = year, y = slider::slide_dbl(gini, mean, .before = 10))) +
+  labs(title = "Estimated Gini index for PMI of words in corpus relative to 'democracy', per year",
+       subtitle = "10 year rolling average. Lower values indicate greater 'diversity' of words with high PMI. \nRestricted to terms appearing at least 50 times.")
+```
+
+This suggest a period of great innovation starting in the second decade of 1800 --the high point of Jacksonian democracy in the USA? -- and periods of more gradual innovation. I would have to check this by looking at a sample of actual books. (Here I'm looking for ways of visualizing how some years have more "innovation" - is there some way of displaying word networks that is able to show how some years have more innovation?)
+
+There's another way of thinking about this, looking at novelty vs. resonance in the vein of work by @BarronHuangSpangDedeo2018. They use a corpus of speeches in the French Revolution, and fit a topic model with 100 topics to the corpus. They then look at the distribution of topics per speech, and calculate the Kullback-Leibler divergence on a window centered on each text: texts with a high value relative to the past are "novel", while those with a low value relative to the future are "resonant."
+
+I tried something similar: I fit a topic model on all the pages that mention the word 'democracy' (100 topics) and then I look at the the gini index of the topic distribution per year - in years where the mass of the distribution is mostly on one topic, there's less diversity (and thus a higher gini):
+
+```{r, eval=FALSE}
+doc_topic_distr <- read_rds("hathi_random_sample_doc_topic_distr_by_bib_key.rds")
+doc_topic_distr_df <- read_rds("hathi_random_sample_topic_distr_df_by_bib_key.rds")
+```
+
+```{r, eval = FALSE, message = FALSE, warning = FALSE}
+topic_ginis <- doc_topic_distr_df %>%
+  pivot_longer(starts_with("..."), names_to = "topic") %>%
+  mutate(decade = round(rights_date_used/10)*10) %>%
+  group_by(rights_date_used) %>%
+  summarise(gini = DescTools::Gini(value))
+
+ggplot() + 
+  geom_rect(data = wars, aes(xmin = xmin, 
+                      xmax = xmax,
+                      ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) + 
+  geom_line(data = topic_ginis, aes(x = rights_date_used, y = gini), alpha = 0.3) +
+  geom_line(data = topic_ginis, aes(x = rights_date_used, y = slider::slide_dbl(gini, mean, .before = 10))) +
+  labs(title = "Estimated Gini index for topic distribution of pages including the word democracy, 100 topics  per year",
+       subtitle = "10 year rolling average. Lower values indicate greater 'diversity' of topics. \nSmall (24,000 books) sample.",
+       x = "year")
+```
+
+I also look at how the Kullback-Leibler divergence of each year's average topic distribution changes over timeThe results are similar, but I'm less certain.
+
+```{r, eval = FALSE}
+library(philentropy)
+library(slider)
+
+sliding_kl <- function(x, i, .before = 0L, .after = 0L) {
+  mat <- (slide_index(x, i, ~KL(t(as.matrix(as_tibble(., .name_repair = "universal")))), 
+                                      .before = .before, .after = .after))
+  result <- map(mat, check_means)
+  result
+}
+
+check_means <- function(m) {
+  if(length(dim(m)) < 2 | is.null(dim(m))) {
+    return(mean(m))
+  } else {
+    return(colMeans(m))
+  }
+}
+
+
+
+```
+
+```{r, eval = FALSE, message = FALSE, warning = FALSE}
+df <- doc_topic_distr_df %>% 
+  group_by(rights_date_used) %>% 
+  summarise(across(starts_with("..."), mean))%>% 
+  group_by(rights_date_used) %>%
+  pivot_longer(starts_with("...")) %>%
+  summarise(value = list(value), rights_date_used = unique(rights_date_used)) %>%
+  ungroup() %>%
+  arrange(rights_date_used) %>% 
+  group_by(rights_date_used) %>%
+  mutate(index = seq_along(rights_date_used)) %>%
+  ungroup() %>%
+  mutate(novelty_10 = sliding_kl(value, rights_date_used, .before = Inf),
+         transience_10 = sliding_kl(value, rights_date_used, .after = Inf)) %>%
+  group_by(rights_date_used) %>%
+  mutate(novelty_10_index = length(first(novelty_10))-max(index)+index) %>%
+  unnest(novelty_10) %>%
+  group_by(rights_date_used) %>%
+  filter(novelty_10 == novelty_10[novelty_10_index]) %>%
+  unnest(transience_10) %>%
+  group_by(rights_date_used) %>%
+  filter(transience_10 == transience_10[index]) %>%
+  ungroup() 
+
+
+ggplot() + 
+  geom_rect(data = wars, aes(xmin = xmin, 
+                      xmax = xmax,
+                      ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) + 
+  geom_point(data = df, aes(x = rights_date_used, y = novelty_10), alpha = 0.3) +
+  geom_smooth(data = df, aes(x = rights_date_used, y = novelty_10)) +
+  labs(y = "novelty", x = "year",
+       title = "Avg. Kullback-Leibler divergence (novelty) of each year's topic distribution",
+       subtitle = "Calculated relative to all preceding topic distributions")
+
+```
+
+```{r, eval = FALSE, message = FALSE, warning = FALSE}
+dtm_year_1850 <- readRDS("dtm_year_1850.rds")
+
+pmi_1850 <- pmi_sim_approx_2(dtm_year_1850, "democracy")
+
+dtm_year_1850_small <- dfm_select(dtm_year_1850, pattern = names(pmi_1850[ pmi_1850 > 0]))
+
+dtm_year_1850_small <- dfm_subset(dtm_year_1850_small, as.vector(dtm_year_1850_small[ ,"democracy"]) > 0)
+
+groups <- rownames(dtm_year_1850_small) %>% str_remove("_[0-9]+$")
+
+dtm_year_1850_small <- dfm_group(dtm_year_1850_small, groups = groups)
+
+library(tidygraph)
+library(ggraph)
+
+dtm_year_1850_graph <- dtm_year_1850_small %>% 
+  dfm_select(pattern = names(tail(sort(pmi_1850[pmi_1850 > 0]), 200))) %>%
+  dfm_trim(1) %>%
+  as.matrix() %>% 
+  as_tbl_graph(weighted = TRUE) 
+
+bipartite_matrix <- igraph::as_incidence_matrix(dtm_year_1850_graph)
+
+word_matrix <- t(bipartite_matrix) %*% bipartite_matrix
+
+word_matrix_1850_graph <- as_tbl_graph(word_matrix, weighted = TRUE) %>%
+  activate(edges) %>%
+  filter(weight > 10) %>%
+  activate(nodes) %>%
+  filter(centrality_degree() > 2,
+         name != "democracy") 
+
+ggraph(word_matrix_1850_graph) +
+  geom_edge_link(aes(alpha = weight)) +
+  geom_node_text(aes(label = name)) +
+  coord_flip()
+```
+
+Here's another measure: looking at the proportion of words in previous/later
+
+```{r, eval = FALSE}
+democracy_influence <- read_rds("democracy_influence.rds")
+
+prop_words <- democracy_influence %>%
+  group_by(year) %>%
+  mutate(prop = n/n[offset == 0]) %>%
+  ungroup()
+
+prop_words %>%
+  filter(year == 1700) %>%
+  ggplot(aes(x = offset, y = prop)) +
+  geom_line()
+
+prop_words %>%
+  ggplot(aes(x = offset, y = prop, color = year)) +
+  geom_line(alpha = 0.3) +
+  scale_colour_gradient2(midpoint = 1850)
+
+prop_words %>%
+  filter(offset != 0) %>%
+  mutate(period = case_when(offset < 0 ~ "Before",
+                            offset > 0 ~ "After")) %>%
+  group_by(year, period) %>%
+  summarise(avg_total_pmi = mean(total_pmi), avg_prop = mean(prop),
+            avg_avg_pmi = mean(avg_pmi)) %>%
+  filter(period == "After") %>%
+  arrange(avg_prop, desc = TRUE) %>%
+  ggplot(aes(x = year, y = avg_prop)) +
+  geom_col()
+```
