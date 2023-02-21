@@ -3,6 +3,7 @@ name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iterat
 all_model_weights|stem|6c93875484289955|ecdca2610fcbbf3f|9d440974532aed1a|618692933||t19405.6333448317s|7b4f3c6dbe72b841|567878955|rds|local|vector|||2.83||
 binary_metrics|function|d2c384e3d5861cc7|||||||||||||||
 cached_hathi_catalog|stem|b7c64b20d22e8bbc|ed1a70616d891468|4c3495b35078b93f|-862988512||t19395.3183727057s|999d535ed8182af9|1025902379|rds|local|vector|||57.684||
+combined_dem_dfm|stem|9a8d3bea29cf9d09|b31b1a6484a3e211|32e1a0de752b97e8|-2147452805||t19409.9836781322s|8c87f6b88c3566ab|409833808|rds|local|vector|||371.119||
 combined_performance|stem|1aa3b69853cb156d|392cfdd9a4476ff5|5ecda62d14f17366|-1997294838||t19405.3507025946s|c184bff7cb108194|108042|rds|local|vector|||0.003||
 combined_weights|stem|73b3fc04c41ca9a2|78a6faad84b8f8a7|8b9ec8843b5d31f0|-1517527574||t19406.2405230191s|26a087858d494649|69401502|rds|local|vector|||139.925||
 compute_dfm|function|6e374fca6df28fb6|||||||||||||||
