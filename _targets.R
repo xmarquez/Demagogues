@@ -688,6 +688,13 @@ tar_eval(
 
   ),
 
+tar_target(
+  name = combined_dem_dfm,
+  command = do.call(rbind, feature_decade_dfm),
+  deployment = "main",
+  packages = "quanteda"
+),
+
 # Basic corpus stats ------------------------------------------------------
 
   tar_target(
@@ -795,7 +802,7 @@ tar_eval(
     deployment = "main"
   ),
 
-## Paper and appendixes ------------------------------------------------
+# Paper and appendixes ------------------------------------------------
 
   tar_knit(
     name = graph_document,
