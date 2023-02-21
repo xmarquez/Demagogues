@@ -21,6 +21,34 @@ compute_dfm <- function(dataset, cache_format = "rds",
 
 }
 
+compute_dfm_feat <- function(dataset, feat, cache_format = "rds",
+                             max_features = 30000, min_length = 3,
+                             min_sentence_count = 3) {
+  feat <- force(feat)
+
+  dfm <- dataset %>%
+    hathiTools::read_cached_htids(cache_format = cache_format, cache_type = c("ef", "pagemeta")) %>%
+    dplyr::filter(sentenceCount >= min_sentence_count,
+                  stringr::str_detect(POS, "NN|JJ|VB"),
+                  stringr::str_length(token) >= min_length,
+                  stringr::str_detect(token, "^\\p{L}+$"),
+                  section == "body") %>%
+    dplyr::mutate(token = paste(token, POS, sep = "_"),
+                  doc_id = paste(htid, page)) %>%
+    # dplyr::collect() %>%
+    dplyr::group_by(doc_id) %>%
+    dplyr::filter(any(stringr::str_detect(token, stringr::regex(feat, ignore_case = TRUE)))) %>%
+    dplyr::ungroup() %>%
+    dplyr::count(doc_id, token, wt = count) %>%
+    dplyr::mutate(token = stringr::str_remove(token, "(?<=_[NJVB]{2}).+")) %>%
+    tidytext::cast_dfm(doc_id, token, n) %>%
+    quanteda::dfm_tolower() %>%
+    quanteda::dfm_trim(max_features, termfreq_type = "rank")
+
+  dfm
+
+}
+
 dfm_ppmi <- function(dfm, base = 10) {
   # this is for a column-oriented sparse matrix; transpose if necessary
   dfm_row_sum <- Matrix::rowSums(dfm)

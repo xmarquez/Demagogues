@@ -302,6 +302,19 @@ list(
   ),
 
   tar_target(
+    name = feature_decade_dfm,
+    command = compute_dfm_feat(democracy_files, names(democracy_feature), cache_format = "rds"),
+    pattern = map(democracy_files),
+    resources = tar_resources(future = tar_resources_future(
+      plan = future::tweak(future.batchtools::batchtools_slurm,
+                           resources = dfm_resources),
+      resources = dfm_resources)),
+    storage = "worker",
+    retrieval = "worker",
+    iteration = "list"
+  ),
+
+  tar_target(
     name = democracy_feature,
     command = quanteda::dictionary(list(democracy = c("democracy_nn", "democracy_nnp", "democracy_nns")),
                                    tolower = FALSE),
