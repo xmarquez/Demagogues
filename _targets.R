@@ -143,8 +143,8 @@ model_performance_df <- tidyr::nesting(prefix = "performance",
 model_performance_embedded_docs_df <- tidyr::nesting(prefix = "performance",
                                                      sources = c(models_embedded_docs_df$result, srp_models_df$result),
                                                      source_names = as.character(sources),
-                                                     dfms = c(models_embedded_docs_df$sources, srp_models_df$result),
-                                                     split = models_embedded_docs_df$split) %>%
+                                                     dfms = c(models_embedded_docs_df$sources, srp_models_df$sources),
+                                                     split = c(models_embedded_docs_df$split, srp_models_df$split)) %>%
   tidyr::expand_grid(use = c("testing", "training")) %>%
   tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms),
