@@ -541,7 +541,8 @@ model_weights.cv.glmnet <- function(model) {
                   scaled_value = as.numeric(scale(value)),
                   pnormed_value = pnorm(scaled_value),
                   sigmoid_value = plogis(scaled_value)) %>%
-    dplyr::rename(word = name)
+    dplyr::rename(word = name) %>%
+    dplyr::filter(word != "(Intercept)")
 }
 
 model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
