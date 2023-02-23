@@ -332,19 +332,21 @@ list(
     iteration = "list"
   ),
 
-  tar_target(
-    name = srp_decade_dfm,
-    command = compute_dfm_srp(democracy_files, democracy_feature, cache_format = "rds"),
-    pattern = map(democracy_files),
-    resources = tar_resources(future = tar_resources_future(
-      plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = dfm_resources),
-      resources = dfm_resources)),
-    storage = "worker",
-    retrieval = "worker",
-    iteration = "list"
+  tar_eval(
+    values = srp_dfms_df,
+    tar_target(
+      name = result,
+      command = compute_dfm_srp(democracy_files, democracy_feature, cache_format = "rds", dims = dims),
+      pattern = map(democracy_files),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = dfm_resources),
+        resources = dfm_resources)),
+      storage = "worker",
+      retrieval = "worker",
+      iteration = "list"
+    )
   ),
-
 
   tar_target(
     name = democracy_feature,
