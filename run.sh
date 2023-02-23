@@ -3,7 +3,7 @@
 #SBATCH --job-name=run_pipeline
 #SBATCH --output=pipeline.out
 #SBATCH --error=pipeline.err
-#SBATCH --time=06:00:00
+#SBATCH --time=12:00:00
 #SBATCH --partition=parallel
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=40G
