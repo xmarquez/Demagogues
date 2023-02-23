@@ -13,6 +13,7 @@ library(tarchetypes) # Load other packages as needed. # nolint
 
 democracy_files_resources <- list(partition = "parallel", memory = "10G", ncpus = 2,
                                   walltime = "2:00:00")
+
 dfm_resources <- list(partition = "parallel", memory = "30G", ncpus = 2,
                       walltime = "0:40:00")
 
@@ -34,6 +35,11 @@ glove_word_vectors_resources <- list(partition = "parallel", memory = "1G", ncpu
 # Object parameters ----------------------------------------------------------------------------------
 
 dfms_df <- tibble::tibble(result = "decade_dfm") %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+srp_dfms_df <- tibble::tibble(prefix = "srp_decade_dfm",
+                              dims = c(160, 320)) %>%
+  tidyr::unite(col = "result", prefix, dims, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 fcms_df <- tibble::tibble(result = "decade_fcm") %>%
@@ -78,20 +84,30 @@ models_df <- tidyr::nesting(prefix = "predictive",
   tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
-models_simplified_eval_df <- tidyr::expand_grid(sources = "predictive_classification_decade_dfm_glmnet",
-                                                decades_model = seq(1700, 2010, by = 5),
-                                                dfms = "decade_dfm",
-                                                decades_dfms = seq(1700, 2010, by = 5))
+srp_models_df <- tidyr::nesting(prefix = "predictive",
+                                model_type = "classification",
+                                sources = srp_dfms_df$result) %>%
+  tidyr::expand_grid(tidyr::nesting(engine = c("LiblineaR", "xgboost", "glmnet"),
+                                    split = "splits_decade_dfm",
+                                    split_type = NA)) %>%
+  tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
+  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 models_embedded_docs_df <- tidyr::nesting(prefix = "predictive",
                                           model_type = "classification",
-                                          sources = embedded_docs_df$result,
+                                          sources = c(embedded_docs_df$result),
                                           split = embedded_docs_df$split,
                                           split_type = embedded_docs_df$split_type,
                                           weight = "none")  %>%
   tidyr::expand_grid(engine = c("LiblineaR", "xgboost", "glmnet")) %>%
   tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
+
+models_simplified_eval_df <- tidyr::expand_grid(sources = "predictive_classification_decade_dfm_glmnet",
+                                                decades_model = seq(1700, 2010, by = 5),
+                                                dfms = "decade_dfm",
+                                                decades_dfms = seq(1700, 2010, by = 5))
+
 
 model_weights_df <- tidyr::nesting(prefix = "weights",
                                    sources = models_df$result,
@@ -125,9 +141,9 @@ model_performance_df <- tidyr::nesting(prefix = "performance",
                 object_names = paste(model_names, engine_names, sampling_strategy, paste(use, "data"), sep = ", "))
 
 model_performance_embedded_docs_df <- tidyr::nesting(prefix = "performance",
-                                                     sources = models_embedded_docs_df$result,
+                                                     sources = c(models_embedded_docs_df$result, srp_models_df$result),
                                                      source_names = as.character(sources),
-                                                     dfms = models_embedded_docs_df$sources,
+                                                     dfms = c(models_embedded_docs_df$sources, srp_models_df$result),
                                                      split = models_embedded_docs_df$split) %>%
   tidyr::expand_grid(use = c("testing", "training")) %>%
   tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
@@ -305,7 +321,7 @@ list(
 
   tar_target(
     name = feature_decade_dfm,
-    command = compute_dfm_feat(democracy_files, names(democracy_feature), cache_format = "rds"),
+    command = compute_dfm_feat(democracy_files, democracy_feature, cache_format = "rds"),
     pattern = map(democracy_files),
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
@@ -315,6 +331,20 @@ list(
     retrieval = "worker",
     iteration = "list"
   ),
+
+  tar_target(
+    name = srp_decade_dfm,
+    command = compute_dfm_srp(democracy_files, democracy_feature, cache_format = "rds"),
+    pattern = map(democracy_files),
+    resources = tar_resources(future = tar_resources_future(
+      plan = future::tweak(future.batchtools::batchtools_slurm,
+                           resources = dfm_resources),
+      resources = dfm_resources)),
+    storage = "worker",
+    retrieval = "worker",
+    iteration = "list"
+  ),
+
 
   tar_target(
     name = democracy_feature,
@@ -400,7 +430,7 @@ tar_eval(
   ),
 
   tar_eval(
-    values = models_embedded_docs_df,
+    values = dplyr::bind_rows(models_embedded_docs_df, srp_models_df),
     tar_target(
       name = result,
       command = predictive_model(dfm = sources,
@@ -688,12 +718,12 @@ tar_eval(
 
   ),
 
-tar_target(
-  name = combined_dem_dfm,
-  command = do.call(rbind, feature_decade_dfm),
-  deployment = "main",
-  packages = "quanteda"
-),
+  tar_target(
+    name = combined_dem_dfm,
+    command = do.call(rbind, feature_decade_dfm),
+    deployment = "main",
+    packages = "quanteda"
+  ),
 
 # Basic corpus stats ------------------------------------------------------
 
