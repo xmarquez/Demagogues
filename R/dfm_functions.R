@@ -21,10 +21,40 @@ compute_dfm <- function(dataset, cache_format = "rds",
 
 }
 
+compute_dfm_srp <- function(dataset, added_feat = NULL, cache_format = "rds", min_length = 3,
+                            pos_pattern = "NN|JJ|VB",
+                            min_sentence_count = 3, dims = 160) {
+
+  dfm <- dataset %>%
+    hathiTools::read_cached_htids(cache_format = cache_format, cache_type = c("ef", "pagemeta")) %>%
+    dplyr::filter(sentenceCount >= min_sentence_count,
+                  stringr::str_detect(POS, !!pos_pattern),
+                  stringr::str_length(token) >= min_length,
+                  stringr::str_detect(token, "^\\p{L}+$"),
+                  section == "body") %>%
+    dplyr::mutate(token = paste(token, POS, sep = "_"),
+                  doc_id = paste(htid, page)) %>%
+    dplyr::count(doc_id, token, wt = count) %>%
+    dplyr::collect() %>%
+    dplyr::mutate(token = stringr::str_remove(token, "(?<=_[NJVB]{2}).+")) %>%
+    tidytext::cast_dfm(doc_id, token, n)
+
+  if(!is.null(added_feat)) {
+    added_feat <- dfm %>%
+      quanteda::dfm_lookup(added_feat)
+  }
+
+  dfm <- dfm_srp(dfm, dims = dims)
+  quanteda:::cbind.dfm(added_feat, dfm)
+
+}
+
+
 compute_dfm_feat <- function(dataset, feat, cache_format = "rds",
                              max_features = 30000, min_length = 3,
                              min_sentence_count = 3) {
   feat <- force(feat)
+  char_feat <- paste("^", names(feat), "$")
 
   dfm <- dataset %>%
     hathiTools::read_cached_htids(cache_format = cache_format, cache_type = c("ef", "pagemeta")) %>%
@@ -35,18 +65,51 @@ compute_dfm_feat <- function(dataset, feat, cache_format = "rds",
                   section == "body") %>%
     dplyr::mutate(token = paste(token, POS, sep = "_"),
                   doc_id = paste(htid, page)) %>%
-    # dplyr::collect() %>%
+    dplyr::collect() %>%
     dplyr::group_by(doc_id) %>%
-    dplyr::filter(any(stringr::str_detect(token, stringr::regex(feat, ignore_case = TRUE)))) %>%
+    dplyr::filter(any(stringr::str_detect(token, stringr::regex(char_feat, ignore_case = TRUE)))) %>%
     dplyr::ungroup() %>%
     dplyr::count(doc_id, token, wt = count) %>%
     dplyr::mutate(token = stringr::str_remove(token, "(?<=_[NJVB]{2}).+")) %>%
     tidytext::cast_dfm(doc_id, token, n) %>%
     quanteda::dfm_tolower() %>%
+    quanteda::dfm_lookup(feat, exclusive = FALSE) %>%
     quanteda::dfm_trim(max_features, termfreq_type = "rank")
 
   dfm
 
+}
+
+combine_dfm_list <- function(dfm_list, dfm_meta) {
+  combined_dfm <- do.call(quanteda:::rbind.dfm, dfm_list)
+  docvars_df <- rownames(combined_dfm) %>%
+    as_tibble() %>%
+    tidyr::separate(value,
+                    into = c("htid", "page"),
+                    sep = " ")
+
+  docvars_df <- dplyr::left_join(docvars_df, dfm_meta)
+
+  quanteda::docvars(combined_dfm) <- docvars_df
+  combined_dfm
+}
+
+
+dfm_lsa <- function(dfm, nu = 50) {
+  embeddings <- irlba::irlba(dfm, nv = nu)
+  embeddings <- embeddings$u
+  rownames(embeddings) <- rownames(dfm)
+  quanteda::as.dfm(embeddings)
+
+}
+
+dfm_tsne <- function(dfm, ...) {
+  dfm <- as.matrix(dfm)
+  dfm <- dfm[ !duplicated(dfm), ]
+  res <- Rtsne::Rtsne(dfm, num_threads = parallel::detectCores(), ...)
+  rownames(res$Y) <- rownames(dfm)
+  colnames(res$Y) <- c("x", "y")
+  tibble::as_tibble(res$Y, rownames = "doc_id")
 }
 
 dfm_ppmi <- function(dfm, base = 10) {
@@ -239,7 +302,7 @@ embed_docs.dictionary2 <- function(dfm, embeddings, feat) {
   print(dim(embeddings))
 
 
-  res <- Matrix::crossprod(Matrix::t(dfm), embeddings)
+  res <- MatrixExtra::crossprod(Matrix::t(dfm), embeddings)
   res <- quanteda::as.dfm(res)
 
   feature %>% quanteda:::cbind.dfm(res)
@@ -251,7 +314,7 @@ embed_docs.character <- function(dfm, embeddings, feat) {
   feature <- dfm %>%
     quanteda::dfm_select(feat)
 
-  res <- Matrix::crossprod(Matrix::t(dfm), embeddings)
+  res <- MatrixExtra::crossprod(Matrix::t(dfm), embeddings)
   res <- quanteda::as.dfm(res)
 
   feature %>% quanteda:::cbind.dfm(res)
@@ -269,7 +332,7 @@ compute_fcm <- function(dfm,
     dfm <- quanteda::dfm_weight(dfm, "boolean")
   }
 
-  fcm <- Matrix::crossprod(dfm)
+  fcm <- MatrixExtra::crossprod(dfm)
 
   if(tri) {
     fcm <- Matrix::triu(fcm)
@@ -309,5 +372,36 @@ fcm_glove_wvs <- function(fcm, nv = 50,
   embeddings %>%
     wordVectors::as.VectorSpaceModel()
 
+}
+
+hash_fun <- function(token, dims = 160) {
+  if (dims > 160) {
+    start <- hash_fun(token, dims = 160)
+    remainder <- hash_fun(paste0(token, "_"), dims = dims - 160)
+    return(c(start, remainder))
+  }
+  if(dims < 160) {
+    start <- hash_fun(token, dims = 160)
+    return(start[1:dims])
+  }
+
+  res <- rawToBits(digest::digest(token,
+                                  algo = "sha1",
+                                  serialize = FALSE,
+                                  raw = TRUE))
+
+  as.logical(res)*2 - 1
+
+}
+
+hash_tokens <- function(tokens, dims) {
+  res <- sapply(tokens, hash_fun, simplify = TRUE, dims = dims)
+  res
+}
+
+dfm_srp <- function(dfm, dims = 160) {
+  hashed_tokens <- hash_tokens(colnames(dfm), dims = dims)
+  MatrixExtra::tcrossprod(dfm, hashed_tokens) %>%
+    quanteda::as.dfm()
 }
 
