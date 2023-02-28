@@ -31,6 +31,8 @@ democracy_usable_htids %>%
 ```
 
 ```{r}
+tar_load(democracy_samples)
+
 max_vols <- democracy_samples %>%
   count(decade) %>%
   pull(n) %>%
@@ -50,7 +52,7 @@ democracy_samples %>%
 These represent varying proportions of the total sample, though volumes that mention democracy more often are more likely to be in the sample. (The probability of selection into the sample is weighted by the number of mentions of 'democracy' in the volume).
 
 ```{r}
-tar_load(democracy_samples)
+
 
 per_decade <- democracy_usable_htids %>%
   group_by(decade) %>%
