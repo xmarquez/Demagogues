@@ -3,7 +3,7 @@
 #SBATCH --job-name=run_pipeline
 #SBATCH --output=pipeline.out
 #SBATCH --error=pipeline.err
-#SBATCH --time=12:00:00
+#SBATCH --time=1-00:00:00
 #SBATCH --partition=parallel
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=40G
@@ -31,6 +31,7 @@ git commit -m "graph document, figures, and metadata about targets"
 git push https://github.com/xmarquez/Demagogues.git master
 
 module load dropbox
+dbxcli put _targets/objects/democracy_worksets_meta Research/Demagogues/_targets/objects/democracy_worksets_meta
 dbxcli put _targets/objects/all_model_weights Research/Demagogues/_targets/objects/all_model_weights
 dbxcli put _targets/objects/combined_weights Research/Demagogues/_targets/objects/combined_weights
 dbxcli put _targets/objects/combined_performance Research/Demagogues/_targets/objects/combined_performance
@@ -39,3 +40,4 @@ dbxcli put _targets/objects/num_libraries Research/Demagogues/_targets/objects/n
 dbxcli put _targets/objects/num_ht_bib_keys Research/Demagogues/_targets/objects/num_ht_bib_keys
 dbxcli put _targets/objects/num_author_title Research/Demagogues/_targets/objects/num_author_title
 dbxcli put _targets/objects/combined_dem_dfm Research/Demagogues/_targets/objects/combined_dem_dfm
+dbxcli put _targets/objects/democracy_samples* Research/Demagogues/_targets/objects/
