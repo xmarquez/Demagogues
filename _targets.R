@@ -11,8 +11,8 @@ library(tarchetypes) # Load other packages as needed. # nolint
 
 # Resources for cluster ---------------------------------------------------------------------
 
-democracy_files_resources <- list(partition = "parallel", memory = "10G", ncpus = 2,
-                                  walltime = "2:00:00")
+democracy_files_resources <- list(partition = "parallel", memory = "12G", ncpus = 2,
+                                  walltime = "3:00:00")
 
 dfm_resources <- list(partition = "parallel", memory = "40G", ncpus = 2,
                       walltime = "1:00:00")
