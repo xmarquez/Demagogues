@@ -40,4 +40,4 @@ dbxcli put _targets/objects/num_libraries Research/Demagogues/_targets/objects/n
 dbxcli put _targets/objects/num_ht_bib_keys Research/Demagogues/_targets/objects/num_ht_bib_keys
 dbxcli put _targets/objects/num_author_title Research/Demagogues/_targets/objects/num_author_title
 dbxcli put _targets/objects/combined_dem_dfm Research/Demagogues/_targets/objects/combined_dem_dfm
-dbxcli put _targets/objects/democracy_samples* Research/Demagogues/_targets/objects/
+ls  _targets/objects/democracy_samples* | xargs -I {} dbxcli put {} Research/Demagogues/{}
