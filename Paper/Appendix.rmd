@@ -1,5 +1,5 @@
 ---
-title: "Graphs"
+title: "Appendix"
 author: "Xavier Marquez"
 date: "2023-02-08"
 output: html_document
@@ -12,8 +12,65 @@ knitr::opts_chunk$set(echo = FALSE,
 
 library(targets)
 library(tidyverse)
+tar_config_set(store = "../_targets")
+
+theme_set(theme_bw())
 ```
 
+
+## Sample Characteristics
+
+```{r}
+tar_load(democracy_usable_htids)
+
+democracy_usable_htids %>%
+  group_by(decade) %>%
+  summarise(n = n_distinct(htid)) %>%
+  ggplot(aes(x = decade, y = n)) +
+  geom_col()
+```
+
+```{r}
+max_vols <- democracy_samples %>%
+  count(decade) %>%
+  pull(n) %>%
+  max()
+```
+
+
+Our sample includes up to `r max_vols` volumes per decade.
+
+```{r}
+democracy_samples %>%
+  group_by(decade) %>%
+  summarise(n = n_distinct(htid)) %>%
+  ggplot(aes(x = decade, y = n)) +
+  geom_col()
+```
+These represent varying proportions of the total sample, though volumes that mention democracy more often are more likely to be in the sample. (The probability of selection into the sample is weighted by the number of mentions of 'democracy' in the volume).
+
+```{r}
+tar_load(democracy_samples)
+
+per_decade <- democracy_usable_htids %>%
+  group_by(decade) %>%
+  summarise(total_htids = n_distinct(htid),
+            total_mentions = sum(n))
+
+democracy_samples %>%
+  left_join(per_decade) %>%
+  group_by(decade, total_htids) %>%
+  summarise(`Proportion of volumes in decade` = n_distinct(htid)/unique(total_htids),
+            `Proportion of mentions in decade` = sum(n)/unique(total_mentions)) %>%
+  pivot_longer(starts_with("Proportion")) %>%
+  ggplot(aes(x = decade, y = value, fill = name)) +
+  geom_col(position = "dodge") +
+  labs(y = "Proportion of HTIDs mentioning 'democracy'",
+       fill = "") +
+  scale_fill_viridis_d() +
+  scale_y_continuous(labels = scales::percent)
+
+```
 ## Combined Graphs
 
 ```{r fig-graph_combined_weights_nn}
@@ -780,7 +837,7 @@ graph[[6]]
 #| fig-height: 9
 
 
-tar_load(combined_performance)
+tar_load(combined_performance, store = here::here("_targets"))
 
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "auc")) %>%
@@ -790,6 +847,8 @@ combined_performance %>%
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
                                                  TRUE ~ "No downsampling"),
                 model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
+                                              stringr::str_detect(source, "srp.+160") ~ "SRP embedding, 160 features",
+                                              stringr::str_detect(source, "srp.+320") ~ "SRP embedding, 320 features",
                                               TRUE ~ "Original DFM, 30,000 features")) %>%
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
                                 shape = model_data, alpha = forcats::fct_rev(sample))) + 
@@ -820,6 +879,8 @@ combined_performance %>%
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
                                                  TRUE ~ "No downsampling"),
                 model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
+                                              stringr::str_detect(source, "srp.+160") ~ "SRP embedding, 160 features",
+                                              stringr::str_detect(source, "srp.+320") ~ "SRP embedding, 320 features",
                                               TRUE ~ "Original DFM, 30,000 features")) %>%
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
                                 shape = model_data, alpha = forcats::fct_rev(sample))) + 
@@ -849,6 +910,8 @@ combined_performance %>%
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
                                                  TRUE ~ "No downsampling"),
                 model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
+                                              stringr::str_detect(source, "srp.+160") ~ "SRP embedding, 160 features",
+                                              stringr::str_detect(source, "srp.+320") ~ "SRP embedding, 320 features",
                                               TRUE ~ "Original DFM, 30,000 features")) %>%
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
                                 shape = model_data, alpha = forcats::fct_rev(sample))) + 
@@ -879,6 +942,8 @@ combined_performance %>%
                                                    "Downsampled majority class, \nmost similar texts by PPMI",
                                                  TRUE ~ "No downsampling"),
                 model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
+                                              stringr::str_detect(source, "srp.+160") ~ "SRP embedding, 160 features",
+                                              stringr::str_detect(source, "srp.+320") ~ "SRP embedding, 320 features",
                                               TRUE ~ "Original DFM, 30,000 features")) %>%
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
                                 shape = model_data, alpha = forcats::fct_rev(sample))) + 
