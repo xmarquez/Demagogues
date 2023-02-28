@@ -47,7 +47,7 @@ fcms_df <- tibble::tibble(result = "decade_fcm") %>%
 
 splits <- tidyr::nesting(prefix = "splits",
                          sources = dfms_df$result,
-                         downsample = c(FALSE, TRUE, TRUE),
+                         downsample = c(FALSE, TRUE),
                          type = c(NA, "random")) %>%
   tidyr::unite(col = "result", prefix, sources, type, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
