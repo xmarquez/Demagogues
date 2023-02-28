@@ -48,7 +48,7 @@ fcms_df <- tibble::tibble(result = "decade_fcm") %>%
 splits <- tidyr::nesting(prefix = "splits",
                          sources = dfms_df$result,
                          downsample = c(FALSE, TRUE, TRUE),
-                         type = c(NA, "random", "similarity")) %>%
+                         type = c(NA, "random")) %>%
   tidyr::unite(col = "result", prefix, sources, type, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
@@ -225,7 +225,7 @@ list(
 
   tar_target(
     name = decades,
-    command = seq(1700, 2010, by = 5),
+    command = seq(1700, 2010, by = 1),
     deployment = "main"
   ),
 
@@ -242,7 +242,7 @@ list(
 
   tar_target(
     name = democracy_worksets,
-    command = workset_builder("democracy", pub_date = decades:(decades+9)) %>%
+    command = workset_builder("democracy", pub_date = decades:(decades+2)) %>%
       mutate(decade = decades),
     pattern = map(decades),
     deployment = "main"
@@ -283,7 +283,7 @@ list(
   tar_target(
     name = democracy_samples,
     command = democracy_usable_htids %>%
-      dplyr::sample_n(min(500, dplyr::n()), weight = n),
+      dplyr::sample_n(min(1000, dplyr::n()), weight = n),
     pattern = map(democracy_usable_htids),
     deployment = "main"
   ),
@@ -515,26 +515,26 @@ tar_eval(
     )
   ),
 
-  tar_target(
-    name = decades_2,
-    command = seq(1700, 2010, by = 5),
-    deployment = "main"
-  ),
-
-  tar_target(
-    name = glmnet_predictive_eval,
-    command = model_performance_simplified(predictive_classification_decade_dfm_glmnet,
-                                           decade_dfm, feat = democracy_feature, weight = "ppmi") %>%
-      dplyr::mutate(decade1 = decades, decade2 = decades_2),
-    packages = c("quanteda", "Matrix"),
-    resources = tar_resources(future = tar_resources_future(
-      plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = evaluation_model_resources),
-      resources = evaluation_model_resources)),
-    storage = "worker",
-    retrieval = "worker",
-    pattern = cross(map(predictive_classification_decade_dfm_glmnet, decades), map(decade_dfm, decades_2))
-  ),
+  # tar_target(
+  #   name = decades_2,
+  #   command = seq(1700, 2010, by = 5),
+  #   deployment = "main"
+  # ),
+  #
+  # tar_target(
+  #   name = glmnet_predictive_eval,
+  #   command = model_performance_simplified(predictive_classification_decade_dfm_glmnet,
+  #                                          decade_dfm, feat = democracy_feature, weight = "ppmi") %>%
+  #     dplyr::mutate(decade1 = decades, decade2 = decades_2),
+  #   packages = c("quanteda", "Matrix"),
+  #   resources = tar_resources(future = tar_resources_future(
+  #     plan = future::tweak(future.batchtools::batchtools_slurm,
+  #                          resources = evaluation_model_resources),
+  #     resources = evaluation_model_resources)),
+  #   storage = "worker",
+  #   retrieval = "worker",
+  #   pattern = cross(map(predictive_classification_decade_dfm_glmnet, decades), map(decade_dfm, decades_2))
+  # ),
 
 # Graphs ------------------------------------------------------------------
 
@@ -837,13 +837,11 @@ tar_eval(
 # Paper and appendixes ------------------------------------------------
 
   tar_knit(
-    name = graph_document,
-    path = "Paper/graph_document.rmd",
+    name = Appendix,
+    path = "Paper/Appendix.rmd",
+    output = "Paper/Appendix.md",
     deployment = "main"
   )
-
-
-
 )
 
 
