@@ -15,7 +15,7 @@ democracy_files_resources <- list(partition = "parallel", memory = "12G", ncpus 
                                   walltime = "3:00:00")
 
 dfm_resources <- list(partition = "parallel", memory = "40G", ncpus = 2,
-                      walltime = "1:00:00")
+                      walltime = "2:00:00")
 
 fcm_resources <- list(partition = "bigmem", memory = "128G", ncpus = 2,
                       walltime = "0:40:00")
