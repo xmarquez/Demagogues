@@ -14,7 +14,7 @@ library(tarchetypes) # Load other packages as needed. # nolint
 democracy_files_resources <- list(partition = "parallel", memory = "12G", ncpus = 2,
                                   walltime = "3:00:00")
 
-dfm_resources <- list(partition = "bigmem", memory = "100G", ncpus = 2,
+dfm_resources <- list(partition = "bigmem", memory = "60G", ncpus = 2,
                       walltime = "2:00:00")
 
 fcm_resources <- list(partition = "bigmem", memory = "128G", ncpus = 2,
