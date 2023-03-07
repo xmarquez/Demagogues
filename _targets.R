@@ -315,6 +315,7 @@ list(
                            resources = dfm_resources),
       resources = dfm_resources)),
     storage = "worker",
+    error = "null",
     retrieval = "worker",
     iteration = "list"
   ),
@@ -328,6 +329,7 @@ list(
                            resources = dfm_resources),
       resources = dfm_resources)),
     storage = "worker",
+    error = "null",
     retrieval = "worker",
     iteration = "list"
   ),
