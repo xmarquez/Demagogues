@@ -342,8 +342,6 @@ list(
         plan = future::tweak(future.batchtools::batchtools_slurm,
                              resources = dfm_resources),
         resources = dfm_resources)),
-      storage = "worker",
-      retrieval = "worker",
       iteration = "list"
     )
   ),
