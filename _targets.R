@@ -315,7 +315,7 @@ list(
                            resources = dfm_resources),
       resources = dfm_resources)),
     storage = "worker",
-    error = "null",
+
     retrieval = "worker",
     iteration = "list"
   ),
@@ -329,7 +329,7 @@ list(
                            resources = dfm_resources),
       resources = dfm_resources)),
     storage = "worker",
-    error = "null",
+
     retrieval = "worker",
     iteration = "list"
   ),
@@ -345,7 +345,7 @@ list(
                              resources = dfm_resources),
         resources = dfm_resources)),
       storage = "worker",
-      error = "null",
+
       iteration = "list"
     )
   ),
@@ -406,6 +406,7 @@ tar_eval(
       pattern = map(sources),
       packages = c("quanteda"),
       iteration = "list",
+
       deployment = "main"
     )
   ),
@@ -429,6 +430,7 @@ tar_eval(
         resources = predictive_model_resources)),
       storage = "worker",
       retrieval = "worker",
+
       iteration = "list"
     )
   ),
