@@ -6,7 +6,7 @@
 #SBATCH --time=1-00:00:00
 #SBATCH --partition=parallel
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=40G
+#SBATCH --mem=45G
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=xavier.marquez@vuw.ac.nz
 
