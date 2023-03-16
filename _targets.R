@@ -17,6 +17,9 @@ democracy_files_resources <- list(partition = "parallel", memory = "12G", ncpus 
 dfm_resources <- list(partition = "parallel", memory = "45G", ncpus = 2,
                       walltime = "2:00:00")
 
+splits_resources <- list(partition = "parallel", memory = "20G", ncpus = 2,
+                      walltime = "0:02:00")
+
 fcm_resources <- list(partition = "bigmem", memory = "128G", ncpus = 2,
                       walltime = "0:40:00")
 
@@ -406,7 +409,7 @@ tar_eval(
       pattern = map(sources),
       packages = c("quanteda"),
       iteration = "list",
-
+      memory = "transient",
       deployment = "main"
     )
   ),
