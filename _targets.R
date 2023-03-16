@@ -410,6 +410,7 @@ tar_eval(
       packages = c("quanteda"),
       iteration = "list",
       memory = "transient",
+      garbage_collection = TRUE,
       deployment = "main"
     )
   ),
