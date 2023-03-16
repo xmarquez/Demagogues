@@ -283,7 +283,7 @@ list(
   tar_target(
     name = democracy_samples,
     command = democracy_usable_htids %>%
-      dplyr::sample_n(min(1000, dplyr::n()), weight = n),
+      dplyr::sample_n(min(200, dplyr::n()), weight = n),
     pattern = map(democracy_usable_htids),
     deployment = "main"
   ),
