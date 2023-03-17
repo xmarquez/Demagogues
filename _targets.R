@@ -451,12 +451,15 @@ tar_eval(
                                  weight = "none"),
       pattern = map(sources, split),
       packages = c("quanteda"),
-      resources = tar_resources(future = tar_resources_future(
-        plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = predictive_model_resources),
-        resources = predictive_model_resources)),
-      storage = "worker",
-      retrieval = "worker",
+      # resources = tar_resources(future = tar_resources_future(
+      #   plan = future::tweak(future.batchtools::batchtools_slurm,
+      #                        resources = predictive_model_resources),
+      #   resources = predictive_model_resources)),
+      # storage = "worker",
+      # retrieval = "worker",
+      memory = "transient",
+      deployment = "main",
+      garbage_collection = TRUE,
       iteration = "list"
     )
   ),
