@@ -23,8 +23,8 @@ splits_resources <- list(partition = "parallel", memory = "20G", ncpus = 2,
 fcm_resources <- list(partition = "bigmem", memory = "128G", ncpus = 2,
                       walltime = "0:40:00")
 
-predictive_model_resources <- list(partition = "parallel", memory = "40G",
-                                   ncpus = 10, walltime = "0:50:00")
+predictive_model_resources <- list(partition = "parallel", memory = "50G",
+                                   ncpus = 2, walltime = "0:50:00")
 
 evaluation_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 2, walltime = "0:02:00")
@@ -451,15 +451,15 @@ tar_eval(
                                  weight = "none"),
       pattern = map(sources, split),
       packages = c("quanteda"),
-      # resources = tar_resources(future = tar_resources_future(
-      #   plan = future::tweak(future.batchtools::batchtools_slurm,
-      #                        resources = predictive_model_resources),
-      #   resources = predictive_model_resources)),
-      # storage = "worker",
-      # retrieval = "worker",
-      memory = "transient",
-      deployment = "main",
-      garbage_collection = TRUE,
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = predictive_model_resources),
+        resources = predictive_model_resources)),
+      storage = "worker",
+      retrieval = "worker",
+      # memory = "transient",
+      # deployment = "main",
+      # garbage_collection = TRUE,
       iteration = "list"
     )
   ),
