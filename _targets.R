@@ -581,6 +581,8 @@ tar_eval(
                                  lowercase = lowercase),
     pattern = map(pos_patterns, lowercase),
     iteration = "list",
+    memory = "transient",
+    garbage_collection = TRUE,
     deployment = "main"
   ),
 
@@ -595,6 +597,8 @@ tar_eval(
                                             lowercase = lowercase),
                pattern = map(pos_patterns, lowercase),
                iteration = "list",
+               memory = "transient",
+               garbage_collection = TRUE,
                deployment = "main"
     )
   ),
