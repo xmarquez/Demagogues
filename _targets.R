@@ -41,7 +41,7 @@ dfms_df <- tibble::tibble(result = "decade_dfm") %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 srp_dfms_df <- tibble::tibble(prefix = "srp_decade_dfm",
-                              dims = c(160, 320)) %>%
+                              dims = c(160)) %>%
   tidyr::unite(col = "result", prefix, dims, remove = FALSE, na.rm = TRUE) %>%
   dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
