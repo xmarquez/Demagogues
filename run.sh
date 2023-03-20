@@ -10,7 +10,8 @@
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=xavier.marquez@vuw.ac.nz
 
-cd /beegfs-volatile/marquexa
+# cd /beegfs-volatile/marquexa
+cd /nfs/scratch/marquexa
 module load R/4.0.2
 module load R/CRAN
 
