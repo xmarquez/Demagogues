@@ -620,7 +620,12 @@ tar_eval(
                       sigmoid_value = plogis(scaled_value)) %>%
         dplyr::arrange(desc(value)),
       pattern = map(sources, decades),
-      deployment = "main"
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = predictive_model_resources),
+        resources = predictive_model_resources)),
+      storage = "worker",
+      retrieval = "worker"
     )
   ),
 
