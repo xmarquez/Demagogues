@@ -216,6 +216,13 @@ fcm_ppmi <- function(fcm, dfm, base = 10) {
 
 
 dfm_svd_wvs <- function(dfm, nv = 50) {
+  print(paste("Old nv:", nv))
+  print(min(nrow(dfm), ncol(dfm)))
+  if(nv >= min(nrow(dfm), ncol(dfm))) {
+    nv <- min(nrow(dfm), ncol(dfm)) - 1
+  }
+  print(paste("New nv:", nv))
+
   embeddings <- irlba::irlba(dfm, nv = nv)
   embeddings <- embeddings$v
 
