@@ -75,7 +75,78 @@ democracy_samples %>%
 
 ```
 
-## Combined Graphs
+
+## Graphs with all weights
+
+```{r}
+tar_load(all_model_weights)
+archy_acy <- all_model_weights %>% 
+  filter(str_detect(word, "archy_|cracy_"), !str_detect(source, "_random|_similarity")) %>% 
+  mutate(word = str_to_lower(word))
+
+archy_acy  %>% 
+  filter(pnormed_value > 0.5) %>% 
+  ggplot(aes(x = decade, y = pnormed_value)) + 
+  stat_summary() + 
+  geom_point(aes(color = name), alpha = 0.2) + 
+  facet_wrap(~fct_reorder(word, pnormed_value)) + 
+  scale_color_viridis_d() +
+  theme(legend.position = "bottom")
+
+```
+```{r}
+earliest_latest <- all_model_weights %>% 
+  filter(!str_detect(source, "_random|_similarity"), scaled_value > 5) %>% 
+  mutate(word = str_to_lower(word)) %>%
+  group_by(word) %>%
+  summarise(earliest_appearance = min(decade),
+            latest_appearance = max(decade),
+            total_value = sum(scaled_value),
+            min_value = min(scaled_value),
+            max_value = max(scaled_value),
+            min_pnormed = min(pnormed_value),
+            max_pnormed = max(pnormed_value),
+            total_appearances = n_distinct(decade),
+            period = latest_appearance - earliest_appearance) %>%
+  arrange(-total_value, -period, -total_appearances) %>%
+  mutate(pos = str_extract(word, "_[jnvb]{2}$") %>%
+           str_remove("_"),
+         total_app_quantile = cut(total_appearances, breaks = 4))
+
+terms <- earliest_latest %>%
+  group_by(total_app_quantile, pos) %>%
+  slice_head(n = 25) 
+
+terms <- terms %>%
+  mutate(group_id = paste(total_app_quantile, pos))
+
+term_lists <- terms %>%
+  split(terms$group_id) %>%
+  map(~pull(., word)) 
+```
+
+```{r}
+
+model_graph <- function(term_list) {
+  all_model_weights %>%
+    mutate(word = str_to_lower(word)) %>%
+    filter(word %in% term_list, !str_detect(source, "_random|_similarity")) %>%
+    ggplot(aes(x = decade, y = pnormed_value)) +
+      stat_summary(alpha =  0.4) +
+      geom_point(aes(color = name), alpha = 0.2) +
+      geom_smooth() +
+      facet_wrap(~fct_reorder(word, pnormed_value)) +
+      scale_color_viridis_d() +
+      theme(legend.position = "bottom") +
+      geom_hline(yintercept = 0.5, color = "red") 
+}
+
+term_lists %>%
+  walk(~print(model_graph(.)))
+```
+
+
+## Graphs for Individual Models
 
 ```{r fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_nn}
 #| fig-cap: sims svd word vectors decade dfm 50 ppmi, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
