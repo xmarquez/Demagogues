@@ -3,7 +3,7 @@ files_resources <- list(partition = "parallel", memory = "12G", ncpus = 2,
                                   walltime = "3:00:00")
 
 dfm_resources <- list(partition = "parallel", memory = "45G", ncpus = 2,
-                      walltime = "2:00:00")
+                      walltime = "5:00:00")
 
 splits_resources <- list(partition = "parallel", memory = "20G", ncpus = 2,
                          walltime = "0:02:00")
