@@ -8,6 +8,7 @@ biblio-style: apsr
 echo: false
 warning: false
 message: false
+abstract: "This paper proposes a method for distant reading that utilizes the conceptual history of 'democracy' as an illustrative example. I use simple predictive models and vector embeddings to describe the evolution of the language of democracy over the last three centuries in English-language books, utilizing the large corpus of digitized books in the Hathi Trust digital library. I document multiple changes in the scope and valence of the concept, identify several periods of conceptual innovation in the second decade of the 19th century and the first decades of the 20th, and point to differences between different 'traditions' of thought about democracy. The key premise of this method is that each distinct predictive model is analogous to a reader of the corpus, finding different features of the corpus associated with a target concept, even if their predictive performance is similar. The method does not require access to the full text of each book and can be used at different levels to compare different usages of a target concept. The contribution of this paper is primarily methodological and descriptive."
 ---
 
 ```{r setup, include=FALSE}
@@ -21,6 +22,14 @@ library(hathiTools)
 library(magrittr)
 library(targets)
 
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      fig.path = here::here("Paper/figure/figs-"))
+
+tar_config_set(store = here::here("_targets"),
+               config = "custom.yaml")
+
 theme_set(theme_bw())
 ```
 
@@ -28,13 +37,25 @@ theme_set(theme_bw())
 
 The meaning of "democracy" has changed enormously over the last two centuries. In the late 18th and early 19th century the term had a negative valence, redolent of mob rule, but it was then taken up by opponents of aristocracy and eventually came to acquire its current positive associations with freedom and equality [@Dunn2005; @Markoff1999; @Markoff2015; @Przeworski2010]. Today, most constitutions throughout the world mention "democracy"; public opinion, as expressed in surveys, is strongly "pro-democratic" everywhere, even in places far from the West where the concept is thought to have emerged [@Inglehart2003]; and the public culture of many places understands itself as democratic, even as people's conceptions of democracy are sometimes far from liberal [@alvarez2017values]. The historian John Dunn has argued that today the word "democracy" (brought into many languages directly from the Greek root) symbolizes the only legitimate political system [@Dunn2005, p. 15].
 
-Studies of the changing meaning of "democracy" in history and political theory are nevertheless limited by their focus on a small number of (generally canonical) works. Alan Ryan's magisterial *On Politics*, which among other themes focuses on the development of ideas about democracy, discusses perhaps a hundred different authors in any depth [@Ryan2012]; and of the more than 900 entries in the *Encyclopedia of Political Thought* [@gibbons2015encyclopedia], barely a third are proper names, not all of whom would have written about democracy. Even works that attempt to expand the standard democratic canon [e.g., @Keane2009; @marquez2018democratic] at best add a few not obviously representative texts to the typical list.[^1]
+Studies of the changing meaning of "democracy" in history and political theory are nevertheless limited by their focus on a small number of (generally canonical) works. Alan Ryan's magisterial *On Politics*, which among other themes focuses on the development of ideas about democracy, discusses perhaps a hundred different authors in any depth [@Ryan2012]; and of the more than 900 entries in the *Encyclopedia of Political Thought* [@gibbons2015encyclopedia], barely a third are proper names, not all of whom would have written about democracy. Even works that attempt to expand the standard democratic canon [e.g., @Keane2009; @marquez2018democratic] at best add a few not obviously representative texts to the typical list.[^1] But there is no reason to think that the linguistic contexts in more or less "canonical" works are the only ones that matter for understanding the development of a concept, as historians from the Cambridge School have stressed
 
 [^1]: There are some exceptions. @Gagnon2018, for example, catalogues more than 2,200 different descriptions of democracy and discusses many now-obscure works where these descriptors are used. It is also worth noting here the approach of the *Begriffsgeschichte* [@Koselleck2011; @Sheehan1978], which attempts to trace the history of concepts over a much larger set of sources than the canon for the period 1700-1850. Koselleck's monumental historical *Lexikon* of fundamental political concepts [@Lexikon1972] is limited by its focus on German-language, manually collected sources, though its entry on *Demokratie* [@Demokratie1972] is well worth reading.
 
-In this paper, we explore the evolution of conceptions of "democracy" by a "distant reading" [@Moretti2013] of hundreds of thousands of books. Taking advantage of the large corpus of digitized books in the Hathi Trust digital library, we use word vector embeddings and topic models to describe the evolution of the language of "democracy" over the last three centuries, mostly in English books but also in a variety of other languages. We document multiple changes in the scope and valence of the concept, and identify several periods of conceptual innovation in the second decade of the 19th century and the first decades of the 20th. We conclude that though the overall view of the history of the concept of democracy that results from this "distant reading" is not dramatically different from the view that traditional historical scholarship provides, we do find overlooked moments in this history that are only visible with this larger-scale perspective.
+Yet no scholar of the history of ideas can read and understand more than a very limited number of works. The promise of computational methods of "distant reading" [@Moretti2013] is that they could help us substantially expand the sample of works that inform our historical conclusions. Yet "reading" a corpus (if reading is the right word) is a very different activity from reading a book, and we have few good methods to extract and summarize the information contained in hundreds of thousands or millions of books. Topic modeling [first described in @blei2003], while useful at very large scales [see, e.g., @multilevel2017], tends to produce "topics" that require expert labeling to interpret. And most advanced computational methods for automated summarization (using large transformer models, for example) tend to require computational resources beyond the reach of most individual researchers.
 
-This paper is organized as follows. We first describe the Hathi Trust digital library and document the rise of "democracy" in this corpus across a number of different contexts. We then use word vector embeddings to describe the change in the associations between democracy and other words, and document a change in the "ideological" valence of democracy since the 1700s. Finally, we quantify periods of conceptual innovation and change, and measure the degree of novelty and influence of particular books in this corpus.
+In this paper I propose a relatively lightweight method for distant reading, utilizing the conceptual history of "democracy" as an illustrative example. Taking advantage of the large corpus of digitized books in the Hathi Trust digital library, I use simple predictive models and vector embeddings to describe the evolution of the language of "democracy" over the last three centuries in English-language books. I document multiple changes in the scope and valence of the concept, identify several periods of conceptual innovation in the second decade of the 19th century and the first decades of the 20th, and point to differences between different "traditions" of thought about democracy. Although the overall view of the history of the concept of democracy that results from this "distant reading" is not dramatically different from the view that traditional historical scholarship provides, I do find overlooked moments in this history that are only visible with this larger-scale perspective.
+
+The key premise of this method is that each distinct predictive model is analogous to a *reader* of the corpus. Because different models have different biases, they find different features of the corpus to be associated with a target concept, even if their predictive performance is similar. These different readers thus produce different *interpretations* of the evolution of a target concept over time. By observing and comparing the weight of these associations, we can reconstruct the network of concepts within which a target concept is embedded at a particular point in time. Importantly, the method does not require access to the full text of each book; the frequency counts per page that the Hathi Trust digital library makes freely available are sufficient to produce reasonable results. Moreover, each model can be used at different levels -- from the individual volume to the set of volumes by particular authors to the entire corpus -- to compare different usages of a target concept. The contribution of this paper is thus primarily methodological and descriptive.
+
+The paper is organized as follows. I first introduce the idea of models as readers, the ways in which these models can be used at different scales, and situate their use in the context of methodological debates on the history of political thought. I then describe the corpus of the Hathi Trust digital library and document the rise of "democracy" in this corpus across a number of different contexts, use various models to describe the change in the associations between democracy and other words, and document changes in the "ideological" valence of democracy since the 1700s. Finally, I quantify periods of conceptual innovation and change, and measure the degree of novelty and influence of particular books in this corpus.
+
+## Models as Readers {.unnumbered}
+
+A predictive model of a text predicts a feature of the text (e.g., the presence or absence of a particular word) based on some other features of the text. Different kinds of predictive models -- e.g., logistic regression, support vector machines, random forests -- pick out different features as predictors, since they have different biases and hyperparameters, and minimize different loss functions. Indeed, even models with comparable predictive performance on test data will produce different associations between a target feature and other features of the text. The strength of these associations represents a particular *interpretation* of the meaning of a target concept, since they provide a particular perspective on what other concepts and features are related to it. We can thus think of each distinct model as a *reader* of the corpus; and like all readers, having a distinct subjectivity.
+
+Interpretations vary in plausibility. In scholarly work, the plausibility of an interpretation of the meaning of a concept in a text depends on its overall coherence and "fit" with the body of work of the author, the historical context, and other factors, but there is no clear-cut criterion that determines whether a given interpretation is simply best: different readers weigh different features of the text differently, and attribute more or less importance to particular aspects of an author's work. Similarly for models of a particular concept within a corpus: while models with low predictive performance will not tend to be plausible interpretations of the target concept, multiple models may be plausible.
+
+This multiplicity of interpretations of a concept is not necessarily problematic. Plausible interpretations shed light As we shall see below in more detail, plausible interpretations tend to be similar in any case: logistic regression, support vector machines, random forests, and various kinds of word vector models all produce associations with "democracy" that are plausible and relevant, though not identical. The more important question
 
 ## Corpus description {.unnumbered}
 
@@ -44,9 +65,9 @@ num_titles <- tar_read(num_htids_per_author, store = here::here("_targets"))
 
 num_libraries <- tar_read(num_libraries, store = here::here("_targets"))
 
-num_1700_2020 <- tar_read(date_info, store = here::here("_targets")) |> 
-  filter(rights_date_used >= 1700, rights_date_used <= 2020) |>
-  pull(n) |>
+num_1700_2020 <- tar_read(date_info, store = here::here("_targets")) %>% 
+  filter(rights_date_used >= 1700, rights_date_used <= 2020) %>%
+  pull(n) %>%
   sum()
 ```
 
@@ -64,10 +85,10 @@ Despite its size and structure, however, the corpus cannot give us unbiased info
 
 ## The frequency of democracy {.unnumbered}
 
-About `r format(num_1700_2020, big.mark = ",")` of the Hathi Trust volumes have approximate publication date information between 1700 and 2020, and of these about `r nrow(tar_read(democracy_worksets)) |> format(big.mark = ",")` mention the word "democracy." (This includes books in any language; if we restrict ourselves to books primarily written in English, `r tar_read(democracy_worksets_meta) |> filter(lang == "eng") |> nrow() |> format(big.mark = ",")` mention "democracy" at least once). A striking fact evident in this corpus is the rise of 'democracy' as a topic, both in terms of the number of books in which the word is mentioned, and in terms of the number of words per million in the corpus (fig. \@ref(fig:percentTextsDemocracy) and \@ref(fig:wordsPerMillionDemocracy)).
+About `r format(num_1700_2020, big.mark = ",")` of the Hathi Trust volumes have approximate publication date information between 1700 and 2020, and of these about `r nrow(tar_read(democracy_worksets)) %>% format(big.mark = ",")` mention the word "democracy." (This includes books in any language; if we restrict ourselves to books primarily written in English, `r tar_read(democracy_worksets_meta) %>% filter(lang == "eng") %>% nrow() %>% format(big.mark = ",")` mention "democracy" at least once). A striking fact evident in this corpus is the rise of 'democracy' as a topic, both in terms of the number of books in which the word is mentioned, and in terms of the number of words per million in the corpus (fig. \@ref(fig:percentTextsDemocracy) and \@ref(fig:wordsPerMillionDemocracy)).
 
 ```{r fig-percentTextsDemocracy}
-#| fig-cap: "Percent of texts in the HathiTrust corpus mentioning 'democracy'. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
+#| fig-cap: "Percent of texts in the Hathi Trust corpus mentioning 'democracy'. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
 
 democracy_text_percent <- tar_read(democracy_text_percent) 
 
@@ -82,15 +103,15 @@ ggplot() +
   geom_line(data = democracy_text_percent, aes(x = date_year, 
                                                y = slider::slide_dbl(value, .f = mean, .before = 5, .after = 5)))  +
   geom_line(data = democracy_text_percent, aes(x = date_year, y = value), alpha = 0.2)  +
-  labs(title = "Frequency of 'democracy' in HathiTrust texts",
-       subtitle = "Percent of texts in HathiTrust, 10-year moving average",
+  labs(title = "Frequency of 'democracy' in Hathi Trust texts",
+       subtitle = "Percent of texts in Hathi Trust, 10-year moving average",
        y = "", x = "Approximate publication date")
   
   
 ```
 
 ```{r, fig-ordsPerMillionDemocracy}
-#| fig-cap: "Frequency of mentions of 'democracy' in the HathiTrust corpus, per million words. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
+#| fig-cap: "Frequency of mentions of 'democracy' in the Hathi Trust corpus, per million words. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
 
 democracy_words_per_million <- tar_read(democracy_words_per_million) 
 
@@ -104,8 +125,8 @@ ggplot() +
                                                                      .before = 5, 
                                                                      .after = 5)))  +
   geom_line(data = democracy_words_per_million, aes(x = date_year, y = value), alpha = 0.2)  +
-  labs(title = "Frequency of 'democracy' in HathiTrust texts",
-       subtitle = "Words per million in HathiTrust, 10-year moving average",
+  labs(title = "Frequency of 'democracy' in Hathi Trust texts",
+       subtitle = "Words per million in Hathi Trust, 10-year moving average",
        y = "", x = "Approximate publication date")
 ```
 
@@ -123,15 +144,15 @@ These pictures are only illustrative, and cannot tell the full picture. Multiple
 #| fig-width: 9
 #| fig-height: 9
 
-democracy_translations_freqs <- tar_read(democracy_translations_freqs) |>
-  pivot_wider(names_from = counttype, values_from = value) |>
-  group_by(language_long, date_year) |>
+democracy_translations_freqs <- tar_read(democracy_translations_freqs) %>%
+  pivot_wider(names_from = counttype, values_from = value) %>%
+  group_by(language_long, date_year) %>%
   summarise(TotalWords = unique(TotalWords),
             WordCount = sum(WordCount, na.rm = TRUE),
             WordsPerMillion = WordCount * 1e6/TotalWords,
-            label = paste0(unique(language_long), " (", str_trunc(paste(unique(word), collapse = ", "), 40), ")")) |>
-  filter(!is.na(WordCount)) |>
-  group_by(language_long) |>
+            label = paste0(unique(language_long), " (", str_trunc(paste(unique(word), collapse = ", "), 40), ")")) %>%
+  filter(!is.na(WordCount)) %>%
+  group_by(language_long) %>%
   mutate(sl_value = slider::slide_dbl(WordsPerMillion, .f = mean, .before = 5, .after = 5))
 
 ggplot(data = democracy_translations_freqs)  +
@@ -140,7 +161,7 @@ ggplot(data = democracy_translations_freqs)  +
                       xmax = xmax,
                       ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) +
   geom_point(data = democracy_translations_freqs , aes(x = date_year, y = WordsPerMillion), alpha = 0.3) +
-  labs(title = "Frequency of 'democracy' in HathiTrust texts",
+  labs(title = "Frequency of 'democracy' in Hathi Trust texts",
        y = "", x = "Approximate publication date",
        subtitle = "Words per million. Shaded areas denote major wars and revolutions. \n10-year rolling average, case-insensitive search.") +
   facet_wrap(~label, scales = "free_y") 
@@ -157,7 +178,7 @@ democracy_samples <- tar_read(democracy_samples)
 
 ```
 
-Since the total number of books in the HathiTrust corpus is very large, imposing some computational and budgetary constraints on this project, and we are only interested in the contexts around the word "democracy", I begin by selecting a random sample of `r format(nrow(democracy_samples), big.mark = ",")` English-language volumes that mention the word 'democracy'. I build this sample by first finding all the English-language books that mention 'democracy' using HathiTrust's [Workset Builder 2.0](https://solr2.htrc.illinois.edu/solr-ef/). I then exclude works whose publication date is clearly incorrect or missing (e.g., books with a much earlier publication date in their metadata than their other publication information indicates) and randomly sample 5,000 books per decade from the remaining volumes.[^4]
+Since the total number of books in the Hathi Trust corpus is very large, imposing some computational and budgetary constraints on this project, and we are only interested in the contexts around the word "democracy", I begin by selecting a random sample of `r format(nrow(democracy_samples), big.mark = ",")` English-language volumes that mention the word 'democracy'. I build this sample by first finding all the English-language books that mention 'democracy' using Hathi Trust's [Workset Builder 2.0](https://solr2.htrc.illinois.edu/solr-ef/). I then exclude works whose publication date is clearly incorrect or missing (e.g., books with a much earlier publication date in their metadata than their other publication information indicates) and randomly sample 5,000 books per decade from the remaining volumes.[^4]
 
 [^4]: Books with the wrong metadata can have a big influence on results in decades where few volumes mention democracy (e.g., the early 1700s), so it is important to exclude them to avoid spurious associations of democracy with concepts not in wide use at the particular time. Note that in decades between 1700-1800 and after 2000 there are fewer than 5,000 books digitized per decade, and some of the books in later decades do not have freely available "extracted features" files even if they appear in the workset, so there are not always 5,000 books per decade in the sample. A full description of this sample can be found in the appendix.
 
@@ -202,8 +223,8 @@ read_pmi_mat <- function(filename, pattern) {
     ungroup() %>%
     left_join(democracy_sample_random) %>%
     filter(rights_date_used >= year, rights_date_used < (year + 10)) %>% 
-    mutate(html = str_glue("https://babel.hathitrust.org/cgi/pt?id={htid}"),
-           democ_query = str_glue("https://babel.hathitrust.org/cgi/pt/search?q1=democracy;id={htid}"))
+    mutate(html = str_glue("https://babel.Hathi Trust.org/cgi/pt?id={htid}"),
+           democ_query = str_glue("https://babel.Hathi Trust.org/cgi/pt/search?q1=democracy;id={htid}"))
   
   books_df
   
