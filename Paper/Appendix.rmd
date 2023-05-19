@@ -23,9 +23,9 @@ theme_set(theme_bw())
 ## Sample Characteristics
 
 ```{r}
-tar_load(democracy_usable_htids)
+tar_load(usable_htids)
 
-democracy_usable_htids %>%
+usable_htids %>%
   group_by(decade) %>%
   summarise(n = n_distinct(htid)) %>%
   ggplot(aes(x = decade, y = n)) +
@@ -33,9 +33,9 @@ democracy_usable_htids %>%
 ```
 
 ```{r}
-tar_load(democracy_samples)
+tar_load(samples)
 
-max_vols <- democracy_samples %>%
+max_vols <- samples %>%
   count(decade) %>%
   pull(n) %>%
   max()
@@ -45,7 +45,7 @@ max_vols <- democracy_samples %>%
 Our sample includes up to `r max_vols` volumes per decade.
 
 ```{r}
-democracy_samples %>%
+samples %>%
   group_by(decade) %>%
   summarise(n = n_distinct(htid)) %>%
   ggplot(aes(x = decade, y = n)) +
@@ -57,12 +57,12 @@ These represent varying proportions of the total sample, though volumes that men
 ```{r}
 
 
-per_decade <- democracy_usable_htids %>%
+per_decade <- usable_htids %>%
   group_by(decade) %>%
   summarise(total_htids = n_distinct(htid),
             total_mentions = sum(n))
 
-democracy_samples %>%
+samples %>%
   left_join(per_decade) %>%
   group_by(decade, total_htids) %>%
   summarise(`Proportion of volumes in decade` = n_distinct(htid)/unique(total_htids),
