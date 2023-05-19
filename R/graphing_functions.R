@@ -2,9 +2,9 @@ graph_similarities <- function(df,
                                top_n = 8,
                                var = value,
                                max_n = Inf,
-                               lowercase = TRUE) {
+                               collapse_cased = TRUE) {
 
-  df <- prep_df(df, top_n, {{var}}, max_n = max_n, lowercase = lowercase)
+  df <- prep_df(df, top_n, {{var}}, max_n = max_n, collapse_cased = collapse_cased)
 
   df %>%
     ggplot2::ggplot(ggplot2::aes(y = forcats::fct_reorder(word, decade_density_max))) +
@@ -25,13 +25,18 @@ weighted_density_max <- function(x, wt) {
 
 }
 
-prep_df <- function(df, top_n, var, max_n, lowercase) {
+prep_df <- function(df, top_n, var, max_n, collapse_cased) {
 
-  if(lowercase) {
+  if(nrow(df) == 0) {
+    return(df)
+  }
+
+  if(collapse_cased) {
     df <- df %>%
-      dplyr::mutate(word = stringr::str_to_lower(word)) %>%
-      dplyr::group_by(decade, word) %>%
-      dplyr::summarise({{var}} := mean({{var}})) %>%
+      dplyr::mutate(word_id = stringr::str_to_lower(word)) %>%
+      dplyr::group_by(decade, word_id) %>%
+      dplyr::summarise({{var}} := mean({{var}}),
+                       word = paste(word, collapse = ", ")) %>%
       dplyr::ungroup()
   }
 
@@ -50,6 +55,9 @@ prep_df <- function(df, top_n, var, max_n, lowercase) {
 
   terms_to_plot <- terms_to_plot[terms_to_plot %in% top_terms]
 
+  if(nrow(df) == 0) {
+    return(df)
+  }
   word_years_df <- df %>%
     dplyr::filter(word %in% terms_to_plot) %>%
     dplyr::group_by(word) %>%
