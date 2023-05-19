@@ -58,6 +58,12 @@ json_to_dfm <- function(path,
     purrr::map(function(x) match(names(x), featnames)) %>%
     purrr::map(na.omit)
 
+  is_zero <-  (purrr::map_int(j, length) == 0)
+
+  j <- j[!is_zero]
+
+  pagemeta <- pagemeta[!is_zero, ]
+
   i <- rep(1:length(j), times = lengths(j))
 
   j <- unlist(j)
