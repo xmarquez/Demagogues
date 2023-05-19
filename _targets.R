@@ -7,200 +7,8 @@
 library(targets)
 library(tidyverse)
 library(hathiTools)
+library(rlang)
 library(tarchetypes) # Load other packages as needed. # nolint
-
-# Resources for cluster ---------------------------------------------------------------------
-
-democracy_files_resources <- list(partition = "parallel", memory = "12G", ncpus = 2,
-                                  walltime = "3:00:00")
-
-dfm_resources <- list(partition = "parallel", memory = "45G", ncpus = 2,
-                      walltime = "2:00:00")
-
-splits_resources <- list(partition = "parallel", memory = "20G", ncpus = 2,
-                      walltime = "0:02:00")
-
-fcm_resources <- list(partition = "bigmem", memory = "128G", ncpus = 2,
-                      walltime = "0:40:00")
-
-predictive_model_resources <- list(partition = "parallel", memory = "50G",
-                                   ncpus = 2, walltime = "0:50:00")
-
-evaluation_model_resources <- list(partition = "parallel", memory = "15G",
-                                   ncpus = 2, walltime = "0:02:00")
-
-svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
-                                   walltime = "0:10:00")
-
-glove_word_vectors_resources <- list(partition = "parallel", memory = "1G", ncpus = 40,
-                                     walltime = "1:00:00")
-
-# Object parameters ----------------------------------------------------------------------------------
-
-dfms_df <- tibble::tibble(result = "decade_dfm") %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-srp_dfms_df <- tibble::tibble(prefix = "srp_decade_dfm",
-                              dims = c(160)) %>%
-  tidyr::unite(col = "result", prefix, dims, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-fcms_df <- tibble::tibble(result = "decade_fcm") %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-splits <- tidyr::nesting(prefix = "splits",
-                         sources = dfms_df$result,
-                         downsample = c(FALSE, TRUE),
-                         type = c(NA, "random")) %>%
-  tidyr::unite(col = "result", prefix, sources, type, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-svd_word_vectors_df <- tidyr::nesting(prefix = "svd_word_vectors",
-                                      sources = dfms_df$result,
-                                      split = splits$result,
-                                      split_type = splits$type,
-                                      dims = 50) %>%
-  tidyr::expand_grid(weight = c("ppmi")) %>%
-  tidyr::unite(col = "result", prefix, sources, split_type, dims, weight, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-glove_word_vectors_df <- tidyr::nesting(prefix = "glove_word_vectors",
-                                        sources = fcms_df$result,
-                                        dims = 50) %>%
-  tidyr::unite(col = "result", prefix, sources, dims, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-embedded_docs_df <- tidyr::nesting(prefix = "embedded_docs",
-                                   sources = svd_word_vectors_df$result,
-                                   split = svd_word_vectors_df$split,
-                                   split_type = svd_word_vectors_df$split_type,
-                                   docs = svd_word_vectors_df$sources) %>%
-  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-models_df <- tidyr::nesting(prefix = "predictive",
-                         model_type = "classification",
-                         sources = dfms_df$result,
-                         engine = c("LiblineaR", "xgboost", "glmnet")) %>%
-  tidyr::expand_grid(tidyr::nesting(split = splits$result,
-                                    split_type = splits$type)) %>%
-  tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-srp_models_df <- tidyr::nesting(prefix = "predictive",
-                                model_type = "classification",
-                                sources = srp_dfms_df$result) %>%
-  tidyr::expand_grid(tidyr::nesting(engine = c("LiblineaR", "xgboost", "glmnet"),
-                                    split = "splits_decade_dfm",
-                                    split_type = NA)) %>%
-  tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-models_embedded_docs_df <- tidyr::nesting(prefix = "predictive",
-                                          model_type = "classification",
-                                          sources = c(embedded_docs_df$result),
-                                          split = embedded_docs_df$split,
-                                          split_type = embedded_docs_df$split_type,
-                                          weight = "none")  %>%
-  tidyr::expand_grid(engine = c("LiblineaR", "xgboost", "glmnet")) %>%
-  tidyr::unite(col = "result", prefix, model_type, sources, engine, split_type, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-models_simplified_eval_df <- tidyr::expand_grid(sources = "predictive_classification_decade_dfm_glmnet",
-                                                decades_model = seq(1700, 2010, by = 5),
-                                                dfms = "decade_dfm",
-                                                decades_dfms = seq(1700, 2010, by = 5))
-
-
-model_weights_df <- tidyr::nesting(prefix = "weights",
-                                   sources = models_df$result,
-                                   source_names = as.character(sources),
-                                   engine_names = paste(stringr::str_extract(source_names, "glmnet|LiblineaR|xgboost"), "engine"),
-                                   sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
-                                                                        stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
-                                                                        TRUE ~ "no downsampling"),
-                                   weight_names = dplyr::case_when(stringr::str_detect(source_names, "glmnet") ~ "Coefficients of logistic regression",
-                                                                   stringr::str_detect(source_names, "LiblineaR") ~ "Weights of SVM model",
-                                                                   stringr::str_detect(source_names, "xgboost") ~ "Weights of gradient-boosted random forest model"),
-                                   object_names = paste(weight_names, engine_names, sampling_strategy, sep = ", "))  %>%
-  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
-
-model_performance_df <- tidyr::nesting(prefix = "performance",
-                                    sources = models_df$result,
-                                    source_names = as.character(sources),
-                                    dfms = models_df$sources,
-                                    split = models_df$split) %>%
-  tidyr::expand_grid(use = c("testing", "training")) %>%
-  tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms),
-                engine_names = paste(stringr::str_extract(source_names, "glmnet|LiblineaR|xgboost"), "engine"),
-                sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
-                                                     stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
-                                                     TRUE ~ "no downsampling"),
-                model_names = dplyr::case_when(stringr::str_detect(source_names, "glmnet") ~ "Logistic regression",
-                                               stringr::str_detect(source_names, "LiblineaR") ~ "SVM",
-                                               stringr::str_detect(source_names, "xgboost") ~ "Gradient-boosted random forest model"),
-                object_names = paste(model_names, engine_names, sampling_strategy, paste(use, "data"), sep = ", "))
-
-model_performance_embedded_docs_df <- tidyr::nesting(prefix = "performance",
-                                                     sources = c(models_embedded_docs_df$result, srp_models_df$result),
-                                                     source_names = as.character(sources),
-                                                     dfms = c(models_embedded_docs_df$sources, srp_models_df$sources),
-                                                     split = c(models_embedded_docs_df$split, srp_models_df$split)) %>%
-  tidyr::expand_grid(use = c("testing", "training")) %>%
-  tidyr::unite(col = "result", prefix, sources, use, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms),
-                engine_names = paste(stringr::str_extract(source_names, "glmnet|LiblineaR|xgboost"), "engine"),
-                sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
-                                                     stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
-                                                     TRUE ~ "no downsampling"),
-                model_names = dplyr::case_when(stringr::str_detect(source_names, "glmnet") ~ "Logistic regression on SVD-embedded docs",
-                                               stringr::str_detect(source_names, "LiblineaR") ~ "SVM on SVD-embedded docs",
-                                               stringr::str_detect(source_names, "xgboost") ~ "Gradient-boosted random forest model on SVD-embedded docs"),
-                object_names = paste(model_names, engine_names, sampling_strategy, paste(use, "data"), sep = ", "))
-
-sims_svd_word_vectors_df <- tidyr::nesting(prefix = "sims",
-                                        sources = svd_word_vectors_df$result,
-                                        source_names = as.character(sources)) %>%
-  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms),
-                sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
-                                                     stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
-                                                     TRUE ~ "no downsampling"),
-                weight_names = "Cosine similarity to target term in SVD word vector space, PPMI weights",
-                object_names = paste(weight_names, sampling_strategy, sep = ", "))
-
-sims_glove_word_vectors_df <- tidyr::nesting(prefix = "sims",
-                                             sources = glove_word_vectors_df$result,
-                                             source_names = as.character(sources)) %>%
-  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms),
-                weight_names = "Cosine similarity to target term in GLOVE word vector space, PPMI weights",
-                object_names = paste(weight_names, sep = ", "))
-
-
-ppmi_word_vectors_df <- tidyr::nesting(prefix = c("ppmi_single", "sims_ppmi"),
-                                    sources = dfms_df$result,
-                                    funs = c("feature_ppmi", "ppmi_similarities"),
-                                    source_names = as.character(sources)) %>%
-  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split", "funs")), rlang::syms),
-                sampling_strategy = dplyr::case_when(stringr::str_detect(source_names, "random") ~ "random downsampling of majority category",
-                                                     stringr::str_detect(source_names, "similarity") ~ "similarity downsampling of majority category",
-                                                     TRUE ~ "no downsampling"),
-                weight_names = dplyr::case_when(stringr::str_detect(as.character(result), "ppmi_single") ~ "Single-feature PPMI to target feature",
-                                                stringr::str_detect(as.character(result), "sims_ppmi") ~ "Cosine similarity to target feature across PPMI-weighted DFM"),
-                object_names = paste(weight_names, sampling_strategy, sep = ", "))
-
-graphs_df <- dplyr::bind_rows(sims_svd_word_vectors_df,
-                              sims_glove_word_vectors_df,
-                              model_weights_df,
-                              ppmi_word_vectors_df) %>%
-  dplyr::mutate(prefix = "graph",
-                sources = .$result) %>%
-  tidyr::unite(col = "result", prefix, sources, remove = FALSE, na.rm = TRUE) %>%
-  dplyr::mutate(across(dplyr::any_of(c("result", "sources", "split")), rlang::syms))
 
 # Set target options:
 tar_option_set(
@@ -217,18 +25,21 @@ future::plan(future.batchtools::batchtools_slurm, template = "batchtools.slurm.t
 
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
-# source("other_functions.R") # Source other scripts as needed. # nolint
 
-# Replace the target list below with your own:
+# Resources for cluster ---------------------------------------------------------------------
+source("cluster_resources.R")
+
+# Object parameters ----------------------------------------------------------------------------------
+source("object_parameters.R")
+
 # Replace the target list below with your own:
 list(
 
 # Decade selection --------------------------------------------------------
 
-
   tar_target(
     name = decades,
-    command = seq(1700, 2010, by = 1),
+    command = seq(1700, 2010, by = 10),
     deployment = "main"
   ),
 
@@ -244,8 +55,8 @@ list(
 # Workset creation and metadata addition ----------------------------------
 
   tar_target(
-    name = democracy_worksets,
-    command = workset_builder("democracy", pub_date = decades:(decades+2)) %>%
+    name = worksets,
+    command = workset_builder(names(feature), pub_date = decades:(decades+9)) %>%
       mutate(decade = decades),
     pattern = map(decades),
     deployment = "main"
@@ -263,16 +74,16 @@ list(
   ),
 
   tar_target(
-    name = democracy_worksets_meta,
+    name = worksets_meta,
     command = cached_hathi_catalog %>%
-      dplyr::filter(htid %in% democracy_worksets$htid),
+      dplyr::filter(htid %in% worksets$htid),
     deployment = "main"
   ),
 
   tar_target(
-    name = democracy_usable_htids,
-    command = democracy_worksets_meta %>%
-      dplyr::left_join(democracy_worksets) %>%
+    name = usable_htids,
+    command = worksets_meta %>%
+      dplyr::left_join(worksets) %>%
       dplyr::filter(rights_date_used >= decade, rights_date_used < decade+10,
                     decade == decades) %>%
       dplyr::mutate(rights_date_used2 = stringr::str_extract(imprint, "[0-9]{4}") %>%
@@ -284,126 +95,108 @@ list(
     ),
 
   tar_target(
-    name = democracy_samples,
-    command = democracy_usable_htids %>%
-      dplyr::sample_n(min(200, dplyr::n()), weight = n),
-    pattern = map(democracy_usable_htids),
+    name = samples,
+    command = usable_htids %>%
+      dplyr::sample_n(min(40, dplyr::n()), weight = n),
+    pattern = map(usable_htids),
     deployment = "main"
   ),
 
 # File caching -------------------------------------------------------------
 
   tar_target(
-    name = democracy_files,
-    command = hathiTools::cache_htids(democracy_samples, attempt_rsync = TRUE,
-                                      cache_format = "rds"),
-    pattern = map(democracy_samples),
+    name = files,
+    command = cache_ef_files(samples) ,
+    pattern = map(samples),
     resources = tar_resources(future = tar_resources_future(
       plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = democracy_files_resources),
-      resources = democracy_files_resources)),
+                           resources = files_resources),
+      resources = files_resources)),
     storage = "worker",
-    retrieval = "worker"
-
+    retrieval = "worker",
+    format = "file"
   ),
 
 # DFM creation -------------------------------------------------------------
 
-  tar_target(
-    name = decade_dfm,
-    command = compute_dfm(democracy_files, cache_format = "rds"),
-    pattern = map(democracy_files),
-    resources = tar_resources(future = tar_resources_future(
-      plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = dfm_resources),
-      resources = dfm_resources)),
-    storage = "worker",
-
-    retrieval = "worker",
-    iteration = "list"
-  ),
-
-  tar_target(
-    name = feature_decade_dfm,
-    command = compute_dfm_feat(democracy_files, democracy_feature, cache_format = "rds"),
-    pattern = map(democracy_files),
-    resources = tar_resources(future = tar_resources_future(
-      plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = dfm_resources),
-      resources = dfm_resources)),
-    storage = "worker",
-
-    retrieval = "worker",
-    iteration = "list"
-  ),
-
   tar_eval(
-    values = srp_dfms_df,
+    values = dfms_df,
     tar_target(
       name = result,
-      command = compute_dfm_srp(democracy_files, democracy_feature, cache_format = "rds", dims = dims),
-      pattern = map(democracy_files),
+      command = dfm_from_json(files,
+                              vocab_size = vocab_size,
+                              pos_pattern = pos_pattern,
+                              include_pattern = include_pattern,
+                              min_length = min_length,
+                              page_language = page_language,
+                              min_sentence_count = min_sentence_count,
+                              to_lower = to_lower),
+      pattern = map(files),
+      packages = c("quanteda"),
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
                              resources = dfm_resources),
         resources = dfm_resources)),
-      storage = "worker",
-
-      iteration = "list"
+      iteration = "list",
+      memory = "transient",
+      garbage_collection = TRUE,
+      deployment = "worker",
+      storage = "worker"
     )
   ),
 
   tar_target(
-    name = democracy_feature,
-    command = quanteda::dictionary(list(democracy = c("democracy_nn", "democracy_nnp", "democracy_nns")),
-                                   tolower = FALSE),
+    name = target_feature,
+    command = quanteda::dictionary(
+      feature,
+      tolower = FALSE),
     deployment = "main"
   ),
 
 # FCM Creation ------------------------------------------------------------
-
-
-tar_target(
-  name = decade_fcm,
-  command = decade_dfm %>%
-    quanteda::dfm_lookup(democracy_feature, exclusive = FALSE)  %>%
-    compute_fcm(weight = "ppmi"),
-  pattern = map(decade_dfm),
-  resources = tar_resources(future = tar_resources_future(
-    plan = future::tweak(future.batchtools::batchtools_slurm,
-                         resources = fcm_resources),
-    resources = fcm_resources)),
-  storage = "worker",
-  retrieval = "worker",
-  iteration = "list"
-),
-
-# Compute GLOVE word vectors -----------------------------------------
-
-tar_eval(
-  values = glove_word_vectors_df,
-  tar_target(
-    name = result,
-    command = fcm_glove_wvs(sources, nv = dims, n_iter = 30),
-    pattern = map(sources),
-    iteration = "list",
-    resources = tar_resources(future = tar_resources_future(
-      plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = glove_word_vectors_resources),
-      resources = glove_word_vectors_resources)),
-    storage = "worker",
-    retrieval = "worker"
-  )
-),
+#
+#
+# tar_target(
+#   name = decade_fcm,
+#   command = decade_dfm %>%
+#     quanteda::dfm_lookup(target_feature, exclusive = FALSE)  %>%
+#     compute_fcm(weight = "ppmi"),
+#   pattern = map(decade_dfm),
+#   resources = tar_resources(future = tar_resources_future(
+#     plan = future::tweak(future.batchtools::batchtools_slurm,
+#                          resources = fcm_resources),
+#     resources = fcm_resources)),
+#   storage = "worker",
+#   retrieval = "worker",
+#   iteration = "list"
+# ),
+#
+# # Compute GLOVE word vectors -----------------------------------------
+#
+# tar_eval(
+#   values = glove_word_vectors_df,
+#   tar_target(
+#     name = result,
+#     command = fcm_glove_wvs(sources, nv = dims, n_iter = 30),
+#     pattern = map(sources),
+#     iteration = "list",
+#     resources = tar_resources(future = tar_resources_future(
+#       plan = future::tweak(future.batchtools::batchtools_slurm,
+#                            resources = glove_word_vectors_resources),
+#       resources = glove_word_vectors_resources)),
+#     storage = "worker",
+#     retrieval = "worker"
+#   )
+# ),
 
 # Compute test-train splits -----------------------------------------
 
   tar_eval(
-    values = splits,
+    values = splits_df,
     tar_target(
       name = result,
       command = train_test_splits(sources,
-                                  feat = democracy_feature,
+                                  feat = target_feature,
                                   downsample = downsample,
                                   type = type),
       pattern = map(sources),
@@ -422,8 +215,9 @@ tar_eval(
     tar_target(
       name = result,
       command = predictive_model(dfm = sources,
+                                 weight = weight,
                                  initial_split = split,
-                                 feat = democracy_feature,
+                                 feat = target_feature,
                                  engine = engine,
                                  model_type = model_type),
       pattern = map(sources, split),
@@ -434,33 +228,8 @@ tar_eval(
         resources = predictive_model_resources)),
       storage = "worker",
       retrieval = "worker",
-
-      iteration = "list"
-    )
-  ),
-
-  tar_eval(
-    values = dplyr::bind_rows(models_embedded_docs_df, srp_models_df),
-    tar_target(
-      name = result,
-      command = predictive_model(dfm = sources,
-                                 initial_split = split,
-                                 feat = names(democracy_feature),
-                                 engine = engine,
-                                 model_type = model_type,
-                                 weight = "none"),
-      pattern = map(sources, split),
-      packages = c("quanteda"),
-      resources = tar_resources(future = tar_resources_future(
-        plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = predictive_model_resources),
-        resources = predictive_model_resources)),
-      storage = "worker",
-      retrieval = "worker",
-      # memory = "transient",
-      # deployment = "main",
-      # garbage_collection = TRUE,
-      iteration = "list"
+      iteration = "list",
+      garbage_collection = TRUE
     )
   ),
 
@@ -470,12 +239,10 @@ tar_eval(
     values = model_weights_df,
     tar_target(
       name = result,
-      command = model_weights(sources) %>%
-        dplyr::mutate(name = object_names,
-                      source = source_names,
-                      decade = decades,
-                      measure = "Model Weights"),
-      pattern = map(sources, decades),
+      command = model_weights(model) %>%
+        dplyr::mutate(id = id,
+                      decade = decades),
+      pattern = map(model, decades),
       deployment = "main",
       packages = "quanteda"
     )
@@ -487,13 +254,10 @@ tar_eval(
     values = model_performance_df,
     tar_target(
       name = result,
-      command = model_performance(sources, dfms, split, feat = democracy_feature, use = use) %>%
-        dplyr::mutate(name = object_names,
-                      source = source_names,
-                      decade = decades,
-                      model_type = model_type,
-                      sample = use),
-      pattern = map(sources, dfms, split, decades),
+      command = model_performance(model, sources, split, feat = target_feature, use = use) %>%
+        dplyr::mutate(id = id,
+                      decade = decades),
+      pattern = map(model, sources, split, decades),
       packages = c("quanteda"),
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
@@ -501,105 +265,6 @@ tar_eval(
         resources = evaluation_model_resources)),
       storage = "worker",
       retrieval = "worker"
-    )
-  ),
-
-  tar_eval(
-    values = model_performance_embedded_docs_df,
-    tar_target(
-      name = result,
-      command = model_performance(sources, dfms, split, feat = names(democracy_feature),
-                                  use = use, weight = "none") %>%
-        dplyr::mutate(name = object_names,
-                      source = source_names,
-                      decade = decades,
-                      model_type = model_type,
-                      sample = use),
-      pattern = map(sources, dfms, split, decades),
-      packages = c("quanteda"),
-      resources = tar_resources(future = tar_resources_future(
-        plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = evaluation_model_resources),
-        resources = evaluation_model_resources)),
-      storage = "worker",
-      retrieval = "worker"
-    )
-  ),
-
-  # tar_target(
-  #   name = decades_2,
-  #   command = seq(1700, 2010, by = 5),
-  #   deployment = "main"
-  # ),
-  #
-  # tar_target(
-  #   name = glmnet_predictive_eval,
-  #   command = model_performance_simplified(predictive_classification_decade_dfm_glmnet,
-  #                                          decade_dfm, feat = democracy_feature, weight = "ppmi") %>%
-  #     dplyr::mutate(decade1 = decades, decade2 = decades_2),
-  #   packages = c("quanteda", "Matrix"),
-  #   resources = tar_resources(future = tar_resources_future(
-  #     plan = future::tweak(future.batchtools::batchtools_slurm,
-  #                          resources = evaluation_model_resources),
-  #     resources = evaluation_model_resources)),
-  #   storage = "worker",
-  #   retrieval = "worker",
-  #   pattern = cross(map(predictive_classification_decade_dfm_glmnet, decades), map(decade_dfm, decades_2))
-  # ),
-
-# Graphs ------------------------------------------------------------------
-
-  tar_target(
-    name = pos_patterns,
-    command = c(".","(_nn|_NN)","(_vb|_VB)","(_jj|_JJ)", "ism_", "^[A-Z].+NN"),
-    deployment = "main"
-  ),
-
-  tar_target(
-    name = lowercase,
-    command = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE),
-    deployment = "main"
-  ),
-
-  tar_target(name = max_per_decade,
-             command = 8,
-             deployment = "main"
-             ),
-
-  tar_target(name = max_num,
-             command = 60,
-             deployment = "main"
-             ),
-
-  tar_target(
-    name = graph_combined_weights,
-    command = graph_similarities(combined_weights %>%
-                                   dplyr::filter(stringr::str_detect(word, pos_patterns)),
-                                 top_n = max_per_decade,
-                                 var = mean_pnormed,
-                                 max_n = max_num,
-                                 lowercase = lowercase),
-    pattern = map(pos_patterns, lowercase),
-    iteration = "list",
-    memory = "transient",
-    garbage_collection = TRUE,
-    deployment = "main"
-  ),
-
-  tar_eval(
-    values = graphs_df,
-    tar_target(name = result,
-               command = graph_similarities(sources %>%
-                                              dplyr::filter(stringr::str_detect(word, pos_patterns)),
-                                            top_n = max_per_decade,
-                                            var = value,
-                                            max_n = max_num,
-                                            lowercase = lowercase),
-               pattern = map(pos_patterns, lowercase),
-               iteration = "list",
-               memory = "transient",
-               garbage_collection = TRUE,
-               deployment = "main"
     )
   ),
 
@@ -609,15 +274,14 @@ tar_eval(
     values = ppmi_word_vectors_df,
     tar_target(
       name = result,
-      command = funs(sources, democracy_feature) %>%
-        dplyr::filter(word != stringr::str_to_upper(names(democracy_feature))) %>%
-        dplyr::mutate(name = object_names,
-                      decade = decades,
+      command = funs(sources, target_feature) %>%
+        dplyr::filter(word != stringr::str_to_upper(names(target_feature))) %>%
+        dplyr::mutate(decade = decades,
                       measure = "PPMI of 'DEMOCRACY' with other terms",
-                      source = source_names,
                       scaled_value = as.numeric(scale(value)),
                       pnormed_value = pnorm(scaled_value),
-                      sigmoid_value = plogis(scaled_value)) %>%
+                      sigmoid_value = plogis(scaled_value),
+                      id = id) %>%
         dplyr::arrange(desc(value)),
       pattern = map(sources, decades),
       resources = tar_resources(future = tar_resources_future(
@@ -636,25 +300,9 @@ tar_eval(
     tar_target(
       name = result,
       command = sources %>%
-        quanteda::dfm_lookup(democracy_feature, exclusive = FALSE) %>%
+        quanteda::dfm_lookup(target_feature, exclusive = FALSE) %>%
         svd_word_vectors(initial_split = split, nv = dims, weight = weight),
       pattern = map(sources, split),
-      iteration = "list",
-      resources = tar_resources(future = tar_resources_future(
-        plan = future::tweak(future.batchtools::batchtools_slurm,
-                             resources = svd_word_vectors_resources),
-        resources = svd_word_vectors_resources)),
-      storage = "worker",
-      retrieval = "worker"
-    )
-  ),
-
-  tar_eval(
-    values = embedded_docs_df,
-    tar_target(
-      name = result,
-      command = embed_docs(docs, sources, democracy_feature),
-      pattern = map(docs, sources),
       iteration = "list",
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
@@ -668,46 +316,52 @@ tar_eval(
 # Similarity calculation for word vectors ---------------------------------
 
   tar_eval(
-    values = dplyr::bind_rows(sims_svd_word_vectors_df,
-                              sims_glove_word_vectors_df),
+    values = dplyr::bind_rows(sims_svd_word_vectors_df),
     tar_target(
       name = result,
-      command = wordVectors::closest_to(sources, stringr::str_to_upper(names(democracy_feature)), n = Inf,
+      command = wordVectors::closest_to(model, stringr::str_to_upper(names(target_feature)), n = Inf,
                                         fancy_names = FALSE) %>%
-        dplyr::filter(word != stringr::str_to_upper(names(democracy_feature))) %>%
-        dplyr::mutate(name = object_names,
-                      decade = decades,
-                      dimensions = ncol(sources),
-                      measure = "Cosine similarity to 'DEMOCRACY'",
-                      source = source_names,
+        dplyr::filter(word != stringr::str_to_upper(names(target_feature))) %>%
+        dplyr::mutate(decade = decades,
                       scaled_value = as.numeric(scale(similarity)),
                       pnormed_value = pnorm(scaled_value),
-                      sigmoid_value = plogis(scaled_value)) %>%
+                      sigmoid_value = plogis(scaled_value),
+                      id = id) %>%
         dplyr::rename(value = similarity) %>%
         tibble::as_tibble(),
-      pattern = map(sources, decades),
+      pattern = map(model, decades),
       deployment = "main"
     )
   ),
-  # Combined Targets ------------------------------------------------------------------------
+
+# Combined Targets ------------------------------------------------------------------------
 
   tar_target(
     name = predictive_model_weights,
-    command = dplyr::bind_rows(!!!model_weights_df$result),
+    command = dplyr::bind_rows(!!!model_weights_df$result) %>%
+      dplyr::left_join(model_weights_df %>%
+                         dplyr::select(-model_type, -tidyselect::where(is.list),
+                                       -prefix)),
     deployment = "main"
 
   ),
 
   tar_target(
     name = svd_model_weights,
-    command = dplyr::bind_rows(!!!sims_svd_word_vectors_df$result),
+    command = dplyr::bind_rows(!!!sims_svd_word_vectors_df$result)  %>%
+      dplyr::left_join(sims_svd_word_vectors_df %>%
+                         dplyr::select(-tidyselect::where(is.list),
+                                       -prefix)),
     deployment = "main"
 
   ),
 
   tar_target(
     name = ppmi_model_weights,
-    command = dplyr::bind_rows(!!!ppmi_word_vectors_df$result),
+    command = dplyr::bind_rows(!!!ppmi_word_vectors_df$result) %>%
+      dplyr::left_join(ppmi_word_vectors_df %>%
+                         dplyr::select(-tidyselect::where(is.list),
+                                       -prefix, -funs)),
     deployment = "main"
   ),
 
@@ -721,15 +375,16 @@ tar_eval(
 
   tar_target(
     name = combined_performance,
-    command = dplyr::bind_rows(!!!model_performance_df$result,
-                               !!!model_performance_embedded_docs_df$result),
+    command = dplyr::bind_rows(!!!model_performance_df$result) %>%
+      dplyr::left_join(model_performance_df %>%
+                         dplyr::select(-model_type, -tidyselect::where(is.list))),
     deployment = "main"
   ),
 
   tar_target(
     name = combined_weights,
     command = all_model_weights %>%
-      dplyr::filter(word != stringr::str_to_upper(names(democracy_feature))) %>%
+      dplyr::filter(word != stringr::str_to_upper(names(target_feature))) %>%
       dplyr::group_by(decade, word) %>%
       dplyr::summarise(mean_value = mean(value),
                        mean_scaled = mean(scaled_value),
@@ -740,11 +395,23 @@ tar_eval(
 
   ),
 
-  tar_target(
-    name = combined_dem_dfm,
-    command = do.call(rbind, feature_decade_dfm),
-    deployment = "main",
-    packages = "quanteda"
+# Graphs ------------------------------------------------------------------
+
+  tar_eval(
+    values = graphs_df,
+    tar_target(name = result,
+               command = graph_similarities(
+                 sources %>%
+                   dplyr::filter(stringr::str_detect(word, graph_pos_patterns)),
+                 top_n = max_per_decade,
+                 var = value,
+                 max_n = max_num,
+                 collapse_cased = collapse_cased),
+               iteration = "list",
+               memory = "transient",
+               garbage_collection = TRUE,
+               deployment = "main"
+    )
   ),
 
 # Basic corpus stats ------------------------------------------------------
@@ -855,6 +522,13 @@ tar_eval(
   ),
 
 # Paper and appendixes ------------------------------------------------
+
+  tar_target(
+    name = graph_document,
+    command = rmd_blocks_graph_names(graphs_df),
+    format = "file",
+    deployment = "main"
+  ),
 
   tar_knit(
     name = Appendix,
