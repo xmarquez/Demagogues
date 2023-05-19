@@ -23,6 +23,11 @@ json_to_dfm <- function(path,
                  tibble::as_tibble_row()) %>%
     purrr::list_rbind()
 
+  is_null_body <- purrr::map_lgl(body, is.null)
+
+  body <- body[!is_null_body]
+  pagemeta <- pagemeta[!is_null_body, ]
+
   body <- body[ pagemeta$calculatedLanguage == page_language &
                   !is.na(pagemeta$calculatedLanguage) &
                   pagemeta$sentenceCount >= min_sentence_count ]
@@ -86,14 +91,10 @@ json_to_dfm <- function(path,
 dfm_from_json <- function(paths,
                           vocab_size = 30000,
                           ...) {
-  pb <- cli::cli_progress_bar("Building dfms from JSON EF files", total = length(paths))
-
   dfms <- paths %>%
     purrr::map(function(x) {
-      cli::cli_progress_update(status = paste("Now reading", x), id = pb);
       json_to_dfm(x, ...)
       })
-  cli::cli_progress_done()
 
   new_features <- dfms %>%
     purrr::map(quanteda::featnames) %>%
@@ -112,8 +113,6 @@ dfm_from_json <- function(paths,
     quanteda::as.dfm()
 
   quanteda::docvars(result) <- new_docvars
-
-  browser()
 
   result %>%
     quanteda::dfm_trim(min_termfreq =  vocab_size,
