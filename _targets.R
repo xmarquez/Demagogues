@@ -340,6 +340,7 @@ list(
     name = predictive_model_weights,
     command = dplyr::bind_rows(!!!model_weights_df$result) %>%
       dplyr::left_join(model_weights_df %>%
+                         dplyr::mutate(dfms = as.character(sources)) %>%
                          dplyr::select(-model_type, -tidyselect::where(is.list),
                                        -prefix)),
     deployment = "main"
@@ -350,6 +351,7 @@ list(
     name = svd_model_weights,
     command = dplyr::bind_rows(!!!sims_svd_word_vectors_df$result)  %>%
       dplyr::left_join(sims_svd_word_vectors_df %>%
+                         dplyr::mutate(dfms = as.character(sources)) %>%
                          dplyr::select(-tidyselect::where(is.list),
                                        -prefix)),
     deployment = "main"
@@ -360,6 +362,7 @@ list(
     name = ppmi_model_weights,
     command = dplyr::bind_rows(!!!ppmi_word_vectors_df$result) %>%
       dplyr::left_join(ppmi_word_vectors_df %>%
+                         dplyr::mutate(dfms = as.character(sources)) %>%
                          dplyr::select(-tidyselect::where(is.list),
                                        -prefix, -funs)),
     deployment = "main"
