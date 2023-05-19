@@ -97,7 +97,7 @@ list(
   tar_target(
     name = samples,
     command = usable_htids %>%
-      dplyr::sample_n(min(40, dplyr::n()), weight = n),
+      dplyr::sample_n(min(500, dplyr::n()), weight = n),
     pattern = map(usable_htids),
     deployment = "main"
   ),
