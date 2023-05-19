@@ -65,12 +65,7 @@ list(
   tar_target(
     name = cached_hathi_catalog,
     command = hathiTools::load_raw_hathifile(hathi_catalog),
-    resources = tar_resources(future = tar_resources_future(
-      plan = future::tweak(future.batchtools::batchtools_slurm,
-                           resources = list(partition = "parallel", memory = "20G", ncpus = 12,
-                                            walltime = "1:00:00")),
-      resources = list(partition = "parallel", memory = "20G", ncpus = 12,
-                       walltime = "1:00:00")))
+    deployment = "main"
   ),
 
   tar_target(
