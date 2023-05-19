@@ -1,18 +1,20 @@
 ---
 title: "Appendix"
 author: "Xavier Marquez"
-date: "2023-02-08"
+date: "`r date()`"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
-                      warning = FALSE)
+                      warning = FALSE,
+                      fig.path = here::here("Paper/figure/figs-"))
 
 library(targets)
 library(tidyverse)
-tar_config_set(store = "../_targets")
+tar_config_set(store = here::here("_targets"),
+               config = "custom.yaml")
 
 theme_set(theme_bw())
 ```
@@ -81,14 +83,14 @@ democracy_samples %>%
 ```{r}
 tar_load(all_model_weights)
 archy_acy <- all_model_weights %>% 
-  filter(str_detect(word, "archy_|cracy_"), !str_detect(source, "_random|_similarity")) %>% 
+  filter(str_detect(word, "archy_|cracy_"), sampling_strategy == "no downsampling") %>% 
   mutate(word = str_to_lower(word))
 
 archy_acy  %>% 
   filter(pnormed_value > 0.5) %>% 
   ggplot(aes(x = decade, y = pnormed_value)) + 
   stat_summary() + 
-  geom_point(aes(color = name), alpha = 0.2) + 
+  geom_point(aes(color = description), alpha = 0.2) + 
   facet_wrap(~fct_reorder(word, pnormed_value)) + 
   scale_color_viridis_d() +
   theme(legend.position = "bottom")
@@ -96,7 +98,7 @@ archy_acy  %>%
 ```
 ```{r}
 earliest_latest <- all_model_weights %>% 
-  filter(!str_detect(source, "_random|_similarity"), scaled_value > 5) %>% 
+  filter(sampling_strategy == "no downsampling", scaled_value > 5) %>% 
   mutate(word = str_to_lower(word)) %>%
   group_by(word) %>%
   summarise(earliest_appearance = min(decade),
@@ -130,10 +132,10 @@ term_lists <- terms %>%
 model_graph <- function(term_list) {
   all_model_weights %>%
     mutate(word = str_to_lower(word)) %>%
-    filter(word %in% term_list, !str_detect(source, "_random|_similarity")) %>%
+    filter(word %in% term_list, sampling_strategy == "no downsampling") %>%
     ggplot(aes(x = decade, y = pnormed_value)) +
       stat_summary(alpha =  0.4) +
-      geom_point(aes(color = name), alpha = 0.2) +
+      geom_point(aes(color = description), alpha = 0.2) +
       geom_smooth() +
       facet_wrap(~fct_reorder(word, pnormed_value)) +
       scale_color_viridis_d() +
@@ -148,553 +150,7 @@ term_lists %>%
 
 ## Graphs for Individual Models
 
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_nn}
-#| fig-cap: sims svd word vectors decade dfm 50 ppmi, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_sims_svd_word_vectors_decade_dfm_50_ppmi)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_vb}
-#| fig-cap: sims svd word vectors decade dfm 50 ppmi, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_jj}
-#| fig-cap: sims svd word vectors decade dfm 50 ppmi, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_ism}
-#| fig-cap: sims svd word vectors decade dfm 50 ppmi, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_50_ppmi_uppercase_nouns}
-#| fig-cap: sims svd word vectors decade dfm 50 ppmi, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_nn}
-#| fig-cap: sims svd word vectors decade dfm random 50 ppmi, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_vb}
-#| fig-cap: sims svd word vectors decade dfm random 50 ppmi, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_jj}
-#| fig-cap: sims svd word vectors decade dfm random 50 ppmi, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_ism}
-#| fig-cap: sims svd word vectors decade dfm random 50 ppmi, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_sims_svd_word_vectors_decade_dfm_random_50_ppmi_uppercase_nouns}
-#| fig-cap: sims svd word vectors decade dfm random 50 ppmi, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_nn}
-#| fig-cap: sims glove word vectors decade fcm 50, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_sims_glove_word_vectors_decade_fcm_50)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_vb}
-#| fig-cap: sims glove word vectors decade fcm 50, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_jj}
-#| fig-cap: sims glove word vectors decade fcm 50, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_ism}
-#| fig-cap: sims glove word vectors decade fcm 50, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_sims_glove_word_vectors_decade_fcm_50_uppercase_nouns}
-#| fig-cap: sims glove word vectors decade fcm 50, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_nn}
-#| fig-cap: weights predictive classification decade dfm glmnet, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_weights_predictive_classification_decade_dfm_glmnet)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_vb}
-#| fig-cap: weights predictive classification decade dfm glmnet, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_jj}
-#| fig-cap: weights predictive classification decade dfm glmnet, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_ism}
-#| fig-cap: weights predictive classification decade dfm glmnet, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_uppercase_nouns}
-#| fig-cap: weights predictive classification decade dfm glmnet, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_nn}
-#| fig-cap: weights predictive classification decade dfm glmnet random, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_weights_predictive_classification_decade_dfm_glmnet_random)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_vb}
-#| fig-cap: weights predictive classification decade dfm glmnet random, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_jj}
-#| fig-cap: weights predictive classification decade dfm glmnet random, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_ism}
-#| fig-cap: weights predictive classification decade dfm glmnet random, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_glmnet_random_uppercase_nouns}
-#| fig-cap: weights predictive classification decade dfm glmnet random, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_nn}
-#| fig-cap: weights predictive classification decade dfm LiblineaR, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_weights_predictive_classification_decade_dfm_LiblineaR)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_vb}
-#| fig-cap: weights predictive classification decade dfm LiblineaR, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_jj}
-#| fig-cap: weights predictive classification decade dfm LiblineaR, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_ism}
-#| fig-cap: weights predictive classification decade dfm LiblineaR, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_uppercase_nouns}
-#| fig-cap: weights predictive classification decade dfm LiblineaR, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_random_nn}
-#| fig-cap: weights predictive classification decade dfm LiblineaR random, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_weights_predictive_classification_decade_dfm_LiblineaR_random)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_random_vb}
-#| fig-cap: weights predictive classification decade dfm LiblineaR random, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_random_jj}
-#| fig-cap: weights predictive classification decade dfm LiblineaR random, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_random_ism}
-#| fig-cap: weights predictive classification decade dfm LiblineaR random, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_LiblineaR_random_uppercase_nouns}
-#| fig-cap: weights predictive classification decade dfm LiblineaR random, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_nn}
-#| fig-cap: weights predictive classification decade dfm xgboost, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_weights_predictive_classification_decade_dfm_xgboost)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_vb}
-#| fig-cap: weights predictive classification decade dfm xgboost, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_jj}
-#| fig-cap: weights predictive classification decade dfm xgboost, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_ism}
-#| fig-cap: weights predictive classification decade dfm xgboost, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_uppercase_nouns}
-#| fig-cap: weights predictive classification decade dfm xgboost, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_random_nn}
-#| fig-cap: weights predictive classification decade dfm xgboost random, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_weights_predictive_classification_decade_dfm_xgboost_random)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_random_vb}
-#| fig-cap: weights predictive classification decade dfm xgboost random, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_random_jj}
-#| fig-cap: weights predictive classification decade dfm xgboost random, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_random_ism}
-#| fig-cap: weights predictive classification decade dfm xgboost random, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_weights_predictive_classification_decade_dfm_xgboost_random_uppercase_nouns}
-#| fig-cap: weights predictive classification decade dfm xgboost random, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_ppmi_single_decade_dfm_nn}
-#| fig-cap: ppmi single decade dfm, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_ppmi_single_decade_dfm)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_ppmi_single_decade_dfm_vb}
-#| fig-cap: ppmi single decade dfm, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_ppmi_single_decade_dfm_jj}
-#| fig-cap: ppmi single decade dfm, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_ppmi_single_decade_dfm_ism}
-#| fig-cap: ppmi single decade dfm, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_ppmi_single_decade_dfm_uppercase_nouns}
-#| fig-cap: ppmi single decade dfm, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
-```
-
-
-```{r fig-graph_sims_ppmi_decade_dfm_nn}
-#| fig-cap: sims ppmi decade dfm, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graph_sims_ppmi_decade_dfm)
-
-graph[[2]]
-
-```
-
- 
-```{r fig-graph_sims_ppmi_decade_dfm_vb}
-#| fig-cap: sims ppmi decade dfm, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[3]]
-
-```
-
- 
-```{r fig-graph_sims_ppmi_decade_dfm_jj}
-#| fig-cap: sims ppmi decade dfm, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[4]]
-
-```
-
- 
-```{r fig-graph_sims_ppmi_decade_dfm_ism}
-#| fig-cap: sims ppmi decade dfm, -ism terms only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[5]]
-
-```
-
- 
-```{r fig-graph_sims_ppmi_decade_dfm_uppercase_nouns}
-#| fig-cap: sims ppmi decade dfm, nouns starting with uppercase only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-
-
-graph[[6]]
-
+```{r, child="Paper/graph_appendix.rmd"}
 ```
 
 ## Model performance graphs
@@ -704,25 +160,18 @@ graph[[6]]
 #| fig-width: 9
 #| fig-height: 9
 
-
-tar_load(combined_performance, store = here::here("_targets"))
+rm(all_model_weights)
+invisible(gc())
+tar_load(combined_performance)
 
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "auc")) %>%
-  dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
-                                                   "Downsampled majority class, at random",
-                                                 stringr::str_detect(source, "_similarity") ~ 
-                                                   "Downsampled majority class, \nmost similar texts by PPMI",
-                                                 TRUE ~ "No downsampling"),
-                model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
-                                              stringr::str_detect(source, "srp.+160") ~ "SRP embedding, 160 features",
-                                              stringr::str_detect(source, "srp.+320") ~ "SRP embedding, 320 features",
-                                              TRUE ~ "Original DFM, 30,000 features")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
-                                shape = model_data, alpha = forcats::fct_rev(sample))) + 
-  ggplot2::geom_point() + 
+  dplyr::mutate(sampling_strategy = case_when(downsample ~ "random sample of majority category",
+                                              TRUE ~ "no downsampling")) |>
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), 
+                                alpha = forcats::fct_rev(use),
+                                linetype = sampling_strategy)) +   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
-  ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
   ggplot2::labs(alpha = "Sample", color = "Model", shape = "Model data", linetype = "Model data",
                 title = "Predictive performance of classification models, AUC measure.") +
@@ -741,20 +190,13 @@ combined_performance %>%
 
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "accuracy")) %>%
-  dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
-                                                   "Downsampled majority class, at random",
-                                                 stringr::str_detect(source, "_similarity") ~ 
-                                                   "Downsampled majority class, \nmost similar texts by PPMI",
-                                                 TRUE ~ "No downsampling"),
-                model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
-                                              stringr::str_detect(source, "srp.+160") ~ "SRP embedding, 160 features",
-                                              stringr::str_detect(source, "srp.+320") ~ "SRP embedding, 320 features",
-                                              TRUE ~ "Original DFM, 30,000 features")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
-                                shape = model_data, alpha = forcats::fct_rev(sample))) + 
+  dplyr::mutate(sampling_strategy = case_when(downsample ~ "random sample of majority category",
+                                              TRUE ~ "no downsampling")) |>
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), 
+                                alpha = forcats::fct_rev(use),
+                                linetype = sampling_strategy)) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
-  ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
   ggplot2::labs(alpha = "Sample", color = "Model", shape = "Model data", linetype = "Model data",
                 title = "Predictive performance of classification models, accuracy measure.") +
@@ -772,23 +214,16 @@ combined_performance %>%
 
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "kap")) %>%
-  dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
-                                                   "Downsampled majority class, at random",
-                                                 stringr::str_detect(source, "_similarity") ~ 
-                                                   "Downsampled majority class, \nmost similar texts by PPMI",
-                                                 TRUE ~ "No downsampling"),
-                model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
-                                              stringr::str_detect(source, "srp.+160") ~ "SRP embedding, 160 features",
-                                              stringr::str_detect(source, "srp.+320") ~ "SRP embedding, 320 features",
-                                              TRUE ~ "Original DFM, 30,000 features")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
-                                shape = model_data, alpha = forcats::fct_rev(sample))) + 
+  dplyr::mutate(sampling_strategy = case_when(downsample ~ "random sample of majority category",
+                                              TRUE ~ "no downsampling")) |>
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), 
+                                alpha = forcats::fct_rev(use),
+                                linetype = sampling_strategy)) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
-  ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
   ggplot2::labs(alpha = "Sample", color = "Model", shape = "Model data", linetype = "Model data",
-                title = "Predictive performance of classification models, Cohen's Kappa measure.") +
+                title = "Predictive performance of classification models, kap measure.") +
   theme(legend.position = "bottom")+
   guides(colour = guide_legend(ncol = 1, title.position = "top"),
          alpha = guide_legend(ncol = 1, title.position = "top"),
@@ -803,21 +238,14 @@ combined_performance %>%
 #| fig-height: 9
 
 combined_performance %>% 
-  dplyr::filter(stringr::str_detect(.metric, "deviance|mae|mn|mse")) %>%
-  dplyr::mutate(sampling_type = dplyr::case_when(stringr::str_detect(source, "_random") ~ 
-                                                   "Downsampled majority class, at random",
-                                                 stringr::str_detect(source, "_similarity") ~ 
-                                                   "Downsampled majority class, \nmost similar texts by PPMI",
-                                                 TRUE ~ "No downsampling"),
-                model_data = dplyr::case_when(stringr::str_detect(source, "svd") ~ "Embedded documents, 50 features",
-                                              stringr::str_detect(source, "srp.+160") ~ "SRP embedding, 160 features",
-                                              stringr::str_detect(source, "srp.+320") ~ "SRP embedding, 320 features",
-                                              TRUE ~ "Original DFM, 30,000 features")) %>%
-  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), linetype = model_data, 
-                                shape = model_data, alpha = forcats::fct_rev(sample))) + 
+  dplyr::filter(stringr::str_detect(.metric, "mn_log_loss")) %>%
+  dplyr::mutate(sampling_strategy = case_when(downsample ~ "random sample of majority category",
+                                              TRUE ~ "no downsampling")) |>
+  ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), 
+                                alpha = forcats::fct_rev(use),
+                                linetype = sampling_strategy)) + 
   ggplot2::geom_point() + 
   ggplot2::geom_line() + 
-  ggplot2::facet_wrap( ~ sampling_type) +
   ggplot2::theme_bw() +
   ggplot2::labs(alpha = "Sample", color = "Model", shape = "Model data", linetype = "Model data",
                 title = "Predictive performance of classification models, log loss measure.") +
