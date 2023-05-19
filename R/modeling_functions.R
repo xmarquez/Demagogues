@@ -21,7 +21,7 @@ train_test_splits.dictionary2 <- function(dfm, feat, downsampled, type) {
 train_test_splits.character <- function(dfm, feat, downsampled, type) {
 
   df <- dfm%>%
-    quanteda::select(feat)%>%
+    quanteda::dfm_select(feat)%>%
     quanteda::dfm_weight(scheme = "boolean")%>%
     quanteda::convert(to = "data.frame")
 
@@ -127,7 +127,6 @@ predictive_model <- function(dfm, initial_split, feat,
                              weight = c("ppmi", "tfidf", "none"),
                              model_type = c("regression", "classification"),
                              engine = c("LiblineaR", "glmnet", "xgboost"), ...) {
-
   engine <- match.arg(engine, c("LiblineaR", "glmnet", "xgboost"))
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   model_type <- match.arg(model_type, c("regression", "classification"))
@@ -191,7 +190,6 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
                                      feat = feat, weight = weight,
                                      model_type = model_type,
                                      ...) {
-
   x_train <- get_x(training_dfm, feat = feat, weight = weight)
 
   y_train <- get_y(training_dfm, feat, model_type = model_type)
@@ -526,6 +524,8 @@ predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...)
     glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "binomial",
                                       parallel = TRUE, ...)
   }
+
+  doParallel::stopImplicitCluster()
 
   glmnet_model
 
