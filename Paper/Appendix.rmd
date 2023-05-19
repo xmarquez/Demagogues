@@ -167,7 +167,7 @@ tar_load(combined_performance)
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "auc")) %>%
   dplyr::mutate(sampling_strategy = case_when(downsample ~ "random sample of majority category",
-                                              TRUE ~ "no downsampling")) |>
+                                              TRUE ~ "no downsampling")) %>%
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), 
                                 alpha = forcats::fct_rev(use),
                                 linetype = sampling_strategy)) +   ggplot2::geom_point() + 
@@ -191,7 +191,7 @@ combined_performance %>%
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "accuracy")) %>%
   dplyr::mutate(sampling_strategy = case_when(downsample ~ "random sample of majority category",
-                                              TRUE ~ "no downsampling")) |>
+                                              TRUE ~ "no downsampling")) %>%
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), 
                                 alpha = forcats::fct_rev(use),
                                 linetype = sampling_strategy)) + 
@@ -215,7 +215,7 @@ combined_performance %>%
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "kap")) %>%
   dplyr::mutate(sampling_strategy = case_when(downsample ~ "random sample of majority category",
-                                              TRUE ~ "no downsampling")) |>
+                                              TRUE ~ "no downsampling")) %>%
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), 
                                 alpha = forcats::fct_rev(use),
                                 linetype = sampling_strategy)) + 
@@ -240,7 +240,7 @@ combined_performance %>%
 combined_performance %>% 
   dplyr::filter(stringr::str_detect(.metric, "mn_log_loss")) %>%
   dplyr::mutate(sampling_strategy = case_when(downsample ~ "random sample of majority category",
-                                              TRUE ~ "no downsampling")) |>
+                                              TRUE ~ "no downsampling")) %>%
   ggplot2::ggplot(ggplot2::aes( x= decade, y = .estimate, color = paste(model_type), 
                                 alpha = forcats::fct_rev(use),
                                 linetype = sampling_strategy)) + 
