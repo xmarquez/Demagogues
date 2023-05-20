@@ -11,8 +11,8 @@ splits_resources <- list(partition = "parallel", memory = "20G", ncpus = 2,
 fcm_resources <- list(partition = "bigmem", memory = "128G", ncpus = 2,
                       walltime = "0:40:00")
 
-predictive_model_resources <- list(partition = "parallel", memory = "50G",
-                                   ncpus = 2, walltime = "5:00:00")
+predictive_model_resources <- list(partition = "parallel", memory = "25G",
+                                   ncpus = 4, walltime = "6:00:00")
 
 evaluation_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 2, walltime = "0:10:00")
