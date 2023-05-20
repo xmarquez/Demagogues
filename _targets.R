@@ -270,7 +270,7 @@ list(
       command = model_performance_per_volume(model, sources, feat = target_feature) %>%
         dplyr::mutate(id = id,
                       decade = decades),
-      pattern = map(model, sources, split, decades),
+      pattern = map(model, sources, decades),
       packages = c("quanteda"),
       resources = tar_resources(future = tar_resources_future(
         plan = future::tweak(future.batchtools::batchtools_slurm,
