@@ -92,7 +92,7 @@ list(
   tar_target(
     name = samples,
     command = usable_htids %>%
-      dplyr::sample_n(min(500, dplyr::n()), weight = n),
+      dplyr::sample_n(min(750, dplyr::n()), weight = n),
     pattern = map(usable_htids),
     deployment = "main"
   ),
@@ -263,6 +263,24 @@ list(
     )
   ),
 
+  tar_eval(
+    values = model_performance_per_volume_df,
+    tar_target(
+      name = result,
+      command = model_performance_per_volume(model, sources, feat = target_feature) %>%
+        dplyr::mutate(id = id,
+                      decade = decades),
+      pattern = map(model, sources, split, decades),
+      packages = c("quanteda"),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = evaluation_model_resources),
+        resources = evaluation_model_resources)),
+      storage = "worker",
+      retrieval = "worker"
+    )
+  ),
+
 # PPMI sims and WVs --------------------------------------------------------
 
   tar_eval(
@@ -376,6 +394,15 @@ list(
     command = dplyr::bind_rows(!!!model_performance_df$result) %>%
       dplyr::left_join(model_performance_df %>%
                          dplyr::select(-model_type, -tidyselect::where(is.list))),
+    deployment = "main"
+  ),
+
+  tar_target(
+    name = combined_performance_per_volume,
+    command = dplyr::bind_rows(!!!model_performance_per_volume_df$result) %>%
+      dplyr::left_join(model_performance_per_volume_df %>%
+                         dplyr::select(-model_type, -tidyselect::where(is.list))) %>%
+      dplyr::left_join(samples),
     deployment = "main"
   ),
 
