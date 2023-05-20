@@ -60,8 +60,8 @@ sampling_params <- tibble(downsample = c(FALSE, TRUE),
                             paste(
                               "Test/train split, random downsampling"
                             )
-                          )) |>
-  nesting() |>
+                          )) %>%
+  nesting() %>%
   expand_grid(sources = dfms_df$result)
 
 splits_df <- generate_params_df("split", sampling_params)
@@ -128,9 +128,9 @@ model_performance_params <- expand_grid(
 
 model_performance_df <- generate_params_df("performance", model_performance_params)
 
-model_performance_per_volume_params <- model_performance_df |>
-  filter(!downsample, use == "training") |>
-  select(-prefix, -use, -split, -result, -id, -type) |>
+model_performance_per_volume_params <- model_performance_df %>%
+  filter(!downsample, use == "training") %>%
+  select(-prefix, -use, -split, -result, -id, -type) %>%
   distinct()
 
 model_performance_per_volume_df <- generate_params_df("performance_per_volume",
