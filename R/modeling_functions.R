@@ -292,11 +292,11 @@ model_weights.xgb.Booster <- function(model) {
 
 }
 
-model_performance_simplified <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
-  UseMethod("model_performance_simplified")
+model_performance_per_volume <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+  UseMethod("model_performance_per_volume")
 }
 
-model_performance_simplified.cv.glmnet <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
 
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   if("lognet" %in% class(model$glmnet.fit)) {
@@ -318,11 +318,13 @@ model_performance_simplified.cv.glmnet <- function(model, dfm, feat, weight = c(
   predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
     factor(levels = c("FALSE", "TRUE"))
 
-  preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)
+  preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class) %>%
+    dplyr::bind_cols(quanteda::docvars(dfm)) %>%
+    dplyr::group_by(htid)
 
   if(model_type == "regression") {
     preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate)
-    res <- preds %>%
+    res <- preds  %>%
       yardstick::metrics(truth = truth, estimate = estimate)
 
   }
@@ -340,7 +342,7 @@ model_performance_simplified.cv.glmnet <- function(model, dfm, feat, weight = c(
 
 }
 
-model_performance_simplified.LiblineaR <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+model_performance_per_volume.LiblineaR <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
 
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   model_type <- ifelse(model$Type %in% c(0:7), "classification",
@@ -356,15 +358,16 @@ model_performance_simplified.LiblineaR <- function(model, dfm, feat, weight = c(
 
   predictions <- LiblineaR:::predict.LiblineaR(model, newx = x_test)
 
-  preds <- tibble::tibble(truth = y_test, estimate = predictions$predictions)
+  preds <- tibble::tibble(truth = y_test, estimate = predictions$predictions)  %>%
+    dplyr::bind_cols(quanteda::docvars(dfm)) %>%
+    dplyr::group_by(htid)
 
   res <- preds %>%
     yardstick::metrics(truth = truth, estimate = estimate)
 
   if(model_type == "classification") {
     conf_mat <- preds %>%
-      yardstick::conf_mat(truth = truth, estimate = estimate) %>%
-      yardstick::tidy()
+      yardstick::conf_mat(truth = truth, estimate = estimate)
 
     res <- res %>%
       dplyr::mutate(conf_mat = list(conf_mat))
@@ -374,7 +377,7 @@ model_performance_simplified.LiblineaR <- function(model, dfm, feat, weight = c(
     dplyr::mutate(model_type = model$TypeDetail)
 }
 
-model_performance_simplified.xgb.Booster <-  function(model, dfm, feat,
+model_performance_per_volume.xgb.Booster <-  function(model, dfm, feat,
                                                       weight = c("ppmi", "tfidf", "none")) {
 
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
@@ -395,7 +398,9 @@ model_performance_simplified.xgb.Booster <-  function(model, dfm, feat,
 
   predictions <- xgboost:::predict.xgb.Booster(model, newdata = x_test)
 
-  preds <- tibble::tibble(truth = y_test, estimate = predictions)
+  preds <- tibble::tibble(truth = y_test, estimate = predictions)  %>%
+    dplyr::bind_cols(quanteda::docvars(dfm)) %>%
+    dplyr::group_by(htid)
 
   if(model_type == "regression") {
     res <- preds %>%
@@ -449,8 +454,7 @@ model_performance.LiblineaR <- function(model, dfm, initial_split, feat,
 
   if(model_type == "classification") {
     conf_mat <- preds %>%
-      yardstick::conf_mat(truth = truth, estimate = estimate) %>%
-      yardstick::tidy()
+      yardstick::conf_mat(truth = truth, estimate = estimate)
 
     res <- res %>%
       dplyr::mutate(conf_mat = list(conf_mat))
@@ -604,8 +608,7 @@ binary_metrics <- function(preds) {
                                         event_level = "second"))
 
   conf_mat <- preds %>%
-    yardstick::conf_mat(truth = truth, estimate = class) %>%
-    yardstick::tidy()
+    yardstick::conf_mat(truth = truth, estimate = class)
 
   res <- res %>%
     dplyr::mutate(conf_mat = list(conf_mat))

@@ -1,6 +1,6 @@
 
 files_resources <- list(partition = "parallel", memory = "12G", ncpus = 2,
-                                  walltime = "3:00:00")
+                                  walltime = "6:00:00")
 
 dfm_resources <- list(partition = "parallel", memory = "45G", ncpus = 2,
                       walltime = "6:00:00")

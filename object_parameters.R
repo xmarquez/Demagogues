@@ -53,7 +53,6 @@ dfms_df <- generate_params_df("dfm", dfm_params)
 # Splits params -----
 sampling_params <- tibble(downsample = c(FALSE, TRUE),
                           type = c(NA, "random"),
-                          sources = dfms_df$result,
                           description =  c(
                             paste(
                               "Test/train split, no downsampling"
@@ -61,7 +60,9 @@ sampling_params <- tibble(downsample = c(FALSE, TRUE),
                             paste(
                               "Test/train split, random downsampling"
                             )
-                          ))
+                          )) |>
+  nesting() |>
+  expand_grid(sources = dfms_df$result)
 
 splits_df <- generate_params_df("split", sampling_params)
 
@@ -126,6 +127,14 @@ model_performance_params <- expand_grid(
   mutate(description = paste0(description, ", ", use, " sample"))
 
 model_performance_df <- generate_params_df("performance", model_performance_params)
+
+model_performance_per_volume_params <- model_performance_df |>
+  filter(!downsample, use == "training") |>
+  select(-prefix, -use, -split, -result, -id, -type) |>
+  distinct()
+
+model_performance_per_volume_df <- generate_params_df("performance_per_volume",
+                                                      model_performance_per_volume_params)
 
 # SVD word vector cosine similarities ----
 sims_svd_params <- svd_word_vectors_df %>%
