@@ -15,7 +15,7 @@ predictive_model_resources <- list(partition = "parallel", memory = "50G",
                                    ncpus = 2, walltime = "5:00:00")
 
 evaluation_model_resources <- list(partition = "parallel", memory = "15G",
-                                   ncpus = 2, walltime = "0:02:00")
+                                   ncpus = 2, walltime = "0:10:00")
 
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
                                    walltime = "0:10:00")
