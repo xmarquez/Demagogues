@@ -403,7 +403,8 @@ list(
       dplyr::left_join(model_performance_per_volume_df %>%
                          dplyr::select(-model_type, -tidyselect::where(is.list))) %>%
       dplyr::left_join(samples),
-    deployment = "main"
+    deployment = "main",
+    garbage_collection = TRUE
   ),
 
   tar_target(
