@@ -92,7 +92,7 @@ list(
   tar_target(
     name = samples,
     command = usable_htids %>%
-      dplyr::sample_n(min(750, dplyr::n()), weight = n),
+      dplyr::sample_n(min(40, dplyr::n()), weight = n),
     pattern = map(usable_htids),
     deployment = "main"
   ),
@@ -402,7 +402,8 @@ list(
     command = dplyr::bind_rows(!!!model_performance_per_volume_df$result) %>%
       dplyr::left_join(model_performance_per_volume_df %>%
                          dplyr::select(-model_type, -tidyselect::where(is.list))) %>%
-      dplyr::left_join(samples),
+      dplyr::left_join(samples %>%
+                         rename(other_info = description)),
     deployment = "main",
     garbage_collection = TRUE
   ),
