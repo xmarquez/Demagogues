@@ -397,12 +397,12 @@ list(
     deployment = "main"
   ),
 
-  tar_target(
-    name = combined_performance_per_volume,
-    command = dplyr::bind_rows(!!!model_performance_per_volume_df$result),
-    deployment = "main",
-    garbage_collection = TRUE
-  ),
+  # tar_target(
+  #   name = combined_performance_per_volume,
+  #   command = dplyr::bind_rows(!!!model_performance_per_volume_df$result),
+  #   deployment = "main",
+  #   garbage_collection = TRUE
+  # ),
 
   tar_target(
     name = combined_weights,
