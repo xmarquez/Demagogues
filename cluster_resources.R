@@ -14,7 +14,7 @@ fcm_resources <- list(partition = "bigmem", memory = "128G", ncpus = 2,
 predictive_model_resources <- list(partition = "parallel", memory = "10G",
                                    ncpus = 10, walltime = "7:00:00")
 
-evaluation_model_resources <- list(partition = "parallel", memory = "25G",
+evaluation_model_resources <- list(partition = "parallel", memory = "50G",
                                    ncpus = 2, walltime = "0:10:00")
 
 svd_word_vectors_resources <- list(partition = "parallel", memory = "25G", ncpus = 10,
