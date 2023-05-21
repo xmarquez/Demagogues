@@ -4,9 +4,9 @@
 #SBATCH --output=pipeline.out
 #SBATCH --error=pipeline.err
 #SBATCH --time=2-00:00:00
-#SBATCH --partition=bigmem
+#SBATCH --partition=parallel
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=128G
+#SBATCH --mem=60G
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=xavier.marquez@vuw.ac.nz
 

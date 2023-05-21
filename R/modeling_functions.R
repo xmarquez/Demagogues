@@ -293,6 +293,7 @@ model_weights.xgb.Booster <- function(model) {
 }
 
 model_performance_per_volume <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+  invisible()
   UseMethod("model_performance_per_volume")
 }
 
@@ -318,12 +319,11 @@ model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c(
   predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
     factor(levels = c("FALSE", "TRUE"))
 
-  preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class) %>%
-    dplyr::bind_cols(quanteda::docvars(dfm)) %>%
-    dplyr::group_by(htid)
-
   if(model_type == "regression") {
-    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate)
+    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate) %>%
+      dplyr::bind_cols(quanteda::docvars(dfm)) %>%
+      dplyr::group_by(htid)
+
     res <- preds  %>%
       yardstick::metrics(truth = truth, estimate = estimate)
 
@@ -333,7 +333,10 @@ model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c(
     predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
       factor(levels = c("FALSE", "TRUE"))
 
-    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)
+    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)  %>%
+      dplyr::bind_cols(quanteda::docvars(dfm)) %>%
+      dplyr::group_by(htid)
+
     res <- binary_metrics(preds)
   }
 
