@@ -399,11 +399,7 @@ list(
 
   tar_target(
     name = combined_performance_per_volume,
-    command = dplyr::bind_rows(!!!model_performance_per_volume_df$result) %>%
-      dplyr::left_join(model_performance_per_volume_df %>%
-                         dplyr::select(-model_type, -tidyselect::where(is.list))) %>%
-      dplyr::left_join(samples %>%
-                         rename(other_info = description)),
+    command = dplyr::bind_rows(!!!model_performance_per_volume_df$result),
     deployment = "main",
     garbage_collection = TRUE
   ),
