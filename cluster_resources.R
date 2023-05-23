@@ -12,7 +12,7 @@ fcm_resources <- list(partition = "bigmem", memory = "128G", ncpus = 2,
                       walltime = "0:40:00")
 
 predictive_model_resources <- list(partition = "parallel", memory = "10G",
-                                   ncpus = 10, walltime = "7:00:00")
+                                   ncpus = 10, walltime = "9:00:00")
 
 evaluation_model_resources <- list(partition = "parallel", memory = "15G",
                                    ncpus = 2, walltime = "0:10:00")
