@@ -220,7 +220,7 @@ restricted_json_to_dfm <- function(path,
   idx_pattern <- which(contains_pattern)
   idx_no_pattern <- which(!contains_pattern)
 
-  if(!is.infinite(multiplier)) {
+  if(!is.infinite(multiplier) && length(idx_no_pattern) > 0) {
     idx_no_pattern <- idx_no_pattern %>%
       sample(sample_size * multiplier, replace = TRUE) %>%
       unique()
