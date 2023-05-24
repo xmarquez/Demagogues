@@ -97,6 +97,14 @@ list(
     deployment = "main"
   ),
 
+  tar_target(
+    name = samples_restricted,
+    command = usable_htids %>%
+      dplyr::sample_n(min(5000, dplyr::n()), weight = n),
+    pattern = map(usable_htids),
+    deployment = "main"
+  ),
+
 # File caching -------------------------------------------------------------
 
   tar_target(
@@ -112,7 +120,28 @@ list(
     format = "file"
   ),
 
+  tar_target(
+    name = files_restricted,
+    command = cache_ef_files(samples_restricted) ,
+    pattern = map(samples_restricted),
+    resources = tar_resources(future = tar_resources_future(
+      plan = future::tweak(future.batchtools::batchtools_slurm,
+                           resources = files_resources),
+      resources = files_resources)),
+    storage = "worker",
+    retrieval = "worker",
+    format = "file"
+  ),
+
 # DFM creation -------------------------------------------------------------
+
+  tar_target(
+    name = target_feature,
+    command = quanteda::dictionary(
+      feature,
+      tolower = FALSE),
+    deployment = "main"
+  ),
 
   tar_eval(
     values = dfms_df,
@@ -140,12 +169,32 @@ list(
     )
   ),
 
-  tar_target(
-    name = target_feature,
-    command = quanteda::dictionary(
-      feature,
-      tolower = FALSE),
-    deployment = "main"
+  tar_eval(
+    values = dfm_restricted_df,
+    tar_target(
+      name = result,
+      command = restricted_dfm_from_json(files_restricted,
+                                         vocab_size = vocab_size,
+                                         pos_pattern = pos_pattern,
+                                         include_pattern = include_pattern,
+                                         min_length = min_length,
+                                         page_language = page_language,
+                                         pages_contain = pages_contain,
+                                         min_sentence_count = min_sentence_count,
+                                         to_lower = to_lower,
+                                         multiplier = multiplier),
+      pattern = map(files_restricted),
+      packages = c("quanteda"),
+      resources = tar_resources(future = tar_resources_future(
+        plan = future::tweak(future.batchtools::batchtools_slurm,
+                             resources = dfm_resources),
+        resources = dfm_resources)),
+      iteration = "list",
+      memory = "transient",
+      garbage_collection = TRUE,
+      deployment = "worker",
+      storage = "worker"
+    )
   ),
 
 # FCM Creation ------------------------------------------------------------

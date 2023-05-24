@@ -50,6 +50,38 @@ dfm_params <- expand_grid(target_feature = names(feature),
 
 dfms_df <- generate_params_df("dfm", dfm_params)
 
+dfm_restricted_params <- expand_grid(target_feature = names(feature),
+                                     vocab_size = 30000,
+                                     pos_pattern = "NN|VB|JJ",
+                                     include_pattern = "^\\p{L}+$",
+                                     pages_contain = names(feature),
+                                     min_length = 2,
+                                     page_language = "en",
+                                     min_sentence_count = 3,
+                                     nesting(
+                                       multiplier = c(1),
+                                       to_lower = c(TRUE),
+                                       description = c(
+                                         paste(
+                                           "DFM of texts containing democracy,",
+                                           "30000 word vocab, lowercased,",
+                                           "english pages only, 2 letter",
+                                           "min sequence, 3 sentences per page",
+                                           "unicode letters only",
+                                           "(no numbers or punctuation),",
+                                           "NN/VB/JJ parts of speech only,",
+                                           "pages containing '", names(feature),
+                                           "' and", multiplier,
+                                           "x the number of pages not",
+                                           "containing '", names(feature), "'"
+                                           )
+                                         )
+                                       )
+                                     )
+
+
+dfm_restricted_df <- generate_params_df("dfm", dfm_restricted_params)
+
 # Splits params -----
 sampling_params <- tibble(downsample = c(FALSE, TRUE),
                           type = c(NA, "random"),
