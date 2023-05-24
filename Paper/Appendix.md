@@ -1,7 +1,7 @@
 ---
 title: "Appendix"
 author: "Xavier Marquez"
-date: "Sun May 21 16:52:02 2023"
+date: "Wed May 24 13:02:42 2023"
 output: html_document
 ---
 
@@ -15,7 +15,7 @@ output: html_document
 
 
 
-Our sample includes up to 750 volumes per decade.
+Our sample includes up to 1000 volumes per decade.
 
 ![plot of chunk unnamed-chunk-3](/nfs/scratch/marquexa/Paper/figure/figs-unnamed-chunk-3-1.png)
 
