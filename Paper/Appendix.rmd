@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE,
 
 library(targets)
 library(tidyverse)
-tar_config_set(store = ("../_targets"),
+tar_config_set(store = here::here("_targets"),
                config = "custom.yaml")
 
 theme_set(theme_bw())
@@ -34,6 +34,7 @@ usable_htids %>%
 
 ```{r}
 tar_load(samples)
+tar_load(samples_restricted)
 
 max_vols <- samples %>%
   count(decade) %>%
@@ -46,6 +47,20 @@ Our sample includes up to `r max_vols` volumes per decade.
 
 ```{r}
 samples %>%
+  group_by(decade) %>%
+  summarise(n = n_distinct(htid)) %>%
+  ggplot(aes(x = decade, y = n)) +
+  geom_col()
+
+
+```
+```{r}
+max_vols_restricted <- samples_restricted %>%
+  count(decade) %>%
+  pull(n) %>%
+  max()
+
+samples_restricted %>%
   group_by(decade) %>%
   summarise(n = n_distinct(htid)) %>%
   ggplot(aes(x = decade, y = n)) +
@@ -63,6 +78,22 @@ per_decade <- usable_htids %>%
             total_mentions = sum(n))
 
 samples %>%
+  left_join(per_decade) %>%
+  group_by(decade, total_htids) %>%
+  summarise(`Proportion of volumes in decade` = n_distinct(htid)/unique(total_htids),
+            `Proportion of mentions in decade` = sum(n)/unique(total_mentions)) %>%
+  pivot_longer(starts_with("Proportion")) %>%
+  ggplot(aes(x = decade, y = value, fill = name)) +
+  geom_col(position = "dodge") +
+  labs(y = "Proportion of HTIDs mentioning 'democracy'",
+       fill = "") +
+  scale_fill_viridis_d() +
+  scale_y_continuous(labels = scales::percent)
+
+```
+
+```{r}
+samples_restricted %>%
   left_join(per_decade) %>%
   group_by(decade, total_htids) %>%
   summarise(`Proportion of volumes in decade` = n_distinct(htid)/unique(total_htids),
