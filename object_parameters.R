@@ -94,7 +94,8 @@ sampling_params <- tibble(downsample = c(FALSE, TRUE),
                             )
                           )) %>%
   nesting() %>%
-  expand_grid(sources = dfms_df$result)
+  expand_grid(sources = c(dfms_df$result, dfm_restricted_df$result)) %>%
+  filter(!downsample)
 
 splits_df <- generate_params_df("split", sampling_params)
 

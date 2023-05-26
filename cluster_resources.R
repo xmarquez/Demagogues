@@ -2,7 +2,7 @@
 files_resources <- list(partition = "parallel", memory = "12G", ncpus = 2,
                                   walltime = "6:00:00")
 
-dfm_resources <- list(partition = "bigmem", memory = "60G", ncpus = 2,
+dfm_resources <- list(partition = "bigmem", memory = "80G", ncpus = 2,
                       walltime = "10:00:00")
 
 splits_resources <- list(partition = "parallel", memory = "20G", ncpus = 2,
