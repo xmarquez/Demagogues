@@ -126,10 +126,19 @@ cosine_sims <- function(x, y) {
 predictive_model <- function(dfm, initial_split, feat,
                              weight = c("ppmi", "tfidf", "none"),
                              model_type = c("regression", "classification"),
-                             engine = c("LiblineaR", "glmnet", "xgboost"), ...) {
-  engine <- match.arg(engine, c("LiblineaR", "glmnet", "xgboost"))
+                             engine = c("LiblineaR", "glmnet", "xgboost"),
+                             pattern = ".",
+                             ...) {
+  engine <- match.arg(engine, c("LiblineaR", "glmnet", "xgboost", "naivebayes"))
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   model_type <- match.arg(model_type, c("regression", "classification"))
+  dfm_feat <- dfm_select(dfm, feat)
+  dfm <- compress_dfm_to_target_features(dfm, feat)
+  dfm <- dfm %>%
+    quanteda::dfm_remove(feat) %>%
+    quanteda::dfm_select(pattern = pattern, valuetype = "regex") %>%
+    quanteda:::cbind.dfm(dfm_feat)
+
   training_dfm <- get_training_sample(dfm, initial_split)
 
   switch(engine,
@@ -144,8 +153,27 @@ predictive_model <- function(dfm, initial_split, feat,
          xgboost = predictive_model.xgboost(training_dfm = training_dfm,
                                             feat = feat, weight = weight,
                                             model_type = model_type,
-                                            ...))
+                                            ...),
+         naivebayes = predictive_model.naivebayes(training_dfm = training_dfm,
+                                                  feat = feat, weight = weight,
+                                                  model_type = model_type,
+                                                  ...))
 
+}
+
+predictive_model.naivebayes <- function(training_dfm, feat, weight, model_type, ...) {
+
+  x_train <- get_x(training_dfm, feat = feat, weight = weight)
+
+  y_train <- get_y(training_dfm, feat, model_type = model_type)
+
+  x_train <- as(x_train, "dgCMatrix")
+
+  stopifnot(model_type == "classification")
+
+  model <- naivebayes::multinomial_naive_bayes(x_train, y_train, laplace = 1)
+
+  model
 }
 
 predictive_model.LiblineaR <- function(training_dfm, feat, weight, model_type, ...) {
@@ -168,6 +196,7 @@ predictive_model.LiblineaR <- function(training_dfm, feat, weight, model_type, .
     } else {
       type <- 11
     }
+
     svm_model <- LiblineaR::LiblineaR(x_train, y_train, cost = cost,
                                       type = type, svr_eps = 0.1)
   } else {
@@ -178,8 +207,11 @@ predictive_model.LiblineaR <- function(training_dfm, feat, weight, model_type, .
     } else {
       type <- 1
     }
+
+    wi <- table(y_train)
+
     svm_model <- LiblineaR::LiblineaR(x_train, y_train, cost = cost,
-                                      type = type)
+                                      type = type, wi = wi)
   }
 
   svm_model
@@ -201,6 +233,8 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
   }
 
   print(table(y_train))
+
+  scale_pos_weight = sum(y_train)/sum(y_train == 0)
 
   if(model_type == "regression") {
     dots <- list(...)
@@ -238,8 +272,17 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
     if("nrounds" %in% names(dots)) {
       nrounds <- dots[["nrounds"]]
     } else {
-      nrounds <- 20
+      nrounds <- 120
     }
+    params <- c(params, list("scale_pos_weight" = scale_pos_weight,
+                             "eval_metric" = "auc",
+                             "eta" = 0.1,
+                             "max_depth" = 12,
+                             colsample_bytree = 0.5,
+                             lambda = 0.5,
+                             subsample = 0.5,
+                             "nthread" = parallel::detectCores()))
+
     xgboost_model <- xgboost::xgboost(data = x_train, label = y_train,
                                       params = params, nrounds = nrounds)
   }
@@ -251,7 +294,6 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
 
 model_weights <- function(model) {
 
-  recalculate <- TRUE
   UseMethod("model_weights")
 }
 
@@ -261,8 +303,11 @@ model_weights.LiblineaR <- function(model) {
   colnames(ret) <- c("word", "value")
 
   if(!is.null(model$ClassNames)) {
-    ret$value <- -ret$value
+    if(!as.logical(model$ClassNames[1])) {
+      ret$value <- -ret$value
+    }
   }
+
   ret %>%
     dplyr::filter(word != "Bias") %>%
     dplyr::arrange(desc(value)) %>%
@@ -270,6 +315,22 @@ model_weights.LiblineaR <- function(model) {
                   scaled_value = as.numeric(scale(value)),
                   pnormed_value = pnorm(scaled_value),
                   sigmoid_value = plogis(scaled_value))
+
+}
+
+model_weights.multinomial_naive_bayes <- function(model) {
+
+  ret <- naivebayes:::coef.multinomial_naive_bayes(model) %>%
+    dplyr::as_tibble(rownames = "word") %>%
+    dplyr::mutate(value = `TRUE` - `FALSE`)
+
+  ret %>%
+    dplyr::arrange(desc(value)) %>%
+    dplyr::mutate(model_type = class(model),
+                  scaled_value = value - min(value),
+                  scaled_value = scaled_value/sum(scaled_value),
+                  pnormed_value = NA,
+                  sigmoid_value = NA)
 
 }
 
@@ -288,229 +349,6 @@ model_weights.xgb.Booster <- function(model) {
                   sigmoid_value = plogis(scaled_value))
 
   ret %>%
-    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
-
-}
-
-model_performance_per_volume <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
-  invisible()
-  UseMethod("model_performance_per_volume")
-}
-
-model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
-
-  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
-  if("lognet" %in% class(model$glmnet.fit)) {
-    model_type <- "classification"
-
-  } else if("elnet" %in% class(model$glmnet.fit)) {
-    model_type <- "regression"
-  }
-
-  x_test <- get_x(dfm, feat = feat, weight = weight)
-
-  x_test <- quanteda::dfm_match(x_test, model$glmnet.fit$beta@Dimnames[[1]])
-
-  y_test <- get_y(dfm, feat, model_type = model_type)
-
-  predictions_estimate <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "response") %>%
-    as.vector()
-
-  predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
-    factor(levels = c("FALSE", "TRUE"))
-
-  if(model_type == "regression") {
-    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate) %>%
-      dplyr::bind_cols(quanteda::docvars(dfm)) %>%
-      dplyr::group_by(htid)
-
-    res <- preds  %>%
-      yardstick::metrics(truth = truth, estimate = estimate)
-
-  }
-
-  if(model_type == "classification") {
-    predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
-      factor(levels = c("FALSE", "TRUE"))
-
-    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)  %>%
-      dplyr::bind_cols(quanteda::docvars(dfm)) %>%
-      dplyr::group_by(htid)
-
-    res <- binary_metrics(preds)
-  }
-
-  res  %>%
-    dplyr::mutate(model_type = paste("cv.glmnet", model_type))
-
-}
-
-model_performance_per_volume.LiblineaR <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
-
-  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
-  model_type <- ifelse(model$Type %in% c(0:7), "classification",
-                       "regression")
-
-  x_test <- quanteda::dfm_match(get_x(dfm, feat = feat, weight = weight),
-                                colnames(model$W)[colnames(model$W) != "Bias"]) %>%
-    as("dgCMatrix") %>%
-    as("RsparseMatrix") %>%
-    as("dgRMatrix")
-
-  y_test <- get_y(dfm, feat, model_type = model_type)
-
-  predictions <- LiblineaR:::predict.LiblineaR(model, newx = x_test)
-
-  preds <- tibble::tibble(truth = y_test, estimate = predictions$predictions)  %>%
-    dplyr::bind_cols(quanteda::docvars(dfm)) %>%
-    dplyr::group_by(htid)
-
-  res <- preds %>%
-    yardstick::metrics(truth = truth, estimate = estimate)
-
-  if(model_type == "classification") {
-    conf_mat <- preds %>%
-      yardstick::conf_mat(truth = truth, estimate = estimate)
-
-    res <- res %>%
-      dplyr::mutate(conf_mat = list(conf_mat))
-  }
-
-  res  %>%
-    dplyr::mutate(model_type = model$TypeDetail)
-}
-
-model_performance_per_volume.xgb.Booster <-  function(model, dfm, feat,
-                                                      weight = c("ppmi", "tfidf", "none")) {
-
-  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
-
-  model_type <- ifelse(stringr::str_detect(model$params$objective, "reg:"), "regression",
-                       "classification")
-
-  x_test <- get_x(dfm, feat = feat, weight = weight) %>%
-    quanteda::dfm_match(model$feature_names)
-
-  y_test <- get_y(dfm, feat, model_type = model_type)
-
-  if(model_type == "classification") {
-    y_test <- y_test %>%
-      as.numeric()
-    y_test <- y_test - 1
-  }
-
-  predictions <- xgboost:::predict.xgb.Booster(model, newdata = x_test)
-
-  preds <- tibble::tibble(truth = y_test, estimate = predictions)  %>%
-    dplyr::bind_cols(quanteda::docvars(dfm)) %>%
-    dplyr::group_by(htid)
-
-  if(model_type == "regression") {
-    res <- preds %>%
-      yardstick::metrics(truth = truth, estimate = estimate)
-
-  }
-
-  if(model_type == "classification") {
-
-    res <- preds %>%
-      dplyr::mutate(truth = factor(truth, levels = c(0, 1)),
-                    class = factor(ifelse(estimate < 0.5, 0, 1), levels = c(0, 1))) %>%
-      binary_metrics()
-  }
-
-  res %>%
-    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
-
-}
-
-model_performance <- function(model, dfm, initial_split, feat, weight, use = "testing") {
-  UseMethod("model_performance")
-}
-
-model_performance.LiblineaR <- function(model, dfm, initial_split, feat,
-                                        weight = c("ppmi", "tfidf", "none"),
-                                        use = "testing") {
-  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
-  use <- match.arg(use, c("testing", "training"))
-  if(use == "testing") {
-    testing_dfm <- get_test_sample(dfm, initial_split)
-  } else {
-    testing_dfm <- get_training_sample(dfm, initial_split)
-  }
-  model_type <- ifelse(model$Type %in% c(0:7), "classification",
-                       "regression")
-
-  x_test <- get_x(testing_dfm, feat = feat, weight = weight) %>%
-    as("dgCMatrix") %>%
-    as("RsparseMatrix") %>%
-    as("dgRMatrix")
-
-  y_test <- get_y(testing_dfm, feat, model_type = model_type)
-
-  predictions <- LiblineaR:::predict.LiblineaR(model, newx = x_test)
-
-  preds <- tibble::tibble(truth = y_test, estimate = predictions$predictions)
-
-  res <- preds %>%
-    yardstick::metrics(truth = truth, estimate = estimate)
-
-  if(model_type == "classification") {
-    conf_mat <- preds %>%
-      yardstick::conf_mat(truth = truth, estimate = estimate)
-
-    res <- res %>%
-      dplyr::mutate(conf_mat = list(conf_mat))
-  }
-
-  res  %>%
-    dplyr::mutate(model_type = model$TypeDetail)
-
-}
-
-model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
-                                           weight = c("ppmi", "tfidf", "none"),
-                                           use = "testing") {
-
-  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
-  use <- match.arg(use, c("testing", "training"))
-  if(use == "testing") {
-    testing_dfm <- get_test_sample(dfm, initial_split)
-  } else {
-    testing_dfm <- get_training_sample(dfm, initial_split)
-  }
-  model_type <- ifelse(stringr::str_detect(model$params$objective, "reg:"), "regression",
-                       "classification")
-
-  x_test <- get_x(testing_dfm, feat = feat, weight = weight)
-
-  y_test <- get_y(testing_dfm, feat, model_type = model_type)
-
-  if(model_type == "classification") {
-    y_test <- y_test %>%
-      as.numeric()
-    y_test <- y_test - 1
-  }
-
-  predictions <- xgboost:::predict.xgb.Booster(model, newdata = x_test)
-
-  preds <- tibble::tibble(truth = y_test, estimate = predictions)
-
-  if(model_type == "regression") {
-    res <- preds %>%
-      yardstick::metrics(truth = truth, estimate = estimate)
-
-  }
-
-  if(model_type == "classification") {
-
-    res <- preds %>%
-      dplyr::mutate(truth = factor(truth, levels = c(0, 1)),
-                    class = factor(ifelse(estimate < 0.5, 0, 1), levels = c(0, 1))) %>%
-      binary_metrics()
-  }
-
-  res %>%
     dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
 
 }
@@ -550,73 +388,6 @@ model_weights.cv.glmnet <- function(model) {
                   sigmoid_value = plogis(scaled_value)) %>%
     dplyr::rename(word = name) %>%
     dplyr::filter(word != "(Intercept)")
-}
-
-model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
-                                        weight = c("ppmi", "tfidf", "none"),
-                                        use = "testing") {
-  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
-  use <- match.arg(use, c("testing", "training"))
-  if(use == "testing") {
-    testing_dfm <- get_test_sample(dfm, initial_split)
-  } else {
-    testing_dfm <- get_training_sample(dfm, initial_split)
-  }
-  if("lognet" %in% class(model$glmnet.fit)) {
-    model_type <- "classification"
-
-  } else if("elnet" %in% class(model$glmnet.fit)) {
-    model_type <- "regression"
-  }
-
-  x_test <- get_x(testing_dfm, feat = feat, weight = weight)
-
-  y_test <- get_y(testing_dfm, feat, model_type = model_type)
-
-  predictions_estimate <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "response") %>%
-    as.vector()
-
-  predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
-    factor(levels = c("FALSE", "TRUE"))
-
-  preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)
-
-  if(model_type == "regression") {
-    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate)
-    res <- preds %>%
-      yardstick::metrics(truth = truth, estimate = estimate)
-
-  }
-
-  if(model_type == "classification") {
-    predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
-      factor(levels = c("FALSE", "TRUE"))
-
-    preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)
-    res <- binary_metrics(preds)
-  }
-
-  res  %>%
-    dplyr::mutate(model_type = paste("cv.glmnet", model_type))
-
-}
-
-binary_metrics <- function(preds) {
-  res <- preds %>%
-    yardstick::metrics(truth = truth, estimate = class,
-                       estimate) %>%
-    dplyr::filter(.metric != "roc_auc") %>%
-    dplyr::bind_rows(yardstick::roc_auc(preds,
-                                        estimate, truth = truth,
-                                        event_level = "second"))
-
-  conf_mat <- preds %>%
-    yardstick::conf_mat(truth = truth, estimate = class)
-
-  res <- res %>%
-    dplyr::mutate(conf_mat = list(conf_mat))
-
-  res
 }
 
 get_x <- function(dfm, feature, weight = c("ppmi", "tfidf", "none")) {
