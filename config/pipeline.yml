@@ -1,0 +1,127 @@
+base:
+  # Features define what term(s) we track/model. Each entry becomes a quanteda
+  # dictionary (case sensitivity controlled downstream via `tolower = FALSE`).
+  features:
+    - name: democracy
+      description: "Dictionary for democracy nouns (case-sensitive)."
+      # Nested mapping that becomes a quanteda `dictionary2`:
+      # - outer key = dictionary group
+      # - inner key = label used in modeling/lookup
+      # - values = token/POS names as they appear in EF (e.g., `democracy_nn`)
+      dictionary:
+        democracy:
+          democracy:
+            - democracy_nn
+            - democracy_nnp
+            - democracy_nns
+
+  periods:
+    # Period slicing for the corpus: boundaries are created with
+    # `seq(sample_min_year, sample_max_year, by = sample_slice_size)`.
+    sample_min_year: 1700
+    sample_max_year: 2010
+    # Width of each time slice (in years).
+    sample_slice_size: 10
+    # Human-readable label for the slice unit (used in IDs/titles).
+    period_name: decade
+
+  corpora:
+    # Corpora define subsets of the Hathi catalog/workset to analyze.
+    - id: hathi_all
+      # R expression (string) intended to filter the cached Hathi catalog
+      # (see `object_parameters.R` / legacy `_targets_old.R`). Use "TRUE" for no filter.
+      filter: "TRUE"
+      description: "All HathiTrust volumes (language restriction handled downstream)."
+
+  samples:
+    # Heavy when max_vols is large.
+    # Maximum number of volumes sampled per period slice (creates a grid when multiple values are listed).
+    sample_max_vols: [40, 500]
+    # `sample_type` is a label used downstream and is paired (by position) with
+    # `sample_multiplier` to control page-level sampling during DFM creation.
+    # - `unrestricted`: keep all pages (no downsampling of pages without the feature term)
+    # - `restricted`: undersample pages without the feature term (roughly balancing classes)
+    sample_type: [unrestricted, restricted]
+    # Passed as `multiplier` into `restricted_json_to_dfm()`: how many "no-feature"
+    # pages to keep per "feature" page within each volume. `Inf` keeps all pages.
+    sample_multiplier: [Inf, 1]
+
+  dfm:
+    # `vocab_size` controls trimming: keep the top-N terms by overall frequency
+    # rank (applied after combining DFMs across volumes in a slice).
+    vocab_size: [30000]
+    # Regex over POS tags in the EF token names to keep (e.g., nouns/verbs/adjs).
+    pos_pattern: ["NN|VB|JJ"]
+    # Regex for token strings to include (defaults to letters-only; helps drop OCR junk).
+    include_pattern: ["^\\p{L}+$"]
+    # Page filter: "." = keep any page; "{feature_name}" is replaced with the
+    # configured feature name and keeps only pages containing that term.
+    # Note: `object_parameters.R` currently uses "." for the small sample cap and
+    # `{feature_name}` (with `to_lower = TRUE`) for the large sample cap.
+    pages_contain: [".", "{feature_name}"]
+    # Minimum token length to keep (after applying `include_pattern`).
+    min_length: [2]
+    # Keep only pages whose calculated language matches this code.
+    page_language: ["en"]
+    # Minimum sentence count per page; filters short/noisy pages.
+    min_sentence_count: [3]
+    # Whether to lowercase features after token/POS extraction.
+    to_lower: [true, false]
+
+  predictive_models:
+    # Learning task passed to `predictive_model(model_type=...)`.
+    # - `classification`: predict presence/absence of the feature on a page
+    # - `regression`: predict a numeric feature value (rarely used here)
+    task: classification
+    # Feature weighting applied before model fitting (passed to `predictive_model(weight=...)`):
+    # - `ppmi`: positive PMI weighting (`dfm_ppmi()`)
+    # - `tfidf`: TF-IDF weighting (`quanteda::dfm_tfidf()`)
+    # - `none`: raw counts
+    weights: [ppmi, tfidf, none]
+    # Modeling engines to fit per DFM. More engines/weights expand the grid.
+    # - `naivebayes`: multinomial naive Bayes (`naivebayes`)
+    # - `glmnet`: penalized regression/logit with CV (`glmnet`)
+    # - `LiblineaR`: linear SVM / linear models (`LiblineaR`)
+    # - `xgboost`: gradient-boosted trees (`xgboost`)
+    engines: [naivebayes, glmnet, LiblineaR, xgboost]
+
+  svd:
+    # Weighting applied before computing SVD word vectors (`svd_word_vectors(weight=...)`).
+    weights: [ppmi, tfidf]
+    # Number of singular vectors / embedding dimensions.
+    dims: [50]
+
+  ppmi:
+    # PPMI-based scoring functions used to generate similarity/association tables.
+    # Each function should accept `(dfm, feat)` and return a table with `word` and `value`.
+    funs: [feature_ppmi, ppmi_similarities]
+
+  topic_models:
+    # Number of topics for `stm::stm()`.
+    K: [20]
+    # Number of top positive-weight terms per period used to reduce DFMs before topic modeling.
+    reduced_vocab: 50
+
+  graphs:
+    # Regex patterns applied to `word` when plotting similarities (e.g., POS suffix filters).
+    patterns: [".","(_nn|_NN)","(_vb|_VB)","(_jj|_JJ)","ism_","^[A-Z].+NN"]
+    # Whether to collapse case variants for each corresponding `patterns` entry (positional; lengths should match).
+    collapse_cased: [true,true,true,true,true,false]
+    # Max terms to show per period slice (passed to `graph_similarities(top_n=...)`).
+    max_per_slice: 8
+    # Max terms to show overall across all periods (passed to `graph_similarities(max_n=...)`).
+    max_terms: 60
+    # If true, exclude fiction worksets from graph runs.
+    exclude_fiction: true
+
+profiles:
+  # Optional profile overrides merged into `base` (selected via env var `TARGET_PROFILE`).
+  explore:
+    predictive_models:
+      # Profile override: use a smaller engine/weight grid for faster iteration.
+      engines: [glmnet, naivebayes]
+      weights: [ppmi, tfidf]
+    graphs:
+      # Profile override: fewer regex patterns for faster plotting.
+      patterns: [".","(_nn|_NN)","(_vb|_VB)"]
+      collapse_cased: [true,true,true]
