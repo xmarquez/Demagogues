@@ -1,0 +1,655 @@
+---
+title: "The Vector Space of Democracy, 1700-2020"
+author: "Xavier Marquez"
+format: html
+editor: source
+bibliography: "bibfile.bib"
+biblio-style: apsr
+echo: false
+warning: false
+message: false
+abstract: "This paper proposes a method for distant reading that utilizes the conceptual history of 'democracy' as an illustrative example. I use simple predictive models and vector embeddings to describe the evolution of the language of democracy over the last three centuries in English-language books, utilizing the large corpus of digitized books in the Hathi Trust digital library. I document multiple changes in the scope and valence of the concept, identify several periods of conceptual innovation in the second decade of the 19th century and the first decades of the 20th, and point to differences between different 'traditions' of thought about democracy. The key premise of this method is that each distinct predictive model is analogous to a reader of the corpus, finding different features of the corpus associated with a target concept, even if their predictive performance is similar. The method does not require access to the full text of each book and can be used to compare different usages of a target concept. The contribution of this paper is primarily methodological and descriptive."
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidytext)
+library(tidygraph)
+library(ggraph)
+library(quanteda)
+library(wordVectors)
+library(hathiTools)
+library(magrittr)
+library(targets)
+
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      fig.path = here::here("Paper/figure/figs-"))
+
+# tar_config_set(store = here::here("_targets/"), config = "custom.yaml")
+
+theme_set(theme_bw())
+```
+
+## Introduction {.unnumbered}
+
+The meaning of "democracy" has changed enormously over the last two centuries. In the late 18th and early 19th century the term had a negative valence, redolent of mob rule, but it was then taken up by opponents of aristocracy and eventually came to acquire its current positive associations with freedom and equality [@dunnSettingPeopleFree2005; @markoffWhereWhenWas1999; @markoffWavesDemocracy2015; @przeworskiDemocracyLimitsSelfGovernment2010]. Today, most constitutions throughout the world mention "democracy"; public opinion, as expressed in surveys, is strongly "pro-democratic" everywhere, even in places far from the West where the concept is thought to have emerged [@inglehartHowSolidMass2003]; and the public culture of many places understands itself as democratic, even as people's conceptions of democracy are sometimes far from liberal [@alvarezHowValuesShape2017; @kruseDemocracyConfusedWhen2019]. The historian John Dunn has argued that today the word "democracy" (brought into many languages directly from the Greek root) symbolizes the only legitimate political system [@dunnSettingPeopleFree2005, p. 15].
+
+Studies of the changing meaning of "democracy" in history and political theory are nevertheless limited by their focus on a small number of (generally canonical) works. Alan Ryan's magisterial *On Politics*, which among other themes focuses on the development of ideas about democracy, discusses perhaps a hundred different authors in any depth [@ryanPoliticsHistoryPolitical2012]; and of the more than 900 entries in the *Encyclopedia of Political Thought* [@gibbonsEncyclopediaPoliticalThought2015], barely a third are proper names, not all of whom would have written about democracy. Even works that attempt to expand the standard democratic canon [e.g., @keaneLifeDeathDemocracy2009; @marquezDemocraticMomentsReading2018] at best add a few not obviously representative texts to the typical list.[^1] But there is no reason to think that the linguistic contexts in more or less "canonical" works are the only ones that matter for understanding the development of a concept, as historians from the Cambridge School and the *Begriffsgeschichte* have stressed [@Koselleck2011; @skinner2002visions].
+
+[^1]: There are some exceptions. @gagnon234DescriptionsDemocracy2018, for example, catalogues more than 2,200 different descriptions of democracy and discusses many now-obscure works where these descriptors are used. It is also worth noting here the approach of the *Begriffsgeschichte* [@Koselleck2011; @sheehanBegriffsgeschichteTheoryPractice1978], which attempts to trace the history of concepts over a much larger set of sources than the canon for the period 1700-1850. The monumental historical *Lexikon* of fundamental political concepts which came out of this project [@brunnerGeschichtlicheGrundbegriffeHistorisches1972] is limited by its focus on German-language, manually collected sources, though its entry on *Demokratie* [@conzeDemokratie1972] is still well worth reading.
+
+Yet no scholar of the history of ideas can read and understand more than a very limited number of works. The promise of computational methods of "distant reading" [@morettiDistantReading2013] is that they could help us substantially expand the sample of works that inform our historical conclusions. At the same time, "reading" a corpus is a very different activity from reading a book, and we have few good methods to extract and summarize the information contained in hundreds of thousands or millions of books. Topic modeling [first described in @bleiLatentDirichletAllocation2003], while useful at very large scales [see, e.g., @murdockMultilevelComputationalMethods2017], tends to produce "topics" that require expert labeling to interpret. Moreover, most advanced computational methods for automated summarization (using large transformer models, for example) tend to require computational resources beyond the reach of most individual researchers. 
+
+In this paper I propose a relatively lightweight method for distant reading, utilizing the conceptual history of "democracy" as an illustrative example. Taking advantage of the large corpus of digitized books in the Hathi Trust digital library, I follow Ted Underwood's pioneering investigations of literature [@underwoodDistantHorizonsDigital2019] to use simple predictive models to describe the evolution of the language of "democracy" over the last three centuries in English-language books. I document multiple changes in the scope and valence of the concept, identify several periods of conceptual innovation in the second decade of the 19th century and the first decades of the 20th, and point to differences between different "traditions" of thought about democracy. Although the overall view of the history of the concept of democracy that results from this "distant reading" is not dramatically different from the view that traditional historical scholarship provides, I do find overlooked moments in this history that are only visible with this larger-scale perspective.
+
+The key premise of this method is that each distinct predictive model is analogous to a *reader* of the corpus. Because different models have different inductive biases, they find different features of the corpus to be associated with a target concept, even if their predictive performance is similar. These different readers thus produce different *interpretations* of the evolution of a target concept over time. By observing and comparing the weight of these associations, we can reconstruct the network of concepts within which a target concept is embedded at a particular point in time. Importantly, the method does not require access to the full text of each book; the frequency counts per page that the Hathi Trust digital library makes freely available are sufficient to produce reasonable results. Moreover, each model can be used at different levels -- from the individual volume to the set of volumes by particular authors to the entire corpus -- to compare different usages of a target concept, and the weights produced by these models can be used to measure the degree of conceptual innovation and resonance of particular texts or sets of texts. The contribution of this paper is thus primarily methodological and descriptive.
+
+The paper is organized as follows. I first introduce the idea of models as readers, the ways in which these models can be used at different scales, and situate their use in the context of methodological debates on the history of political thought. I then describe the corpus of the Hathi Trust digital library and document the rise of "democracy" in this corpus across a number of different contexts, use various models to describe the change in the associations between democracy and other words, and document changes in the "ideological" valence of democracy since the 1700s. Finally, I quantify periods of conceptual innovation and change, and measure the degree of novelty and influence of particular books in this corpus.
+
+## Models as Readers {.unnumbered}
+
+A predictive model of a text predicts a feature of the text (e.g., the presence or absence of a particular word) based on some other features of the text. Different kinds of predictive models -- e.g., logistic regression, naive Bayes, support vector machines, random forests -- pick out different features as predictors, since they have different biases and hyperparameters, and minimize different loss functions. Indeed, even models with comparable predictive performance on test data will produce different associations between a target feature and other features of the text. The strength of these associations represents a particular *interpretation* of the meaning of a target concept, since they provide a specific perspective on what other concepts and features are related to it. We can thus think of each distinct model as a *reader* of a corpus of texts; and like all readers, having a distinct subjectivity.
+
+Interpretations vary in plausibility. In scholarly work, the plausibility of an interpretation of the meaning of a concept in a text depends on its overall coherence and "fit" with the body of work of the author, the historical context, and other factors, but there is no clear-cut criterion that determines whether a given interpretation is simply best: different readers weigh different features of the text differently, and attribute more or less importance to particular aspects of an author's work. Similarly for models of a particular concept within a corpus: while models with low predictive performance will not tend to be plausible interpretations of the target concept, multiple models may be more or less equally plausible, so long as they are predictive of the concept. 
+
+In this paper we will use four different kinds of models to provide these interpretations: Naive Bayes classifiers, logistic regression, support vector machines, and gradient-boosted decision trees. The "weights" of these models (their coefficients), suitably normalized, provide measures of the association between "democracy" and other features in the corpus. The top features of each model can be interpreted in light of historical knowledge, just as the labels of a topic model, to identify the network of concepts related to democracy in a particular sample of texts. While we will evaluate these models on their performance on test data, our interest is primarily on these weights and what their changing distribution tells us about the conceptual network of democracy. Accordingly, we treat these weights as draws from a distribution of topics, with each word in the corpus having a certain probability of being associated (or not) with democracy. When suitably normalized, these weights can therefore be compared using information-theoretic measures of diversity, surprisal, and transience [@nguyenHowWeThings2020; @changDivergenceComplexityDifference2020; @barronIndividualsInstitutionsInnovation2018], and they can be used to understand the changing valence of the concept. More specifically, we use a measure of entropy to understand the degree of diversity over time in the topics associated with democracy, and we use the Kullback-Leibler divergence to understand the degree to which particular conceptualizations of democracy were innovative relative to the past ("surprising") and enduring into the future.
+
+All interpretations (models) have a limited scope. A model that offers a good interpretation of "democracy" in a particular sample of texts (i.e., picks out features that are highly predictive of the term) may not do so in a different one. In our case, it is clear that multiple traditions of thought have developed the idea of democracy in different ways: Marxists and Liberals, for example, have emphasized different features of the concept, and so models trained on samples of Marxist or Liberal texts should pick out different features as associated with the term "democracy". We therefore train models in different samples of texts, including Marxist and liberal samples, and compare their divergence from each other and from the central tendency of the concept. Moreover, in this paper we are particularly interested in change over time. In order to understand such change, we will therefore train models on decadal slices of texts, and compare the strength of association between "democracy" and other terms over time.  
+
+Our prediction task requires a context from which to draw the features used to predict the presence or absence of our target feature. If we were interested in purely syntactic or semantic relationships between words, our context would need to be small, e.g., the sentence or even smaller windows around our target word. But since we are interested in conceptual relationships, we will use a larger context, the *page*. The assumption is that related concepts will tend to be discussed in close proximity within a volume of text, but not necessarily within the same sentence. Larger contexts could also be considered -- e.g., the volume -- but aggregating information up to that level also comes with tradeoffs, since the same target concept may be considered in a variety of different relations in different pages of the same volume. Accordingly, we will primarily attempt to predict whether a page contains the term "democracy" based on other terms within the same page, though some experiments with larger contexts are also reported in the appendix.   
+
+Three kinds of features are of particular interest for prediction: nouns, adjectives, and verbs. Nouns that are predictive of our target term -- in this case, "democracy" -- will tend to represent related concepts (e.g., "aristocracy" or "monarchy" in the 19th century, as we shall see below); predictive adjectives modify the understanding of the concept -- e.g., "liberal" or "barbarous" -- and provide information about its valence; and verbs indicate the kinds of activity with which the concept is associated -- e.g., "electing" or "overthrowing". Specific types of nouns -- e.g., terms ending in "ism" and denoting particular ideologies -- will also tend to provide more useful information about the political history of the target concept, and will thus be examined separately. Other page features -- articles, adverbs, punctuation -- will be disregarded, as they are unlikely to shed light on our target concept. Finally, we are only interested in features that are potentially predictive of the term "democracy". Features that never co-occur in the same page with the term are assumed not to be associated with the concept, and are therefore eliminated from the input to our models. 
+
+## Corpus description {.unnumbered}
+
+```{r corpusDescription}
+
+num_titles <- tar_read(num_htids_per_author, store = here::here("_targets"))
+
+num_libraries <- tar_read(num_libraries, store = here::here("_targets"))
+
+num_1700_2020 <- tar_read(date_info, store = here::here("_targets")) %>% 
+  filter(rights_date_used >= 1700, rights_date_used <= 2020) %>%
+  pull(n) %>%
+  sum()
+```
+
+We use the "Extracted Features" dataset of the Hati Trust digital library to train our models [@jettHathiTrustResearchCenter2020]. The Hathi Trust corpus contains over 17 million digitized volumes in many languages, comprising `r format(tar_read(num_ht_bib_keys, store = here::here("_targets")), big.mark = ",")` distinct "bibliographic records" (including multivolume works) and `r format(tar_read(num_author_title, store = here::here("_targets")), big.mark = ",")` distinct author-title combinations (including works in more than one edition at different times). These were digitized first by the original Google Books project and later by major University and public libraries. The corpus has extensive metadata, but older books (especially those published before 1800, which are not as well represented) have worse OCR and more missing or uncertain metadata. The Extracted Features dataset provides page-level text features (word counts, part of speech, and other page-specific features) for the vast majority of the volumes in this corpus. 
+
+This corpus is not, and cannot be, fully representative of all the books published in the period under study in this paper (1700-2020). It reflects the acquisition practices of about 30 major British and American libraries (including Harvard, the University of California, Oxford University, the British Library, and the New York Public Library), and thus contains a disproportionate number of English-language works.[^2] Moreover, certain kinds of works are digitized at higher rates than expected from their known frequency in the population of published books for reasons ranging from collecting practices to the physical format of a given book; for example, larger-format and multivolume works of fiction are known to be less well-represented than their estimated frequency in the past [@riddellWhatLibraryDigitization2021]. Nevertheless, the corpus is large enough that it may represent a substantial fraction (perhaps 4-5%?) of all books published in the period of study.[^3]
+
+[^2]: `r nrow(num_libraries)` libraries have contributed digitized volumes to Hathi Trust, but only about 30 of these have contributed more than 10,000 works. More than 9 million volumes come from the libraries of just two Universities, the University of Michigan and the University of California, with a further million each from Harvard and the University of Illinois at Urbana-Champaign.
+
+[^3]: @michelQuantitativeAnalysisCulture2011a estimated that the Google books corpus in 2011 (about 8 million books at the time) represented about 4% of all books ever published; since the Hathi trust corpus is even larger, the same considerations would apply to it, though this number should not be taken too seriously. A full description of the Hathi Trust digital library and its limitations is found in @riddellWhatLibraryDigitization2021.
+
+This corpus is well-suited for research into changes over time in the concept of democracy, since it contains a vast number of scholarly works and government documents where the idea of democracy is articulated, discussed in context, and sometimes defended. Moreover, the corpus allows us to identify where each mention of democracy comes from, since the Hathi Trust provides both volume metadata (including publication information) and page-level word frequency and part-of-speech information, unlike, for example, the Google Books ngram corpus [@michelQuantitativeAnalysisCulture2011a], which makes available only word frequency lists by year. We can therefore examine not only large-scale patterns of word usage across millions of volumes, but drill down to the individual volumes and even pages where the concept is mentioned to enhance our understanding of these patterns.
+
+Despite its size and structure, however, the bare corpus cannot give us unbiased information about the overall cultural impact of specific words, since prolific but uninfluential authors contribute about equally to the corpus as less prolific but more popular or influential authors (though more popular or influential authors are often represented by multiple editions of their work). As @pechenickCharacterizingGoogleBooks2015 argue with respect to the Google books corpus, the Hathi Trust dataset is still in effect "a reflection of a library in which only one of each book is available" (p. 2 - though in this case sometimes more than one copy of each book is available). In order to quantify *influence* we look to information-theoretic measures of "resonance" [@nguyenHowWeThings2020; @barronIndividualsInstitutionsInnovation2018], which require us to train specific predictive models of "democracy". But before we do so, we first examine the frequency of democracy in the corpus, and ensure that it has facial validity.
+
+## Descriptive Statistics: The frequency of democracy {.unnumbered}
+
+The simplest way of thinking about the importance of a concept is to look at its salience, and frequency in the corpus is a good proxy for salience. About `r format(num_1700_2020, big.mark = ",")` of the Hathi Trust volumes have approximate publication date information between 1700 and 2020, and of these about `r nrow(tar_read(workset_4ef79d414b4586ffde933480da92978f, store = here::here("_targets"))) %>% format(big.mark = ",")` mention the word "democracy." (This includes books in any language; if we restrict ourselves to books primarily written in English, `r tar_read(workset_meta_22b87106e349bba71f68f86e6a1e1254, store = here::here("_targets")) %>% filter(lang == "eng") %>% nrow() %>% format(big.mark = ",")` mention "democracy" at least once). A striking fact evident in this corpus is the rise of 'democracy' as a topic, both in terms of the number of books in which the word is mentioned, and in terms of the number of words per million in the corpus (@fig-percentTextsDemocracy and @fig-wordsPerMillionDemocracy).
+
+```{r fig-percentTextsDemocracy}
+#| fig-cap: "Percent of texts in the Hathi Trust corpus mentioning 'democracy'. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
+
+democracy_text_percent <- tar_read(democracy_text_percent, store = here::here("_targets")) 
+
+wars <- tibble(xmin = c(1775, 1789, 1848, 1861, 1914, 1939, 1989), 
+                      xmax = c(1787, 1810, 1849, 1865, 1918, 1945, 1991),
+                      ymin = -Inf, ymax = Inf)
+
+ggplot() +
+  geom_rect(data = wars, aes(xmin = xmin, 
+                      xmax = xmax,
+                      ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) +
+  geom_line(data = democracy_text_percent, aes(x = date_year, 
+                                               y = slider::slide_dbl(value, .f = mean, .before = 5, .after = 5)))  +
+  geom_line(data = democracy_text_percent, aes(x = date_year, y = value), alpha = 0.2)  +
+  labs(y = "", x = "Approximate publication date")
+  
+  
+```
+
+```{r, fig-wordsPerMillionDemocracy}
+#| fig-cap: "Frequency of mentions of 'democracy' in the Hathi Trust corpus, per million words. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
+
+democracy_words_per_million <- tar_read(democracy_words_per_million, store = here::here("_targets")) 
+
+ggplot() +
+  geom_rect(data = wars, aes(xmin = xmin, 
+                      xmax = xmax,
+                      ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) +
+  geom_line(data = democracy_words_per_million, aes(x = date_year, 
+                                               y = slider::slide_dbl(value, 
+                                                                     .f = mean, 
+                                                                     .before = 5, 
+                                                                     .after = 5)))  +
+  geom_line(data = democracy_words_per_million, aes(x = date_year, y = value), alpha = 0.2)  +
+  labs(y = "", x = "Approximate publication date")
+```
+
+The frequency of "democracy" in English-language books increases slowly throughout the 18th century, with a sharp jump after the American Revolution, around the time of the French Revolution. Its usage is then relatively stable until the Jacksonian period (in the USA) and the Reform era and the Chartist period (in the UK), with another step-jump in frequency until 1848 (and the European revolutions of that year). It then remains relatively stable until the First World War, when "democracy" increases in salience again, only to decline sharply until the eve of the Second World War. The end of the Second World War brings another sharp jump in the frequency of mentions of "democracy", and there is again a decline until the end of the Cold War, when "democracy" becomes fashionable again.
+
+These patterns make good historical sense. It is unsurprising to see an increased use of the term after the French Revolution reintroduced the concept into common discourse; it is perhaps a bit surprising that we do *not* see such an increase with the American revolution, though this may have more to do with the characteristics of the corpus (there are many fewer books represented in the corpus for the 18th century than for the 19th). The age of Jackson and the Chartist period are both periods of democratic experimentation, when democracy shed some of its negative connotations (as we shall see in more detail later). And democracy, the form of government of many of the victorious powers in the World Wars, was on the ascendant at the end of the wars (as well as at the end of the Cold War), appearing as something to be emulated [@gunitskyAftershocksGreatPowers2017].
+
+We should nevetheless not expect the same patterns to be present in every language. Although some other European languages also show peaks after the First and Second World Wars (@fig-multilingualDemocracy), the frequency graphs for "democracy" in many other languages reflect the particularities of the histories of the countries where the books were published. For example, in Chinese, the frequency of "democracy" spikes after the Revolution in 1949, and again in the years leading to the Tiannanmen Square massacre, while in Japanese we observe the sharpest increase in the usage of the term during and after the American occupation. Among the romance languages, in French and Spanish the peaks after the World Wars are muted, even indistinguishable from a general upward trend, but French shows a clear increase in the usage of the term during the Revolution, while Italian shows a sharp increase after the Fascist period.
+
+These pictures are only illustrative, and cannot tell the full picture. Multiple terms are used for "democracy" in some languages, and some languages have agglutinative structures or declensions that prevent us from capturing the frequency of a term without looking at all its forms. Indeed, the nature of a "word" in some languages is still an object of controversy, and word segmentation algorithms are not perfect. But we can nevertheless say both that "democracy" has generally increased in salience in many languages and countries, and that the specific patterns of that salience have varied in response to events.
+
+```{r fig-multilingualDemocracy}
+#| fig-dpi: 300
+#| fig-cap: "Frequency of the term 'democracy' in other languages. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
+#| fig-width: 9
+#| fig-height: 9
+
+democracy_translations_freqs <- tar_read(democracy_trans, store = here::here("_targets")) %>%
+  pivot_wider(names_from = counttype, values_from = value) %>%
+  group_by(language_long, date_year) %>%
+  summarise(TotalWords = unique(TotalWords),
+            WordCount = sum(WordCount, na.rm = TRUE),
+            WordsPerMillion = WordCount * 1e6/TotalWords,
+            label = paste0(unique(language_long), " (", str_trunc(paste(unique(word), collapse = ", "), 40), ")")) %>%
+  filter(!is.na(WordCount)) %>%
+  group_by(language_long) %>%
+  mutate(sl_value = slider::slide_dbl(WordsPerMillion, .f = mean, .before = 5, .after = 5))
+
+ggplot(data = democracy_translations_freqs)  +
+  geom_line(data = democracy_translations_freqs , aes(x = date_year, y = sl_value)) +
+  geom_rect(data = wars, aes(xmin = xmin, 
+                      xmax = xmax,
+                      ymin = -Inf, ymax = Inf), fill = "red", alpha = 0.3) +
+  geom_point(data = democracy_translations_freqs , aes(x = date_year, y = WordsPerMillion), alpha = 0.3) +
+  labs(title = "Frequency of 'democracy' in Hathi Trust texts",
+       y = "", x = "Approximate publication date",
+       subtitle = "Words per million. Shaded areas denote major wars and revolutions. \n10-year rolling average, case-insensitive search.") +
+  facet_wrap(~label, scales = "free_y") 
+```
+
+## Modeling Democracy {.unnumbered}
+
+```{r performanceSetup}
+tar_load(combined_performance, store = here::here("_targets"))
+tar_load(sample_sizes, store = here::here("_targets"))
+
+sample_sizes <- sample_sizes |>
+  mutate(workset_name = case_when(str_detect(workset_meta_id, "fiction") ~ "Fiction sample",
+                                  str_detect(workset_meta_id, "marx") ~ "Marxist texts sample",
+                                  TRUE ~ "All volumes"),
+         sample_strategy = case_when (sample_type == "restricted" ~
+                                        "Balanced (majority category undersampled)",
+                                      TRUE ~ "Unbalanced"))
+
+combined_performance <- combined_performance |>
+  left_join(sample_sizes) 
+
+performance_simple <- combined_performance |>
+  filter(.metric == "kap", performance_split == "testing") |>
+  select(.metric, .estimate, period, predictive_model_engine, ends_with("_id"))
+```
+ 
+We train our predictive models on 10-year "slices" of the Extracted Features dataset. Each decadal slice contains a sample of volumes that mention the term "democracy", weighted towards volumes that mention the term more often. The task is to predict whether a given page in each volume in the sample mentions the term "democracy", from the nouns, adjectives, and verbs in it. Only pages in English with at least three sentences, and only words of at least two characters, are used in this task; the vocabulary is also restricted to the top 30,000 words in each decadal slice. These constraints are chosen empirically to minimize bad OCR and other noise. 
+
+The classes in this classification task are highly unbalanced (see @fig-sampleSizes). While the exact proportion varies by year, on average only `r sample_sizes |> filter(sample_strategy == "Unbalanced") |> summarise(mean_ratio = mean(ratio)) |> pull(mean_ratio) |> scales::percent()` of all pages in the largest sample mention the word 'democracy', and the proportion is lower in earlier years. Though this is not always a problem, we also compare models trained on both a smaller, unbalanced sample, and a larger, balanced sample that under-samples the pages that do not mention "democracy", and test the performance of the models trained on the larger balanced sample on the unbalanced sample; the test performance of the models trained on the balanced sample is generally satisfactory (@tbl-performanceBySampleSplit).
+
+```{r fig-sampleSizes}
+#| fig-cap: "Ratio of pages mentioning the word 'democracy' to pages not mentioning the word 'democracy', per year and sample."
+
+sample_sizes |> 
+  filter(sample_strategy == "Unbalanced") |>
+  distinct(period, workset_name, sample_size, ratio, performance_split) |>
+  ggplot(aes(x = period, y = ratio,
+             color = workset_name, shape = performance_split)) +
+  stat_summary() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(color = "Sample", shape = "")
+```
+```{r tbl-performanceBySampleSplit}
+#| label: tbl-performanceBySampleSplit
+#| tbl-cap: "Average performance on test data of different models, all volumes, by weighting scheme"
+
+combined_performance |>
+  group_by(.metric, performance_split) |>
+  filter(.metric != "mn_log_loss") |>
+  summarise(.estimate = mean(.estimate)) |>
+  pivot_wider(names_from = .metric, values_from = .estimate) |>
+  arrange(desc(kap)) |>
+  mutate(performance_split = case_when(performance_split == "testing - OOD" ~ "test data on unbalanced sample",
+                                       TRUE ~ performance_split)) |>
+  knitr::kable(col.names = c("Sample split",   "Accuracy", "Cohen's Kappa","ROC-AUC"))
+  
+```
+
+Our main tool is a Naive Bayes classifier, trained using the package R `naivebayes` [@majkaNaivebayesHighPerformance2019]. While the Naive Bayes classifier is not the most high-performing classifier, it is often competitive with more sophisticated approaches [@rishEmpiricalStudyNaive2001], and has the specific property that it can directly output the posterior distribution of the vocabulary for a given class (the "coefficients") -- a quantity we can use to compute measures of diversity and divergence across time. In particular, we are interested in the probability that a page (document D_{i}) with a vocabulary in $V = (x_1, x_2, \cdots, x_n)$ belongs to class c in the set $C = {mentions democracy, does not mention democracy}$, which we parametrize by a mixture model with parameter $\theta$; by Bayes rule, if these were independent draws from a distribution, the probability of the class is simply:
+
+\begin{equation}
+P(D_{i}|\theta) = \sum_{j=1}^{|C|} P(c_{j} | \theta)P(D_{i}|c_{j}; \theta)
+\end{equation}
+
+Where $P(D_{i}|\theta)$ is the likelihood of a document belonging to the class c in C. The assumption of independence is not met, but the classifier can still provide useful information. In particular, a multinomial Naive Bayes classifier (modeling the distribution of words across classes as a multinomial mixture of as many components as there are classes) is generally effective at text classification tasks with large samples [@mccallumComparisonEventModels1998]. The multinomial model is parametrized as follows:
+
+\begin{equation}
+P(d_{i}|c_{j}; \theta) = P(|d_{i}|)|d_{i}|! \prod_{t=1}^{|V|} \left[P(w_{t}|c_{j}; \theta)\right]^{N_{it}} \frac{1}{N_{it}!}
+\end{equation}
+
+Where $d_i$ is the $i^{th}$ document, $c_j$ is the $j^{th}$ class, $\theta$ represents the probabilities for each word in each component, such that $\theta_{w_t|c_j}= P(w_t|c_j; \theta)$, where  $0 \leq \theta_{w_t|c_j} \leq 1$  and $\sum_t \theta_{w_t|c_j} = 1$, $|d_i|$ is the length of document $d_i$, $V$ is the vocabulary, $w_t$ is the $t^{th}$ word in the vocabulary, and $N_{it}$ is the number of times word $w_t$ appears in document $d_i$. 
+
+The Naive Bayes model works well enough with probabilities estimated from word frequencies, but weighting the document-term matrix containing the word frequencies produces better performance (see @tbl-performanceByWeightingScheme). We test models with no weighting, term frequency-inverse document frequency (TF-IDF) weighting, and a weighting scheme that computes the positive pointwise mutual information (PPMI) between each text feature and each document. Best results are obtained with the use of PPMI weighting, though models trained on unbalanced data had worse performance (@tbl-performanceByWeightingScheme). 
+
+```{r tbl-performanceByWeightingScheme}
+#| label: tbl-performanceByWeightingScheme
+#| tbl-cap: "Performance on test data of different models, all volumes, by weighting scheme"
+combined_performance |>
+  filter(str_detect(performance_split, "testing"),
+         workset_name == "All volumes",
+         .metric != "mn_log_loss") |>
+  group_by(predictive_model_dfm_weight, sample_strategy, .metric) |>
+  summarise(.estimate = mean(.estimate)) |>
+  pivot_wider(names_from = .metric, values_from = .estimate) |>
+  arrange(desc(kap)) |>
+  knitr::kable(col.names = c("Weighting scheme", "Sample type",  "Accuracy", "Cohen's Kappa","ROC-AUC"))
+```
+
+In order to compare usages of "democracy" in different subsets of the corpus, models were trained on three different samples: a random sample of *all* volumes in the corpus that mention the term "democracy"; a random sample of Marxist volumes (selected among all volumes that mention "democracy" but include the sub-words "Marx" or "marx" in the title or were written by a canonical Marxist author); and a sample of fiction from the 19th century described in @underwoodWordFrequenciesEnglishlanguage2015 (see appendix for details and further description of each sample). Models trained on the sample of Marxist texts had the best predictive performance, suggesting a relatively consistent and distinctive conceptual framework for the discussion of democracy, while the unbalanced fiction sample had the worst performance (@tbl-performanceByWorkset).
+
+```{r tbl-performanceByWorkset}
+#| label: tbl-performanceByWorkset
+#| tbl-cap: "Performance on test data of different models, all volumes, by sample"
+combined_performance |>
+  filter(str_detect(performance_split, "testing"),
+         .metric != "mn_log_loss") |>
+  group_by(workset_name, sample_strategy, .metric) |>
+  summarise(.estimate = mean(.estimate)) |>
+  pivot_wider(names_from = .metric, values_from = .estimate) |>
+  arrange(desc(kap)) |>
+  knitr::kable(col.names = c("Sample", "Sample type", "Accuracy", "Cohen's Kappa","ROC-AUC"))
+```
+
+We also train three other models on these samples, for comparison: a simple logistic regression model trained using the `R` package `glmnet` [@friedmanRegularizationPathsGeneralized2010; @tayElasticNetRegularization2023], with 10-fold cross-validation; a support vector machine trained using the `R` package `LiblineaR` [@helleputteLiblineaRLinearPredictive2022], and gradient-boosted decision trees trained using the `R` package `xgboost` [@chenXgboostExtremeGradient2015; @friedmanGreedyFunctionApproximation2001; @friedmanStochasticGradientBoosting2002]. No parameter tuning was done (recommended defaults were used for all three algorithms), except for minimal adjustments to the regularization parameter $\alpha$ and the tree depth in the gradient-boosting algorithm. Overall, the gradient-boosted decision tree models trained on PPMI-weighted data offered the best predictive performance on test data (as measured by a simple measure of accuracy as well as the ROC-AUC measure and Cohen's Kappa -- see @tbl-performanceByEngine, @fig-modelPerformance-temporal, and @fig-modelPerformance-sample), but the simple logistic models were almost as good (though also took longer to compute, given the 10-fold cross-validation involved). It is worth noting here that performance declines greatly after 1830: all models have more difficulty predicting "democracy" from its context, which suggests a more heterogeneous context for the concept.
+
+```{r tbl-performanceByEngine}
+#| label: tbl-performanceByEngine
+#| tbl-cap: "Average performance on test data of different models, all volumes, by model engine"
+combined_performance |>
+  filter(str_detect(performance_split, "testing"),
+         .metric != "mn_log_loss") |>
+  group_by(predictive_model_engine, sample_strategy, .metric) |>
+  summarise(.estimate = mean(.estimate)) |>
+  pivot_wider(names_from = .metric, values_from = .estimate) |>
+  arrange(desc(kap)) |>
+  knitr::kable(col.names = c("Model engine", "Sample", "Accuracy", "Cohen's Kappa","ROC-AUC"))
+```
+
+
+
+```{r fig-modelPerformance-temporal}
+#| fig-cap: "Performance on test data by decade, all models, all volumes"
+#| fig-width: 9
+#| fig-height: 9
+combined_performance %>%
+  filter(workset_name == "All volumes",
+         str_detect(performance_split, "testing"),
+         .metric != "mn_log_loss") %>%
+  mutate(performance_split = case_when(performance_split == "testing - OOD" ~ "Unbalanced testing data",
+                                       TRUE ~ "Balanced testing data")) %>%
+  ggplot(aes(x = period,
+             y = .estimate,
+             alpha = fct_rev(performance_split))) + 
+    stat_summary() + 
+    facet_wrap(predictive_model_engine~.metric) +
+    labs(alpha = "Test data type") +
+  geom_hline(yintercept = 0.5, color = "red")+
+  geom_vline(xintercept = 1830, color = "red") 
+
+```
+
+```{r fig-modelPerformance-sample}
+#| fig-width: 9
+#| fig-cap: "Performance on test data by sample and model engine, accuracy measure"
+combined_performance %>% 
+  filter(.metric == "accuracy",
+         sample_max_vols == 500) %>%
+  mutate(performance_split = case_when(performance_split == "testing - OOD" ~ "Unbalanced testing data",
+                                       performance_split == "testing" ~ "Balanced testing data",
+                                       TRUE ~ "Training data")) %>%
+  ggplot(aes(x = fct_reorder(predictive_model_engine, .estimate),
+             y = .estimate,
+             group = paste(predictive_model_engine, performance_split),
+             color = fct_rev(performance_split))) +
+  ggbeeswarm::geom_beeswarm(aes(size = sample_size)) +
+  geom_boxplot() +
+  facet_wrap(~str_wrap(paste(workset_name, sample_max_vols, "vols per decade, balanced sample"), 40),
+             scales = "free_y") +
+  labs(size = "Sample size (pages in split)",
+       alpha = "Sample split",
+       color = "Sample split", x ="", y = "")
+```
+Even in the largest samples, predictive performance decreases around 1830, evidence of the increasing heterogeneity of the features associated with democracy (as we shall see later in more detail). While predictive performance for all models could in principle be improved with clever feature engineering or parameter tuning, we are less interested in maximizing their predictive accuracy than in understanding the story that their coefficients or weights tell us; and for that purpose we do not need perfect accuracy. Each model's weights gives us a measure of the strength of the association between a particular word in our vocabulary and the term "democracy". While the specific magnitude of these weights would change with increased predictive performance, as a whole the top features will tend to be reasonably stable, as they will contribute the most to prediction under any model; and overall the *distribution* of weights will stabilize past a certain point. 
+
+To be sure, the weights of each model are not directly comparable. The weights of a naive Bayes classifier represent the class-conditional densities ($P(Vocabulary|Class)$), i.e., the probability that a given word in the vocabulary appears in a document with class C, while the coefficients of a logistic model represent the change in the log odds of class C for a one-unit change in the features, the weights of a support vector machine represent the normal vector defining the hyperplane separating the classes (for some input scaling), and the feature importance in gradient-boosted decision trees represent the "gain" (the reduction in the loss) achieved at splits where the feature appears, summed across all trees in the ensemble. We do not want to use them, however, to make predictions on new text but instead want to compare them as measures of *feature importance* under some interpretation (model) of the data. 
+
+Accordingly, we will normalize these weights so that, in each time slice and for each sample (all volumes, Marxist texts, and fiction), they sum to 1 and and have values between 0 and 1. (For the Naive Bayes models, we take the class-conditional density for "democracy", subtract the class-conditional density for "not democracy", and normalize the result; this is a better measure of feature importance than the class-conditional density for democracy alone). In a sense we treat these weights *as if* they were probability densities over a sample and period's vocabulary so that we can study the evolution of the distribution of weights using information-theoretic measures of diversity and divergence. In particular, this normalization allows us to compare the distribution of *topics* associated with democracy across models and time periods.
+
+## A Brief Conceptual History of Democracy 
+
+```{r prepGraphs}
+tar_load(all_model_weights, store = here::here("_targets"))
+tar_load(predictive_model_weights, store = here::here("_targets"))
+tar_load(info_all_model_weights, store = here::here("_targets"))
+tar_load(weight_correlations, store = here::here("_targets"))
+tar_load(jsd_distances, store = here::here("_targets"))
+tar_load(info_graph, store = here::here("_targets"))
+
+all_model_weights <- all_model_weights |>
+  mutate(pos_group = case_when(str_detect(word, "_jj") ~ "Adjective",
+                               str_detect(word, "_nn") ~ "Noun",
+                               str_detect(word, "_vb") ~ "Verb"))
+
+top_words_1700 <- all_model_weights |>
+  filter(period < 1800) |>
+  group_by(weight_id, pos_group, word) |>
+  summarise(total_weight = sum(normalized_value)) |>
+  group_by(weight_id, pos_group) |>
+  slice_max(total_weight, n = 10) 
+
+top_words_1800 <- all_model_weights |> 
+  filter(period < 1900, period >= 1800) |>
+  group_by(weight_id, pos_group, word) |>
+  summarise(total_weight = sum(normalized_value)) |>
+  group_by(weight_id, pos_group) |>
+  slice_max(total_weight, n = 10) 
+
+top_words_1900 <- all_model_weights |> 
+  filter(period >= 1900) |>
+  group_by(weight_id, pos_group, word) |>
+  summarise(total_weight = sum(normalized_value)) |>
+  group_by(weight_id, pos_group) |>
+  slice_max(total_weight, n = 10) 
+
+precision_adjusted_weights <- predictive_model_weights |>
+  left_join(info_all_model_weights) |>
+  left_join(performance_simple) |>
+  group_by(workset_name, period) |>
+  mutate(scaled_value = as.numeric(scale(normalized_value))) |>
+  group_by(workset_name, period, word) |>
+  summarise(value = weighted.mean(scaled_value, .estimate),
+            value_no_xgboost = weighted.mean(scaled_value[predictive_model_engine != "xgboost"], .estimate[predictive_model_engine != "xgboost"]),
+            value_no_xgboost_normalized = weighted.mean(normalized_value[predictive_model_engine != "xgboost"], .estimate[predictive_model_engine != "xgboost"])) |>
+  arrange(workset_name, period, desc(value))
+
+```
+
+The models do not all pick out the same top features. But the features they each pick out are in fact plausible conceptual correlates of democracy. Consider @fig-topWords1700, which shows the top 10 nouns, adjectives, and verbs picked out by each of our four predictive models, plus three non-predictive models: the singular value decomposition of the PPMI-weighted document-term matrix using the "augmented implicitly restarted Lanczos bidiagonalization algorithm" of Baglama and Reichel [-@baglamaAugmentedImplicitlyRestarted2005a] implemented in the R package `irlba` [@baglamaIrlbaFastTruncated2019]; the similarities between the PPMI-weighted matrix and 
+
+```{r fig-topWords1700}
+#| fig-width: 9
+#| fig-height: 9
+#| fig-cap: "Top 10 features for each model, 1700-1800. Feature importance is given in a standardized scale (value - mean/SD)."
+all_model_weights |> 
+  filter(period < 1800) |>
+  right_join(top_words_1700) |>
+  left_join(info_all_model_weights) |>
+  group_by(weight_id, period) |>
+  mutate(value = scale(normalized_value)) |>
+  filter(workset_name == "All volumes") |>
+  ggplot(aes(x = period, y = fct_reorder(word, total_weight),
+             fill = value)) +
+  geom_tile() +
+  facet_grid(pos_group~predictive_model_engine, scales = "free_y") +
+  scale_fill_viridis_c() +
+  labs(y = "", x = "", fill = "")
+
+```
+
+```{r fig-topWords1800}
+#| fig-width: 9
+#| fig-height: 9
+#| fig-cap: "Top 10 features for each model, 1800-1900. Feature importance is given in a standardized scale (value - mean/SD)."
+all_model_weights |> 
+  filter(period < 1900, period >= 1800) |>
+  right_join(top_words_1800) |>
+  left_join(info_all_model_weights) |>
+  group_by(weight_id, period) |>
+  mutate(value = scale(normalized_value)) |>
+  filter(workset_name == "All volumes") |>
+  ggplot(aes(x = period, y = fct_reorder(word, total_weight),
+             fill = value)) +
+  geom_tile() +
+  facet_grid(pos_group~predictive_model_engine, scales = "free_y") +
+  scale_fill_viridis_c() +
+  labs(y = "", x = "", fill = "")
+
+```
+
+
+```{r fig-topWords1900}
+#| fig-width: 9
+#| fig-height: 9
+#| fig-cap: "Top 10 features for each model, 1900-2020 Feature importance is given in a standardized scale (value - mean/SD)."
+all_model_weights |> 
+  filter(period > 1900) |>
+  right_join(top_words_1900) |>
+  left_join(info_all_model_weights) |>
+  group_by(weight_id, period) |>
+  mutate(value = scale(normalized_value)) |>
+  filter(workset_name == "All volumes") |>
+  ggplot(aes(x = period, y = fct_reorder(word, total_weight),
+             fill = value)) +
+  geom_tile() +
+  facet_grid(pos_group~predictive_model_engine, scales = "free_y") +
+  scale_fill_viridis_c() +
+  labs(y = "", x = "", fill = "")
+
+```
+```{r fig-naiveBayesNouns}
+#| fig-cap: "Nouns most predictive of democracy, Naive Bayes model, all volumes. The top 8 nouns in each decade are selected (up to a maximum of 60 in the sample); they are arranged by the density of their feature importance across the 1700-2020 span of time. Nouns at the bottom are more important in earlier decades; nouns at the top are more important in later decades. Feature importance is calculated as P(word|democracy in page) - P(word|democracy not in page)."
+#| fig-height: 10
+to_load <- info_graph |>
+  filter(predictive_model_engine == "naivebayes", workset_name == "All volumes",
+         str_detect(graph_pos_patterns, "_nn")) |>
+  pull(graph_id)
+
+tar_read_raw(to_load, store = here::here("_targets")) +
+  labs(fill = "Feature importance",
+       title = "", x = "")
+```
+```{r}
+#| fig-cap: "Adjectives most predictive of democracy, Naive Bayes model, all volumes. The top 8 adjectives in each decade are selected (up to a maximum of 60 in the sample); they are arranged by the density of their feature importance across the 1700-2020 span of time. Nouns at the bottom are more important in earlier decades; adjectives at the top are more important in later decades."
+#| fig-height: 10
+to_load <- info_graph |>
+  filter(predictive_model_engine == "naivebayes", workset_name == "All volumes",
+         str_detect(graph_pos_patterns, "_jj")) |>
+  pull(graph_id)
+
+tar_read_raw(to_load, store = here::here("_targets"))  +
+  labs(fill = "Feature importance",
+       title = "", x = "")
+```
+```{r}
+#| fig-cap: "Verbs most predictive of democracy, Naive Bayes model, all volumes. The top 8 verbs in each decade are selected (up to a maximum of 60 in the sample); they are arranged by the density of their feature importance across the 1700-2020 span of time. Verbs at the bottom are more important in earlier decades; verbs at the top are more important in later decades."
+#| fig-height: 10
+to_load <- info_graph |>
+  filter(predictive_model_engine == "naivebayes", workset_name == "All volumes",
+         str_detect(graph_pos_patterns, "_vb")) |>
+  pull(graph_id)
+
+tar_read_raw(to_load, store = here::here("_targets"))  +
+  labs(fill = "Feature importance",
+       title = "", x = "")
+```
+
+```{r fig-weightCorrelations}
+#| fig-cap: "Feature importance correlations among all models" 
+weight_correlations |> 
+  left_join(info_all_model_weights, by = c(term = "weight_id", "workset_meta_id")) |>
+  filter(workset_meta_id == workset_meta_id2, workset_name == "All volumes") |> 
+  ggplot(aes(x = period, y = value)) + 
+  geom_point() + 
+  facet_grid(engine~engine2) + 
+  geom_smooth(method = "lm") +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(color = "Sample")
+```
+
+```{r fig-jsDistances}
+#| fig-cap: "Jensen-Shannon distances of the feature importance distributions among all models" 
+jsd_distances |> 
+  left_join(info_all_model_weights) |>
+  filter(workset_meta_id == workset_meta_id2, workset_name == "All volumes") |> 
+  ggplot(aes(x = period, y = value)) + 
+  geom_point() + 
+  facet_wrap(engine~engine2, scales = "free_y") + 
+  geom_smooth(method = "lm") +
+  labs(color = "Sample")
+```
+
+```{r fig-electionRelatedWords}
+#| fig-cap: "Predictive importance of election-related words (-elect*, -vote*), by model"
+all_model_weights |> 
+  filter(str_detect(word, "^vote|^votin|elect|booth|candidat")) |> 
+  group_by(weight_id, period) |> 
+  summarise(normalized_value = sum(normalized_value)) |> 
+  left_join(info_all_model_weights) |>
+  filter(workset_name == "All volumes") |>
+  ggplot(aes(x = period, y = normalized_value)) + 
+  geom_point() +
+  geom_smooth() + 
+  facet_wrap(~predictive_model_engine, scales = "free_y") +
+  labs(y = "Sum of importance", x = "")
+```
+
+
+```{r fig-freedomLibertyWords}
+#| fig-cap: "Predictive importance of freedom-related words (free*, libe*, ^right*), by model"
+all_model_weights |> 
+  filter(str_detect(word, "free|libe|^right")) |> 
+  group_by(weight_id, period) |> 
+  summarise(normalized_value = sum(normalized_value)) |> 
+  left_join(info_all_model_weights) |>
+  filter(workset_name == "All volumes") |>
+  ggplot(aes(x = period, y = normalized_value)) + 
+  geom_point() +
+  geom_smooth() + 
+  facet_wrap(~predictive_model_engine, scales = "free_y") +
+  labs(y = "Sum of importance", x = "")
+```
+
+```{r fig-ismWords}
+#| fig-cap: "Predictive importance of -ism words, by model"
+all_model_weights |> 
+  filter(str_detect(word, "ism_")) |> 
+  group_by(weight_id, period) |> 
+  summarise(normalized_value = sum(normalized_value)) |> 
+  left_join(info_all_model_weights) |>
+  filter(workset_name == "All volumes") |>
+  ggplot(aes(x = period, y = normalized_value)) + 
+  geom_point() +
+  geom_smooth() + 
+  facet_wrap(~predictive_model_engine, scales = "free_y") +
+  labs(y = "Sum of importance", x = "")
+```
+```{r fig-sentiment}
+#| fig-cap: "Sentiment of words"
+
+sentiments_bing <- tidytext::get_sentiments("bing") |>
+  mutate(sentiment = case_when(sentiment == "negative" ~ 0,
+                               TRUE ~ 1),
+         lexicon = "bing")
+
+sentiments_afinn <- tidytext::get_sentiments("afinn") |>
+  mutate(sentiment = scales::rescale(value),
+         lexicon = "afinn")
+
+sentiments_afinn <- tidytext::get_sentiments("afinn") |>
+  mutate(sentiment = scales::rescale(value),
+         lexicon = "afinn")
+
+sentiments_nrc <- tidytext::get_sentiments("nrc") |>
+  mutate(valence = sentiment,
+         sentiment = case_when(sentiment == "negative" ~ 0,
+                               sentiment == "positive" ~ 1),
+         lexicon = "nrc") 
+
+sentiments_loughran <- tidytext::get_sentiments("loughran") |>
+  mutate(valence = sentiment,
+         sentiment = case_when(sentiment == "negative" ~ 0,
+                               sentiment == "positive" ~ 1),
+         lexicon = "loughran") 
+
+all_sentiments <- bind_rows(sentiments_bing, sentiments_afinn, sentiments_nrc, sentiments_loughran) |>
+  select(-value)
+
+all_model_weights |> 
+  filter(str_detect(word, "_jj")) |>
+  mutate(word = str_remove(word, "_.+")) |>
+  inner_join(all_sentiments) |>
+  group_by(weight_id, period, word, lexicon) |> 
+  summarise(normalized_value = sum(normalized_value),
+            sentiment = sentiment[ !is.na(sentiment)]) |>
+  group_by(weight_id, period, lexicon) |>
+  summarise(sentiment = weighted.mean(sentiment, normalized_value)) |>
+  left_join(info_all_model_weights) |>
+  filter(workset_name == "All volumes") |> 
+  ggplot(aes(x = period, y = sentiment)) +
+  stat_summary() +
+  geom_point(aes(color = lexicon)) +
+  geom_smooth() + 
+  facet_wrap(~predictive_model_engine, scales = "free_y") +
+  labs(y = "Positive sentiment level", x = "")
+```
+```{r}
+all_model_weights |> 
+  filter(str_detect(word, "good_|^bad_")) |> 
+  group_by(weight_id, period) |>
+  mutate(good = str_detect(word, "good_")) |>
+  group_by(weight_id, period) |>
+  summarise(normalized_value = sum(normalized_value[good]) - sum(normalized_value[!good])) |> 
+  left_join(info_all_model_weights) |>
+  filter(workset_name == "All volumes") |>
+  ggplot(aes(x = period, y = normalized_value)) + 
+  geom_point() +
+  geom_smooth() + 
+  facet_wrap(~predictive_model_engine, scales = "free_y") +
+  labs(y = "Sum of importance", x = "")
+
+```
+
+Despite the differences in feature 
+
+## Quantifying Conceptual Relatedness {.unnumbered}
+
+There are a wide variety of ways in which we might quantify the strength of the relationship between "democracy" and other concepts. We might, for instance, calculate the positive pointwise mutual information 
+
+The page context of the Hathi Trust corpus is will suited to this task, as concepts related to "democracy" will tend to be discussed within the same page, though not necessarily within the same sentence or small window. 
+
+We model the problem as a prediction task: given a page context (as a bag of word counts), we attempt to predict whether the term "democracy" is used within the same page. This is a standard binary classification problem. In this case, the classes are highly unbalanced: a single volume may mention the term "democracy" in a few pages, while containing hundreds of pages where the term is not mentioned. 
+
+## Word Vector Embeddings {.unnumbered}
+
+In order to understand whether and when there have been deeper conceptual changes associated with the increased usage of the word 'democracy' over time, we need to look at the *contexts* in which 'democracy' is discussed. For this purpose, I use a variety of word embedding models to extract the words most likely to appear in similar contexts, and then use Hathi Trust's search facilities to dig deeper into the books that contain such words.
+
+Word vector embeddings encode semantic and linguistic information about words within a specific context window, enabling us to define a measure of "similarity" between words [@penningtonGloveGlobalVectors2014]. Words that are "close" in the vector space (by a metric such as cosine similarity) are typically close in meaning, occurring in similar contexts. Though Hathi Trust does not make the full text of all the books in the corpus freely available, it makes available page-level word frequencies. Using this page context, we can calculate word vectors that encode information about which words occur near each other within a page context. Page contexts do not allow us to capture syntactic or even semantic relatedness, but they do allow us to capture *conceptual* association: words that tend to occur together within the same page will tend to be used to discuss similar concepts.
+
+Since the total number of books in the Hathi Trust corpus is very large, imposing some computational and budgetary constraints on this project, and we are only interested in the contexts around the word "democracy", I begin by selecting a random sample of English-language volumes that mention the word 'democracy'. I build this sample by first finding all the English-language books that mention 'democracy' using Hathi Trust's [Workset Builder 2.0](https://solr2.htrc.illinois.edu/solr-ef/). I then exclude works whose publication date is clearly incorrect or missing (e.g., books with a much earlier publication date in their metadata than their other publication information indicates) and randomly sample 5,000 books per decade from the remaining volumes.[^4]
+
+[^4]: Books with the wrong metadata can have a big influence on results in decades where few volumes mention democracy (e.g., the early 1700s), so it is important to exclude them to avoid spurious associations of democracy with concepts not in wide use at the particular time. Note that in decades between 1700-1800 and after 2000 there are fewer than 5,000 books digitized per decade, and some of the books in later decades do not have freely available "extracted features" files even if they appear in the workset, so there are not always 5,000 books per decade in the sample. A full description of this sample can be found in the appendix.
+
+The mentions of "democracy" in this sample correlate well with the mentions of "democracy" in the larger Hathi Trust corpus, increasing our confidence that the sample reflects the overall corpus well. It also shows a similar pattern: books that mention the word "democracy" mention it *more often* during the French Revolution and the First and Second World Wars, indicating the increasing salience of the concept during those periods (fig. \@ref(fig:freqDemocracyInDemocracyBooks)). There is also a generally increasing trend from the second decade of the 19th century, which suggests that the concept is discussed in both more contexts and more depth.
+
+To calculate the word vector embeddings, we first clean up the Hathi Trust extracted features files, excluding words that include numbers or punctuation as well as common English stopwords and words of less than 2 characters (which include many OCR artifacts). We then build the document-term matrix for each decade, restricting it to the top 30,000 terms, and use it to compute several different word vector embeddings, using different methods and parameters.
+
+There are several sources of uncertainty for these word vector models. First, and most importantly, these word vectors only encode information about the books in the sample; a different sample, or a larger sample, would lead to slightly different results. Since the sample is selected at random from all the books that mention the word "democracy", concerns about bias should be mitigated. And since our purpose here is not to investigate general language change but only language change surrounding the term "democracy", it is also appropriate to only look at books that mention the word 'democracy' rather than a random sample of all books. Nevertheless, I also look at results using a full random sample of English books (whether or not they mention democracy), as well as the word vectors computed by Hamilton, William, Leskovec, and Jurafsky [-@hamiltonDiachronicWordEmbeddings2016a] from the Google Books 5-gram dataset.
+
+Second, different algorithms and context windows for calculating these word vectors yield slightly different results. I calculate word vectors using two different algorithms. First, I compute approximate word vectors using the GLoVe algorithm [@penningtonGloveGlobalVectors2014] implemented in the R package `text2vec` [@selivanovText2vecModernText2022]. The GLoVe vectors are the result of a predictive model, so they tend to provide good estimates of context similarity, but the algorithm is more computationally intensive (and we are calculating many hundreds of models). Second, I also use a fast algorithm to approximate the singular value decomposition of the document-term matrix using the "augmented implicitly restarted Lanczos bidiagonalization algorithm" of Baglama and Reichel [-@baglamaAugmentedImplicitlyRestarted2005a] implemented in the R package `irlba` [@baglamaIrlbaFastTruncated2019]. This algorithm provides serviceable word vectors, but it tends to overestimate the similarities between distant words. I also check these results against a simple calculation of the pointwise mutual information between "democracy" and other words in each decade.
+
+Finally, results may also differ depending on the dimensionality of the resulting vectors or the cutoff for the number of tokens in the document-term matrix. I experimented with 50-dimensional and 100-dimensional word vectors, and with word vectors including the top 50,000 and 100,000 terms in each decade. I also calculated separate word vector models for words tagged with and without their part of speech; in what follows I use part-of-speech tagged models, and focus on the GLoVe models.
+
+## The language of democracy {.unnumbered}
+
+We begin by plotting the changing frequency of the most similar words to "democracy" over time (fig. \@ref(fig:similarityToDemocracyGeneral)). The story these words trace is recognizable in its broadest strokes. Democracy is at first a disputed concept, as indicated by the prominence of "demagogue" among the most similar terms in the late 18th and early 19th centuries. The mid-19th century sees the emergence of debates on the relationship between democracy, federalism, and republicanism; as we shall see, the prominence of these terms reflects the importance of the American Civil War in our sample, where this relationship was heavily disputed. In the 1910s (WWI), democracy is increasingly discussed in the context of discussions of nationalism and socialism, while in the 1940s (WWII) the relationship between democracy and freedom acquires newfound importance. Finally, by the mid-20th century the relationship between ideology and democracy becomes increasingly thematized in scholarly discussions.
+
+
+## Conceptual Innovation {.unnumbered}
+

@@ -1,0 +1,410 @@
+---
+title: "Appendix"
+author: "Xavier Marquez"
+date: today
+format: gfm
+execute-dir: file
+execute:
+  echo: false
+  message: false
+  warning: false
+  fig-path: "figure/figs-"
+---
+
+```{r setup, include=FALSE}
+library(targets)
+library(tidyverse)
+tar_config_set(store = here::here("_targets"),
+               config = "custom.yaml")
+
+theme_set(theme_bw())
+```
+
+This appendix is rendered from the project's `targets` pipeline. The code chunks below read precomputed objects from the targets store (`_targets/`) using `tar_read_raw()`. If you change the pipeline configuration (e.g., `config/pipeline.yml`) or rerun the pipeline with different settings, rerun `targets::tar_make()` before rendering this document.
+
+Throughout, `decade` refers to the left endpoint of each 10-year time slice (e.g., `1700` denotes 1700-1709).
+
+
+## Sample Characteristics
+
+```{r}
+target_usable_htids <- "workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10"
+target_samples <- "sample_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_unrestricted_40"
+target_samples_restricted <- "sample_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_restricted_500"
+
+usable_htids <- tar_read_raw(target_usable_htids) %>%
+  rename(decade = period)
+
+samples <- tar_read_raw(target_samples) %>%
+  rename(decade = period)
+
+samples_restricted <- tar_read_raw(target_samples_restricted) %>%
+  rename(decade = period)
+
+usable_htids %>%
+  group_by(decade) %>%
+  summarise(n = n_distinct(htid)) %>%
+  ggplot(aes(x = decade, y = n)) +
+  geom_col()
+```
+
+```{r}
+max_vols <- samples %>%
+  count(decade) %>%
+  pull(n) %>%
+  max()
+```
+
+
+Our sample includes up to `r max_vols` volumes per decade.
+
+```{r}
+samples %>%
+  group_by(decade) %>%
+  summarise(n = n_distinct(htid)) %>%
+  ggplot(aes(x = decade, y = n)) +
+  geom_col()
+
+
+```
+```{r}
+max_vols_restricted <- samples_restricted %>%
+  count(decade) %>%
+  pull(n) %>%
+  max()
+
+samples_restricted %>%
+  group_by(decade) %>%
+  summarise(n = n_distinct(htid)) %>%
+  ggplot(aes(x = decade, y = n)) +
+  geom_col()
+```
+
+The larger sample includes up to `r max_vols_restricted` volumes per decade.
+
+These represent varying proportions of the total sample, though volumes that mention democracy more often are more likely to be in the sample. (The probability of selection into the sample is weighted by the number of mentions of 'democracy' in the volume).
+
+```{r}
+
+
+per_decade <- usable_htids %>%
+  group_by(decade) %>%
+  summarise(total_htids = n_distinct(htid),
+            total_mentions = sum(n))
+
+samples %>%
+  left_join(per_decade) %>%
+  group_by(decade, total_htids) %>%
+  summarise(`Proportion of volumes in decade` = n_distinct(htid)/unique(total_htids),
+            `Proportion of mentions in decade` = sum(n)/unique(total_mentions)) %>%
+  pivot_longer(starts_with("Proportion")) %>%
+  ggplot(aes(x = decade, y = value, fill = name)) +
+  geom_col(position = "dodge") +
+  labs(y = "Proportion of HTIDs mentioning 'democracy'",
+       fill = "") +
+  scale_fill_viridis_d() +
+  scale_y_continuous(labels = scales::percent)
+
+```
+
+```{r}
+samples_restricted %>%
+  left_join(per_decade) %>%
+  group_by(decade, total_htids) %>%
+  summarise(`Proportion of volumes in decade` = n_distinct(htid)/unique(total_htids),
+            `Proportion of mentions in decade` = sum(n)/unique(total_mentions)) %>%
+  pivot_longer(starts_with("Proportion")) %>%
+  ggplot(aes(x = decade, y = value, fill = name)) +
+  geom_col(position = "dodge") +
+  labs(y = "Proportion of HTIDs mentioning 'democracy'",
+       fill = "") +
+  scale_fill_viridis_d() +
+  scale_y_continuous(labels = scales::percent)
+
+```
+
+
+## Graphs with all weights
+
+```{r}
+all_model_weights <- tar_read_raw("all_model_weights")
+
+weights_meta <- tar_read_raw("info_all_model_weights") %>%
+  mutate(
+    weight_id = coalesce(weight_pred_id, weight_ppmi_id, weight_svd_id),
+    description = case_when(
+      !is.na(weight_pred_id) ~ paste0(
+        "Predictive model: ",
+        predictive_model_engine,
+        " (",
+        predictive_model_dfm_weight,
+        ")"
+      ),
+      !is.na(weight_ppmi_id) ~ paste0("PPMI: ", ppmi_fun),
+      !is.na(weight_svd_id) ~ paste0("SVD: ", svd_weight, " (", svd_dims, " dims)"),
+      TRUE ~ "Unknown"
+    )
+  ) %>%
+  select(weight_id, description, sample_strategy)
+
+archy_acy <- all_model_weights %>%
+  filter(str_detect(str_to_lower(word), "archy_|cracy_")) %>%
+  mutate(
+    word = str_to_lower(word),
+    decade = period,
+    pnormed_value = pnorm(scaled_value)
+  ) %>%
+  left_join(weights_meta, by = "weight_id")
+
+archy_acy  %>% 
+  filter(pnormed_value > 0.5) %>% 
+  ggplot(aes(x = decade, y = pnormed_value)) +
+  stat_summary() +
+  geom_point(aes(color = description), alpha = 0.2) +
+  facet_wrap(~fct_reorder(word, pnormed_value)) +
+  scale_color_viridis_d() +
+  theme(legend.position = "bottom")
+
+```
+```{r}
+earliest_latest <- all_model_weights %>%
+  filter(scaled_value > 5) %>%
+  mutate(
+    word = str_to_lower(word),
+    decade = period,
+    pnormed_value = pnorm(scaled_value)
+  ) %>%
+  group_by(word) %>%
+  summarise(
+    earliest_appearance = min(decade),
+    latest_appearance = max(decade),
+    total_value = sum(scaled_value),
+    min_value = min(scaled_value),
+    max_value = max(scaled_value),
+    min_pnormed = min(pnormed_value),
+    max_pnormed = max(pnormed_value),
+    total_appearances = n_distinct(decade),
+    period = latest_appearance - earliest_appearance,
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_value), desc(period), desc(total_appearances)) %>%
+  mutate(
+    pos = str_extract(word, "_[jnvb]{2}$") %>% str_remove("_"),
+    total_app_quantile = cut(total_appearances, breaks = 4)
+  )
+
+terms <- earliest_latest %>%
+  group_by(total_app_quantile, pos) %>%
+  slice_head(n = 25) %>%
+  ungroup() %>%
+  mutate(group_id = paste(total_app_quantile, pos))
+
+term_lists <- terms %>%
+  split(.$group_id) %>%
+  map(~pull(.x, word))
+
+terms_all <- unique(unlist(term_lists))
+
+weights_terms <- all_model_weights %>%
+  filter(str_to_lower(word) %in% terms_all) %>%
+  mutate(
+    word = str_to_lower(word),
+    decade = period,
+    pnormed_value = pnorm(scaled_value)
+  ) %>%
+  left_join(weights_meta, by = "weight_id")
+```
+
+```{r}
+
+model_graph <- function(term_list) {
+  weights_terms %>%
+    filter(word %in% term_list) %>%
+    ggplot(aes(x = decade, y = pnormed_value)) +
+      stat_summary(alpha =  0.4) +
+      geom_point(aes(color = description), alpha = 0.2) +
+      geom_smooth() +
+      facet_wrap(~fct_reorder(word, pnormed_value)) +
+      scale_color_viridis_d() +
+      theme(legend.position = "bottom") +
+      geom_hline(yintercept = 0.5, color = "red") 
+}
+
+term_lists %>%
+  walk(~print(model_graph(.x)))
+```
+
+
+## Graphs for Individual Models
+
+```{r}
+child <- tryCatch(
+  knitr::knit_child("graph_appendix.rmd", quiet = TRUE),
+  error = function(e) {
+    cat(
+      "_Graphs for individual models are not yet available (the file `Paper/graph_appendix.rmd` needs to be regenerated from the current targets pipeline)._",
+      sep = "\n"
+    )
+    NULL
+  }
+)
+
+if (!is.null(child)) {
+  cat(child, sep = "\n")
+}
+```
+
+## Model performance graphs
+
+```{r fig-combined_performance_graph_classification_auc}
+#| fig-cap: "Predictive performance of classification models, AUC measure."
+#| fig-width: 9
+#| fig-height: 9
+
+rm(list = intersect(
+  c(
+    "all_model_weights",
+    "weights_meta",
+    "archy_acy",
+    "earliest_latest",
+    "terms",
+    "term_lists",
+    "terms_all",
+    "weights_terms"
+  ),
+  ls()
+))
+invisible(gc())
+
+combined_performance <- tar_read_raw("combined_performance")
+sample_sizes <- tar_read_raw("sample_sizes")
+
+performance_plot_data <- combined_performance %>%
+  mutate(decade = period) %>%
+  left_join(
+    sample_sizes %>%
+      select(
+        period,
+        performance_id,
+        performance_split,
+        predictive_model_engine,
+        predictive_model_dfm_weight,
+        sample_strategy
+      ),
+    by = c("period", "performance_id")
+  ) %>%
+  mutate(
+    predictive_model_dfm_weight = factor(
+      predictive_model_dfm_weight,
+      levels = c("ppmi", "tfidf", "none")
+    ),
+    performance_split = factor(
+      performance_split,
+      levels = c("training", "testing", "testing - OOD")
+    ),
+    sample_strategy = factor(
+      sample_strategy,
+      levels = c("Unbalanced", "Balanced (majority category undersampled)")
+    )
+  )
+
+performance_plot_data %>%
+  filter(str_detect(.metric, "auc")) %>%
+  ggplot(aes(
+    x = decade,
+    y = .estimate,
+    color = predictive_model_engine,
+    linetype = sample_strategy,
+    group = performance_id
+  )) +
+  geom_point() +
+  geom_line() +
+  facet_grid(predictive_model_dfm_weight ~ performance_split) +
+  theme_bw() +
+  labs(
+    color = "Model engine",
+    linetype = "Sampling",
+    title = "Predictive performance of classification models, AUC measure."
+  ) +
+  theme(legend.position = "bottom")
+
+```
+
+```{r fig-combined_performance_graph_classification_acc}
+#| fig-cap: "Predictive performance of classification models, accuracy measure."
+#| fig-width: 9
+#| fig-height: 9
+
+performance_plot_data %>%
+  filter(str_detect(.metric, "accuracy")) %>%
+  ggplot(aes(
+    x = decade,
+    y = .estimate,
+    color = predictive_model_engine,
+    linetype = sample_strategy,
+    group = performance_id
+  )) +
+  geom_point() +
+  geom_line() +
+  facet_grid(predictive_model_dfm_weight ~ performance_split) +
+  theme_bw() +
+  labs(
+    color = "Model engine",
+    linetype = "Sampling",
+    title = "Predictive performance of classification models, accuracy measure."
+  ) +
+  theme(legend.position = "bottom")
+```
+
+```{r fig-combined_performance_graph_classification_kap}
+#| fig-cap: "Predictive performance of classification models, Cohen's Kappa measure."
+#| fig-width: 9
+#| fig-height: 9
+
+performance_plot_data %>%
+  filter(str_detect(.metric, "kap")) %>%
+  ggplot(aes(
+    x = decade,
+    y = .estimate,
+    color = predictive_model_engine,
+    linetype = sample_strategy,
+    group = performance_id
+  )) +
+  geom_point() +
+  geom_line() +
+  facet_grid(predictive_model_dfm_weight ~ performance_split) +
+  theme_bw() +
+  labs(
+    color = "Model engine",
+    linetype = "Sampling",
+    title = "Predictive performance of classification models, kap measure."
+  ) +
+  theme(legend.position = "bottom")
+```
+
+
+```{r fig-combined_performance_graph_classification_log_loss}
+#| fig-cap: "Predictive performance of classification models, log loss measure."
+#| fig-width: 9
+#| fig-height: 9
+
+performance_plot_data %>%
+  filter(str_detect(.metric, "mn_log_loss")) %>%
+  ggplot(aes(
+    x = decade,
+    y = .estimate,
+    color = predictive_model_engine,
+    linetype = sample_strategy,
+    group = performance_id
+  )) +
+  geom_point() +
+  geom_line() +
+  facet_grid(predictive_model_dfm_weight ~ performance_split) +
+  theme_bw() +
+  labs(
+    color = "Model engine",
+    linetype = "Sampling",
+    title = "Predictive performance of classification models, log loss measure."
+  ) +
+  theme(legend.position = "bottom")
+```
