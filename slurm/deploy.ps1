@@ -76,7 +76,9 @@ Write-Host "   SSH OK."
 Write-Host "== Checking out $headSha on the cluster ($Scratch)..."
 # -f: the cluster clone is disposable; stray local changes there (e.g. a
 # manual chmod during debugging) must never block a deploy.
-$checkoutCmd = "cd $Scratch && git fetch --all --quiet && git checkout -f --detach $headSha && git rev-parse HEAD"
+# -q on checkout: git narrates "Previous HEAD position" on stderr, which
+# PowerShell 5.1 wraps as a NativeCommandError.
+$checkoutCmd = "cd $Scratch && git fetch --all --quiet && git checkout -f -q --detach $headSha && git rev-parse HEAD"
 $remoteSha = ssh $remote $checkoutCmd
 if ($LASTEXITCODE -ne 0) {
     Fail "Remote checkout failed. Has slurm/setup_raapoi.sh been run on the cluster yet?"
