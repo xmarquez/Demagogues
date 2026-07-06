@@ -200,7 +200,15 @@ restricted_dfm_from_json <- function(paths,
   dfms <- paths %>%
     purrr::map(function(x) {
       restricted_json_to_dfm(x, ...)
-    })
+    }) %>%
+    purrr::compact()
+
+  # A period slice can legitimately have no volumes (e.g. rare terms in early
+  # decades). Return NULL so downstream targets treat the branch as empty
+  # rather than aborting the whole pipeline.
+  if (length(dfms) == 0L) {
+    return(NULL)
+  }
 
   # Get the union of all features from the dfms
   new_features <- dfms %>%

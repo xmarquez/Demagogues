@@ -246,6 +246,9 @@ dfm_targets <- list(
       iteration = "list",
       memory = "transient",
       garbage_collection = TRUE,
+      # One empty/failed branch must not abort a multi-day run; errors are
+      # recorded in tar_meta() and the branch value becomes NULL.
+      error = "null",
       description = "DFM: Build restricted DFMs per sample with POS and regex filters."
     )
   ),
@@ -258,6 +261,9 @@ dfm_targets <- list(
       resources = tar_resources(crew = tar_resources_crew(controller = "bigmem")),
       memory = "transient",
       garbage_collection = TRUE,
+      # One empty/failed branch must not abort a multi-day run; errors are
+      # recorded in tar_meta() and the branch value becomes NULL.
+      error = "null",
       description = "DFM: Reduce DFMs to top features per period for topic modeling."
     )
   ),
@@ -277,6 +283,9 @@ dfm_targets <- list(
       memory = "transient",
       garbage_collection = TRUE,
       deployment = "main",
+      # One empty/failed branch must not abort a multi-day run; errors are
+      # recorded in tar_meta() and the branch value becomes NULL.
+      error = "null",
       description = "DFM: Train/test splits (with optional downsampling) for each DFM."
     )
   )
@@ -299,6 +308,9 @@ model_targets <- list(
       pattern = map(dfm_object, split_object),
       packages = c("quanteda"),
       iteration = "list",
+      # One empty/failed branch must not abort a multi-day run; errors are
+      # recorded in tar_meta() and the branch value becomes NULL.
+      error = "null",
       description = "Model: Fit predictive models per DFM with specified engine and weighting."
     )
   ),
@@ -312,6 +324,9 @@ model_targets <- list(
       storage = "worker",
       retrieval = "worker",
       garbage_collection = TRUE,
+      # One empty/failed branch must not abort a multi-day run; errors are
+      # recorded in tar_meta() and the branch value becomes NULL.
+      error = "null",
       description = "Model: Fit STM topic models on reduced DFMs."
     )
   ),
@@ -330,6 +345,9 @@ model_targets <- list(
       pattern = map(predictive_model_object, period_object),
       deployment = "main",
       packages = "quanteda",
+      # One empty/failed branch must not abort a multi-day run; errors are
+      # recorded in tar_meta() and the branch value becomes NULL.
+      error = "null",
       description = "Model Weights: Extract model weights for predictive models."
     )
   ),
@@ -412,6 +430,9 @@ model_targets <- list(
       resources = tar_resources(crew = tar_resources_crew(controller = "std")),
       storage = "worker",
       retrieval = "worker",
+      # One empty/failed branch must not abort a multi-day run; errors are
+      # recorded in tar_meta() and the branch value becomes NULL.
+      error = "null",
       description = "Model Weights: PPMI-based similarities for each feature and period."
     )
   ),
@@ -449,6 +470,9 @@ model_targets <- list(
       resources = tar_resources(crew = tar_resources_crew(controller = "std")),
       storage = "worker",
       retrieval = "worker",
+      # One empty/failed branch must not abort a multi-day run; errors are
+      # recorded in tar_meta() and the branch value becomes NULL.
+      error = "null",
       description = "Model: Compute SVD word vectors for reduced feature lookups."
     )
   ),
@@ -473,6 +497,9 @@ model_targets <- list(
         tibble::as_tibble(),
       pattern = map(svd_object, period_object),
       deployment = "main",
+      # One empty/failed branch must not abort a multi-day run; errors are
+      # recorded in tar_meta() and the branch value becomes NULL.
+      error = "null",
       description = "Model Weights: Nearest-neighbor similarities derived from SVD word vectors."
     )
   ),
