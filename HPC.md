@@ -94,7 +94,19 @@ Key design points:
    Idempotent: creates scratch dirs, pulls/updates the repo, generates and
    authorizes the intra-cluster ssh key (for the shims), pulls the SIF, and
    chmods the scripts.
-5. **Data staging** (from Windows; Git Bash paths shown):
+5. **Data staging.** If the data already lives on scratch from earlier runs
+   (e.g. `/nfs/scratch/marquexa/hathi-ef` and `/nfs/scratch/marquexa/raw-hathifiles`
+   from the 2023 campaign), do NOT re-transfer — symlink it into the expected
+   layout instead (on Rāpoi):
+   ```bash
+   rmdir /nfs/scratch/marquexa/corpora/hathi/hathi-ef 2>/dev/null
+   rmdir /nfs/scratch/marquexa/corpora/hathi/raw-hathifiles 2>/dev/null
+   ln -sfn /nfs/scratch/marquexa/hathi-ef       /nfs/scratch/marquexa/corpora/hathi/hathi-ef
+   ln -sfn /nfs/scratch/marquexa/raw-hathifiles /nfs/scratch/marquexa/corpora/hathi/raw-hathifiles
+   ls -lh /nfs/scratch/marquexa/corpora/hathi/raw-hathifiles/hathi_full_20230101.txt.gz  # must exist
+   ```
+   (Symlinks resolve inside the container because `--bind /nfs/scratch` mounts
+   the whole tree.) Otherwise rsync from Windows (Git Bash paths shown):
    ```bash
    # Hathi catalog snapshot (one-time)
    rsync -avP "/d/ResearchData/corpora/hathi/raw-hathifiles/" \
