@@ -1,0 +1,516 @@
+---
+title: 'JSTOR graphs: authority_glmnet_100'
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: right
+    include-in-header:
+      text: |
+        <style>
+        #TOC ul.collapse {
+          display: block !important;
+        }
+        #TOC ul.collapse li {
+          margin-left: 0.75rem;
+        }
+        </style>
+execute-dir: project
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r setup, include=FALSE}
+library(targets)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(here)
+library(knitr)
+library(stringr)
+source(here::here("R", "jstor_corpus_functions.R"))
+targets::tar_config_set(store = here::here("_targets"), config = "custom.yaml")
+ggplot2::theme_set(ggplot2::theme_bw())
+```
+
+Run: `authority_jstor_glmnet_100`.
+Feature(s): authority, authorities.
+Authority run over JSTOR DfR NGRAMS1: top 100 authority-positive articles per decade with matched negative articles; fits glmnet, LiblineaR, naive Bayes, and xgboost classifiers.
+
+This document reads precomputed JSTOR graph objects from the central `_targets` store.
+JSTOR DfR NGRAMS1 files are untagged unigram counts, so POS-specific Hathi panels are not generated here.
+
+## Feature Support Audit
+
+```{r}
+#| label: tbl-jstor-feature-support
+audit <- targets::tar_read(jstor_sampling_audit_authority_jstor_glmnet_100, store = here::here('_targets'))
+support <- jstor_model_period_support(audit, targets::tar_read(
+  jstor_config_authority_jstor_glmnet_100, store = here::here('_targets'))
+)
+support |>
+  dplyr::mutate(
+    positive_share = round(positive_texts / n_texts, 3)
+  ) |>
+  dplyr::select(
+    period, period_label, n_texts, positive_texts, negative_texts,
+    positive_share, feature_tokens, model_trainable
+  ) |>
+  knitr::kable(caption = "Authority feature support by decade in JSTOR DfR NGRAMS1 articles.")
+```
+
+## Predictive Performance
+
+F1 is the harmonic mean of precision and recall for JSTOR articles containing the target feature. These diagnostics are internal to the configured sample and train/test split; they do not estimate prevalence in JSTOR.
+
+```{r}
+#| label: fig-jstor-performance-f1
+#| fig-cap: "Testing F1 by model and period."
+#| fig-width: 8
+#| fig-height: 4
+performance_path <- targets::tar_read(jstor_combined_performance_authority_jstor_glmnet_100, store = here::here('_targets'))
+if (!grepl("^(?:[A-Za-z]:|/|\\\\)", performance_path)) {
+  performance_path <- here::here(performance_path)
+}
+performance <- readRDS(performance_path) |>
+  dplyr::mutate(
+    model = paste(
+      predictive_model_engine,
+      predictive_model_dfm_weight,
+      "weights"
+    )
+  )
+
+sample_sizes <- targets::tar_read(jstor_sample_sizes_authority_jstor_glmnet_100, store = here::here('_targets')) |>
+  dplyr::select(
+    performance_id,
+    period,
+    performance_split,
+    sample_size,
+    negative,
+    positive
+  )
+
+performance_wide <- performance |>
+  dplyr::filter(
+    performance_split == "testing",
+    .metric %in% c("f_meas", "roc_auc", "accuracy", "kap")
+  ) |>
+  dplyr::select(period, performance_id, model, .metric, .estimate) |>
+  tidyr::pivot_wider(names_from = .metric, values_from = .estimate) |>
+  dplyr::left_join(
+    sample_sizes |>
+      dplyr::filter(performance_split == "testing"),
+    by = c("period", "performance_id")
+  ) |>
+  dplyr::arrange(model, period)
+
+ggplot2::ggplot(
+  performance_wide,
+  ggplot2::aes(x = period, y = f_meas, color = model, group = model)
+) +
+  ggplot2::geom_line(linewidth = 0.6) +
+  ggplot2::geom_point(size = 2) +
+  ggplot2::scale_y_continuous(limits = c(0, 1)) +
+  ggplot2::labs(x = "Period", y = "Testing F1", color = "Model")
+```
+
+```{r}
+#| label: tbl-jstor-performance-testing
+performance_wide |>
+  dplyr::transmute(
+    model,
+    period,
+    f1 = round(f_meas, 3),
+    roc_auc = round(roc_auc, 3),
+    accuracy = round(accuracy, 3),
+    kappa = round(kap, 3),
+    sample_size,
+    positive,
+    negative
+  ) |>
+  knitr::kable(
+    caption = "Testing split predictive performance by model and period."
+  )
+```
+
+## Term Weight Trajectories
+
+These plots use raw predictive-model weights recovered from the targets store. Xgboost values are feature-importance scores, not signed coefficients. Facets use free y scales because model outputs are not directly comparable in magnitude. The automatic top-term plots select terms using a cumulative log-scaled positive-association score: `sum(log1p(pmax(weight, 0)))` across periods.
+
+```{r}
+#| label: jstor-top-term-data
+#| include: false
+tracked_top_n <- 10
+
+model_weights <- targets::tar_read(jstor_predictive_model_weights_authority_jstor_glmnet_100, store = here::here('_targets')) |> 
+  dplyr::mutate(
+    model = paste(
+      predictive_model_engine,
+      predictive_model_dfm_weight,
+      "weights"
+    )
+  )
+
+top_terms <- model_weights |> 
+  dplyr::mutate(
+    positive_value = pmax(value, 0),
+    selection_score = log1p(positive_value)
+  ) |> 
+  dplyr::group_by(model, word) |> 
+  dplyr::summarise(
+    association_score = sum(selection_score, na.rm = TRUE),
+    periods_positive = sum(positive_value > 0, na.rm = TRUE),
+    max_positive_weight = max(positive_value, na.rm = TRUE),
+    .groups = "drop"
+  ) |> 
+  dplyr::filter(association_score > 0) |> 
+  dplyr::group_by(model) |> 
+  dplyr::arrange(
+    dplyr::desc(association_score),
+    dplyr::desc(periods_positive),
+    dplyr::desc(max_positive_weight),
+    word,
+    .by_group = TRUE
+  ) |> 
+  dplyr::slice_head(n = tracked_top_n) |> 
+  dplyr::ungroup()
+```
+### glmnet ppmi weights - All Terms
+
+```{r}
+#| label: fig-jstor-top-term-weights-glmnet-ppmi-weights-all-terms
+#| fig-cap: "Top persistent positive-association terms for glmnet ppmi weights."
+#| fig-width: 9
+#| fig-height: 10
+model_name <- "glmnet ppmi weights"
+
+model_top_terms <- top_terms |> 
+  dplyr::filter(model == model_name) |> 
+  dplyr::arrange(
+    dplyr::desc(association_score),
+    dplyr::desc(periods_positive),
+    dplyr::desc(max_positive_weight),
+    word
+  )
+
+if (nrow(model_top_terms)) {
+  model_top_weights <- tidyr::expand_grid(
+    model = model_name,
+    period = sort(unique(model_weights$period[model_weights$model == model_name])),
+    word = model_top_terms$word
+  ) |> 
+    dplyr::left_join(
+      model_weights |> 
+        dplyr::filter(model == model_name) |> 
+        dplyr::select(model, period, word, value),
+      by = c("model", "period", "word")
+    ) |> 
+    dplyr::mutate(
+      value = tidyr::replace_na(value, 0),
+      word = factor(word, levels = model_top_terms$word)
+    )
+
+  ggplot2::ggplot(
+    model_top_weights,
+    ggplot2::aes(x = period, y = value, group = word)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey75", linewidth = 0.3) +
+    ggplot2::geom_line(color = "#2F5D62", linewidth = 0.65) +
+    ggplot2::geom_point(color = "#2F5D62", size = 1.3) +
+    ggplot2::facet_wrap(ggplot2::vars(word), ncol = 1, scales = "free_y") +
+    ggplot2::labs(
+      x = "Period",
+      y = "Raw weight / importance",
+      subtitle = "Terms ordered by cumulative log-scaled positive association"
+    ) +
+    ggplot2::theme(
+      legend.position = "none",
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+} else {
+  cat("No positive terms available for this model.")
+}
+```
+
+### LiblineaR ppmi weights - All Terms
+
+```{r}
+#| label: fig-jstor-top-term-weights-liblinear-ppmi-weights-all-terms
+#| fig-cap: "Top persistent positive-association terms for LiblineaR ppmi weights."
+#| fig-width: 9
+#| fig-height: 10
+model_name <- "LiblineaR ppmi weights"
+
+model_top_terms <- top_terms |> 
+  dplyr::filter(model == model_name) |> 
+  dplyr::arrange(
+    dplyr::desc(association_score),
+    dplyr::desc(periods_positive),
+    dplyr::desc(max_positive_weight),
+    word
+  )
+
+if (nrow(model_top_terms)) {
+  model_top_weights <- tidyr::expand_grid(
+    model = model_name,
+    period = sort(unique(model_weights$period[model_weights$model == model_name])),
+    word = model_top_terms$word
+  ) |> 
+    dplyr::left_join(
+      model_weights |> 
+        dplyr::filter(model == model_name) |> 
+        dplyr::select(model, period, word, value),
+      by = c("model", "period", "word")
+    ) |> 
+    dplyr::mutate(
+      value = tidyr::replace_na(value, 0),
+      word = factor(word, levels = model_top_terms$word)
+    )
+
+  ggplot2::ggplot(
+    model_top_weights,
+    ggplot2::aes(x = period, y = value, group = word)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey75", linewidth = 0.3) +
+    ggplot2::geom_line(color = "#2F5D62", linewidth = 0.65) +
+    ggplot2::geom_point(color = "#2F5D62", size = 1.3) +
+    ggplot2::facet_wrap(ggplot2::vars(word), ncol = 1, scales = "free_y") +
+    ggplot2::labs(
+      x = "Period",
+      y = "Raw weight / importance",
+      subtitle = "Terms ordered by cumulative log-scaled positive association"
+    ) +
+    ggplot2::theme(
+      legend.position = "none",
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+} else {
+  cat("No positive terms available for this model.")
+}
+```
+
+### naivebayes ppmi weights - All Terms
+
+```{r}
+#| label: fig-jstor-top-term-weights-naivebayes-ppmi-weights-all-terms
+#| fig-cap: "Top persistent positive-association terms for naivebayes ppmi weights."
+#| fig-width: 9
+#| fig-height: 10
+model_name <- "naivebayes ppmi weights"
+
+model_top_terms <- top_terms |> 
+  dplyr::filter(model == model_name) |> 
+  dplyr::arrange(
+    dplyr::desc(association_score),
+    dplyr::desc(periods_positive),
+    dplyr::desc(max_positive_weight),
+    word
+  )
+
+if (nrow(model_top_terms)) {
+  model_top_weights <- tidyr::expand_grid(
+    model = model_name,
+    period = sort(unique(model_weights$period[model_weights$model == model_name])),
+    word = model_top_terms$word
+  ) |> 
+    dplyr::left_join(
+      model_weights |> 
+        dplyr::filter(model == model_name) |> 
+        dplyr::select(model, period, word, value),
+      by = c("model", "period", "word")
+    ) |> 
+    dplyr::mutate(
+      value = tidyr::replace_na(value, 0),
+      word = factor(word, levels = model_top_terms$word)
+    )
+
+  ggplot2::ggplot(
+    model_top_weights,
+    ggplot2::aes(x = period, y = value, group = word)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey75", linewidth = 0.3) +
+    ggplot2::geom_line(color = "#2F5D62", linewidth = 0.65) +
+    ggplot2::geom_point(color = "#2F5D62", size = 1.3) +
+    ggplot2::facet_wrap(ggplot2::vars(word), ncol = 1, scales = "free_y") +
+    ggplot2::labs(
+      x = "Period",
+      y = "Raw weight / importance",
+      subtitle = "Terms ordered by cumulative log-scaled positive association"
+    ) +
+    ggplot2::theme(
+      legend.position = "none",
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+} else {
+  cat("No positive terms available for this model.")
+}
+```
+
+### xgboost ppmi weights - All Terms
+
+```{r}
+#| label: fig-jstor-top-term-weights-xgboost-ppmi-weights-all-terms
+#| fig-cap: "Top persistent positive-association terms for xgboost ppmi weights."
+#| fig-width: 9
+#| fig-height: 10
+model_name <- "xgboost ppmi weights"
+
+model_top_terms <- top_terms |> 
+  dplyr::filter(model == model_name) |> 
+  dplyr::arrange(
+    dplyr::desc(association_score),
+    dplyr::desc(periods_positive),
+    dplyr::desc(max_positive_weight),
+    word
+  )
+
+if (nrow(model_top_terms)) {
+  model_top_weights <- tidyr::expand_grid(
+    model = model_name,
+    period = sort(unique(model_weights$period[model_weights$model == model_name])),
+    word = model_top_terms$word
+  ) |> 
+    dplyr::left_join(
+      model_weights |> 
+        dplyr::filter(model == model_name) |> 
+        dplyr::select(model, period, word, value),
+      by = c("model", "period", "word")
+    ) |> 
+    dplyr::mutate(
+      value = tidyr::replace_na(value, 0),
+      word = factor(word, levels = model_top_terms$word)
+    )
+
+  ggplot2::ggplot(
+    model_top_weights,
+    ggplot2::aes(x = period, y = value, group = word)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey75", linewidth = 0.3) +
+    ggplot2::geom_line(color = "#2F5D62", linewidth = 0.65) +
+    ggplot2::geom_point(color = "#2F5D62", size = 1.3) +
+    ggplot2::facet_wrap(ggplot2::vars(word), ncol = 1, scales = "free_y") +
+    ggplot2::labs(
+      x = "Period",
+      y = "Raw weight / importance",
+      subtitle = "Terms ordered by cumulative log-scaled positive association"
+    ) +
+    ggplot2::theme(
+      legend.position = "none",
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+} else {
+  cat("No positive terms available for this model.")
+}
+```
+
+
+### Selected Configured Terms
+
+```{r}
+#| label: fig-jstor-selected-term-weights
+#| fig-cap: "Selected term weights or importance by model over time."
+#| fig-width: 9
+#| fig-height: 5
+tracked_terms <- c("legitimate", "rights", "legitimacy")
+
+if (length(tracked_terms)) {
+  selected_weights <- model_weights |> 
+    dplyr::distinct(model, period) |> 
+    tidyr::expand_grid(word = tracked_terms) |> 
+    dplyr::left_join(
+      model_weights |> 
+        dplyr::filter(word %in% tracked_terms) |> 
+        dplyr::select(model, period, word, value),
+      by = c("model", "period", "word")
+    ) |> 
+    dplyr::mutate(
+      value = tidyr::replace_na(value, 0),
+      word = factor(word, levels = tracked_terms)
+    )
+
+  ggplot2::ggplot(
+    selected_weights,
+    ggplot2::aes(x = period, y = value, color = word, group = word)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey70", linewidth = 0.3) +
+    ggplot2::geom_line(linewidth = 0.6) +
+    ggplot2::geom_point(size = 1.5) +
+    ggplot2::facet_wrap(ggplot2::vars(model), scales = "free_y") +
+    ggplot2::labs(x = "Period", y = "Raw weight / importance", color = "Term")
+} else {
+  cat("No tracked terms configured.")
+}
+```
+
+## Graphs
+
+
+### Predictive model weights glmnet - All terms
+
+```{r}
+#| label: fig-jstor-jstor-authority-jstor-glmnet-100-glmnet-
+#| fig-cap: "Predictive model weights glmnet; All terms; top 100 authority-positive JSTOR articles per period with matched negative articles. Terms at the top are more closely associated with 'authority' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graphs <- targets::tar_read(jstor_graphs_authority_jstor_glmnet_100, store = here::here('_targets'))
+graph_row <- graphs |> dplyr::filter(graph_id == "jstor_authority_jstor_glmnet_100_glmnet__")
+if (nrow(graph_row)) {
+  graph_row$plot[[1]]
+} else {
+  cat("Graph not available.")
+}
+```
+
+
+### Predictive model weights LiblineaR - All terms
+
+```{r}
+#| label: fig-jstor-jstor-authority-jstor-glmnet-100-LiblineaR-
+#| fig-cap: "Predictive model weights LiblineaR; All terms; top 100 authority-positive JSTOR articles per period with matched negative articles. Terms at the top are more closely associated with 'authority' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graphs <- targets::tar_read(jstor_graphs_authority_jstor_glmnet_100, store = here::here('_targets'))
+graph_row <- graphs |> dplyr::filter(graph_id == "jstor_authority_jstor_glmnet_100_LiblineaR__")
+if (nrow(graph_row)) {
+  graph_row$plot[[1]]
+} else {
+  cat("Graph not available.")
+}
+```
+
+
+### Predictive model weights naivebayes - All terms
+
+```{r}
+#| label: fig-jstor-jstor-authority-jstor-glmnet-100-naivebayes-
+#| fig-cap: "Predictive model weights naivebayes; All terms; top 100 authority-positive JSTOR articles per period with matched negative articles. Terms at the top are more closely associated with 'authority' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graphs <- targets::tar_read(jstor_graphs_authority_jstor_glmnet_100, store = here::here('_targets'))
+graph_row <- graphs |> dplyr::filter(graph_id == "jstor_authority_jstor_glmnet_100_naivebayes__")
+if (nrow(graph_row)) {
+  graph_row$plot[[1]]
+} else {
+  cat("Graph not available.")
+}
+```
+
+
+### Predictive model weights xgboost - All terms
+
+```{r}
+#| label: fig-jstor-jstor-authority-jstor-glmnet-100-xgboost-
+#| fig-cap: "Predictive model weights xgboost; All terms; top 100 authority-positive JSTOR articles per period with matched negative articles. Terms at the top are more closely associated with 'authority' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graphs <- targets::tar_read(jstor_graphs_authority_jstor_glmnet_100, store = here::here('_targets'))
+graph_row <- graphs |> dplyr::filter(graph_id == "jstor_authority_jstor_glmnet_100_xgboost__")
+if (nrow(graph_row)) {
+  graph_row$plot[[1]]
+} else {
+  cat("Graph not available.")
+}
+```

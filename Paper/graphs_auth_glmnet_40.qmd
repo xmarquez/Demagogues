@@ -1,0 +1,599 @@
+---
+title: 'Graphs for auth_glmnet_40'
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: right
+execute-dir: project
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r setup, include=FALSE}
+library(targets)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(here)
+library(knitr)
+targets::tar_config_set(store = here::here("_targets"), config = "custom.yaml")
+ggplot2::theme_set(ggplot2::theme_bw())
+```
+
+Run: `auth_glmnet_40`.
+Feature(s): authoritarianism.
+Authoritarianism/authoritarian combo pilot: 40 restricted volumes per period, glmnet classification.
+
+This document reads precomputed graph objects from the local targets store.
+
+## Predictive Performance
+
+F1 is the harmonic mean of precision and recall for pages containing the target feature. These diagnostics are internal to the configured sample and train/test split; they do not estimate prevalence in the full HathiTrust corpus.
+
+```{r}
+#| label: fig-performance-f1
+#| fig-cap: "Testing F1 by model and period."
+#| fig-width: 8
+#| fig-height: 4
+performance <- targets::tar_read_raw("combined_performance") |>
+  dplyr::left_join(
+    targets::tar_read_raw("info_performance") |>
+      dplyr::distinct(
+        performance_id,
+        performance_split,
+        predictive_model_engine,
+        predictive_model_dfm_weight,
+        sample_type,
+        sample_max_vols
+      ),
+    by = "performance_id"
+  ) |>
+  dplyr::mutate(
+    model = paste(
+      predictive_model_engine,
+      predictive_model_dfm_weight,
+      "weights"
+    )
+  )
+
+sample_sizes <- targets::tar_read_raw("sample_sizes") |>
+  dplyr::select(
+    performance_id,
+    period,
+    performance_split,
+    sample_size,
+    negative,
+    positive
+  )
+
+performance_wide <- performance |>
+  dplyr::filter(
+    performance_split == "testing",
+    .metric %in% c("f_meas", "roc_auc", "accuracy", "kap")
+  ) |>
+  dplyr::select(period, performance_id, model, .metric, .estimate) |>
+  tidyr::pivot_wider(names_from = .metric, values_from = .estimate) |>
+  dplyr::left_join(
+    sample_sizes |>
+      dplyr::filter(performance_split == "testing"),
+    by = c("period", "performance_id")
+  ) |>
+  dplyr::arrange(model, period)
+
+ggplot2::ggplot(
+  performance_wide,
+  ggplot2::aes(x = period, y = f_meas, color = model, group = model)
+) +
+  ggplot2::geom_line(linewidth = 0.6) +
+  ggplot2::geom_point(size = 2) +
+  ggplot2::scale_y_continuous(limits = c(0, 1)) +
+  ggplot2::labs(x = "Period", y = "Testing F1", color = "Model")
+```
+
+```{r}
+#| label: tbl-performance-testing
+performance_wide |>
+  dplyr::transmute(
+    model,
+    period,
+    f1 = round(f_meas, 3),
+    roc_auc = round(roc_auc, 3),
+    accuracy = round(accuracy, 3),
+    kappa = round(kap, 3),
+    sample_size,
+    positive,
+    negative
+  ) |>
+  knitr::kable(
+    caption = "Testing split predictive performance by model and period."
+  )
+```
+
+## Term Weight Trajectories
+
+These plots use raw predictive-model weights recovered from the targets store. Xgboost values are feature-importance scores, not signed coefficients. Facets use free y scales because model outputs are not directly comparable in magnitude. The automatic top-term plots select adjectives, verbs, and nouns separately within each model using a cumulative log-scaled positive-association score: `sum(log1p(pmax(weight, 0)))` across periods. This favors terms with persistent positive association while dampening one-period spikes.
+
+```{r}
+#| label: top-term-data
+#| include: false
+tracked_top_n <- 10
+tracked_pos_levels <- c("Adjectives", "Verbs", "Nouns")
+
+model_weights <- targets::tar_read_raw("predictive_model_weights") |> 
+  dplyr::left_join(
+    targets::tar_read_raw("info_predictive_model_weights") |> 
+      dplyr::distinct(
+        weight_id = weight_pred_id,
+        predictive_model_engine,
+        predictive_model_dfm_weight
+      ),
+    by = "weight_id"
+  ) |> 
+  dplyr::mutate(
+    model = paste(
+      predictive_model_engine,
+      predictive_model_dfm_weight,
+      "weights"
+    )
+  )
+
+top_terms <- model_weights |> 
+  dplyr::mutate(
+    pos_group = dplyr::case_when(
+      stringr::str_detect(
+        word,
+        stringr::regex("_jj[a-z]*$", ignore_case = TRUE)
+      ) ~ "Adjectives",
+      stringr::str_detect(
+        word,
+        stringr::regex("_vb[a-z]*$", ignore_case = TRUE)
+      ) ~ "Verbs",
+      stringr::str_detect(
+        word,
+        stringr::regex("_nn[a-z]*$", ignore_case = TRUE)
+      ) ~ "Nouns",
+      TRUE ~ NA_character_
+    ),
+    pos_group = factor(pos_group, levels = tracked_pos_levels),
+    positive_value = pmax(value, 0),
+    selection_score = log1p(positive_value)
+  ) |> 
+  dplyr::filter(!is.na(pos_group)) |> 
+  dplyr::group_by(model, pos_group, word) |> 
+  dplyr::summarise(
+    association_score = sum(selection_score, na.rm = TRUE),
+    periods_positive = sum(positive_value > 0, na.rm = TRUE),
+    max_positive_weight = max(positive_value, na.rm = TRUE),
+    .groups = "drop"
+  ) |> 
+  dplyr::filter(association_score > 0) |> 
+  dplyr::group_by(model, pos_group) |> 
+  dplyr::arrange(
+    dplyr::desc(association_score),
+    dplyr::desc(periods_positive),
+    dplyr::desc(max_positive_weight),
+    word,
+    .by_group = TRUE
+  ) |> 
+  dplyr::slice_head(n = tracked_top_n) |> 
+  dplyr::ungroup()
+```
+
+### glmnet ppmi weights - Adjectives
+
+```{r}
+#| label: fig-top-term-weights-glmnet-ppmi-weights-adjectives
+#| fig-cap: "Top persistent positive-association adjective terms for glmnet ppmi weights."
+#| fig-width: 9
+#| fig-height: 10
+model_name <- "glmnet ppmi weights"
+pos_name <- "Adjectives"
+
+model_top_terms <- top_terms |> 
+  dplyr::filter(model == model_name, pos_group == pos_name) |> 
+  dplyr::arrange(
+    dplyr::desc(association_score),
+    dplyr::desc(periods_positive),
+    dplyr::desc(max_positive_weight),
+    word
+  )
+
+if (nrow(model_top_terms)) {
+  model_top_weights <- tidyr::expand_grid(
+    model = model_name,
+    period = sort(unique(model_weights$period[model_weights$model == model_name])),
+    word = model_top_terms$word
+  ) |> 
+    dplyr::left_join(
+      model_weights |> 
+        dplyr::filter(model == model_name) |> 
+        dplyr::select(model, period, word, value),
+      by = c("model", "period", "word")
+    ) |> 
+    dplyr::mutate(
+      value = tidyr::replace_na(value, 0),
+      word = factor(word, levels = model_top_terms$word)
+    )
+
+  ggplot2::ggplot(
+    model_top_weights,
+    ggplot2::aes(x = period, y = value, group = word)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey75", linewidth = 0.3) +
+    ggplot2::geom_line(color = "#2F5D62", linewidth = 0.65) +
+    ggplot2::geom_point(color = "#2F5D62", size = 1.3) +
+    ggplot2::facet_wrap(ggplot2::vars(word), ncol = 1, scales = "free_y") +
+    ggplot2::labs(
+      x = "Period",
+      y = "Raw weight / importance",
+      subtitle = paste(
+        "Terms ordered by cumulative log-scaled positive association within",
+        tolower(pos_name)
+      )
+    ) +
+    ggplot2::theme(
+      legend.position = "none",
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+} else {
+  cat("No positive adjective terms available for this model.")
+}
+```
+
+### glmnet ppmi weights - Verbs
+
+```{r}
+#| label: fig-top-term-weights-glmnet-ppmi-weights-verbs
+#| fig-cap: "Top persistent positive-association verb terms for glmnet ppmi weights."
+#| fig-width: 9
+#| fig-height: 10
+model_name <- "glmnet ppmi weights"
+pos_name <- "Verbs"
+
+model_top_terms <- top_terms |> 
+  dplyr::filter(model == model_name, pos_group == pos_name) |> 
+  dplyr::arrange(
+    dplyr::desc(association_score),
+    dplyr::desc(periods_positive),
+    dplyr::desc(max_positive_weight),
+    word
+  )
+
+if (nrow(model_top_terms)) {
+  model_top_weights <- tidyr::expand_grid(
+    model = model_name,
+    period = sort(unique(model_weights$period[model_weights$model == model_name])),
+    word = model_top_terms$word
+  ) |> 
+    dplyr::left_join(
+      model_weights |> 
+        dplyr::filter(model == model_name) |> 
+        dplyr::select(model, period, word, value),
+      by = c("model", "period", "word")
+    ) |> 
+    dplyr::mutate(
+      value = tidyr::replace_na(value, 0),
+      word = factor(word, levels = model_top_terms$word)
+    )
+
+  ggplot2::ggplot(
+    model_top_weights,
+    ggplot2::aes(x = period, y = value, group = word)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey75", linewidth = 0.3) +
+    ggplot2::geom_line(color = "#2F5D62", linewidth = 0.65) +
+    ggplot2::geom_point(color = "#2F5D62", size = 1.3) +
+    ggplot2::facet_wrap(ggplot2::vars(word), ncol = 1, scales = "free_y") +
+    ggplot2::labs(
+      x = "Period",
+      y = "Raw weight / importance",
+      subtitle = paste(
+        "Terms ordered by cumulative log-scaled positive association within",
+        tolower(pos_name)
+      )
+    ) +
+    ggplot2::theme(
+      legend.position = "none",
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+} else {
+  cat("No positive verb terms available for this model.")
+}
+```
+
+### glmnet ppmi weights - Nouns
+
+```{r}
+#| label: fig-top-term-weights-glmnet-ppmi-weights-nouns
+#| fig-cap: "Top persistent positive-association noun terms for glmnet ppmi weights."
+#| fig-width: 9
+#| fig-height: 10
+model_name <- "glmnet ppmi weights"
+pos_name <- "Nouns"
+
+model_top_terms <- top_terms |> 
+  dplyr::filter(model == model_name, pos_group == pos_name) |> 
+  dplyr::arrange(
+    dplyr::desc(association_score),
+    dplyr::desc(periods_positive),
+    dplyr::desc(max_positive_weight),
+    word
+  )
+
+if (nrow(model_top_terms)) {
+  model_top_weights <- tidyr::expand_grid(
+    model = model_name,
+    period = sort(unique(model_weights$period[model_weights$model == model_name])),
+    word = model_top_terms$word
+  ) |> 
+    dplyr::left_join(
+      model_weights |> 
+        dplyr::filter(model == model_name) |> 
+        dplyr::select(model, period, word, value),
+      by = c("model", "period", "word")
+    ) |> 
+    dplyr::mutate(
+      value = tidyr::replace_na(value, 0),
+      word = factor(word, levels = model_top_terms$word)
+    )
+
+  ggplot2::ggplot(
+    model_top_weights,
+    ggplot2::aes(x = period, y = value, group = word)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey75", linewidth = 0.3) +
+    ggplot2::geom_line(color = "#2F5D62", linewidth = 0.65) +
+    ggplot2::geom_point(color = "#2F5D62", size = 1.3) +
+    ggplot2::facet_wrap(ggplot2::vars(word), ncol = 1, scales = "free_y") +
+    ggplot2::labs(
+      x = "Period",
+      y = "Raw weight / importance",
+      subtitle = paste(
+        "Terms ordered by cumulative log-scaled positive association within",
+        tolower(pos_name)
+      )
+    ) +
+    ggplot2::theme(
+      legend.position = "none",
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+} else {
+  cat("No positive noun terms available for this model.")
+}
+```
+
+
+### Selected Configured Terms
+
+```{r}
+#| label: fig-selected-term-weights
+#| fig-cap: "Selected term weights or importance by model over time."
+#| fig-width: 9
+#| fig-height: 5
+tracked_terms <- c("legitimate_jj", "rights_nn", "legitimacy_nn")
+
+if (length(tracked_terms)) {
+  selected_weights <- model_weights |> 
+    dplyr::distinct(model, period) |> 
+    tidyr::expand_grid(word = tracked_terms) |> 
+    dplyr::left_join(
+      model_weights |> 
+        dplyr::filter(word %in% tracked_terms) |> 
+        dplyr::select(model, period, word, value),
+      by = c("model", "period", "word")
+    ) |> 
+    dplyr::mutate(
+      value = tidyr::replace_na(value, 0),
+      word = factor(word, levels = tracked_terms)
+    )
+
+  ggplot2::ggplot(
+    selected_weights,
+    ggplot2::aes(x = period, y = value, color = word, group = word)
+  ) +
+    ggplot2::geom_hline(yintercept = 0, color = "grey70", linewidth = 0.3) +
+    ggplot2::geom_line(linewidth = 0.6) +
+    ggplot2::geom_point(size = 1.5) +
+    ggplot2::facet_wrap(ggplot2::vars(model), scales = "free_y") +
+    ggplot2::labs(x = "Period", y = "Raw weight / importance", color = "Term")
+} else {
+  cat("No tracked terms configured.")
+}
+```
+
+## Graphs
+
+
+### SVD word vectors ppmi 50 dimensions - Adjectives
+
+```{r}
+#| label: fig-graph-weight-a65c1ec2
+#| fig-cap: "SVD word vectors ppmi 50 dimensions; Adjectives; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_a65c1ec2")
+graph
+```
+
+
+### SVD word vectors ppmi 50 dimensions - Nouns
+
+```{r}
+#| label: fig-graph-weight-fcb7f2e7
+#| fig-cap: "SVD word vectors ppmi 50 dimensions; Nouns; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_fcb7f2e7")
+graph
+```
+
+
+### SVD word vectors ppmi 50 dimensions - Verbs
+
+```{r}
+#| label: fig-graph-weight-c9db18d9
+#| fig-cap: "SVD word vectors ppmi 50 dimensions; Verbs; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_c9db18d9")
+graph
+```
+
+
+### SVD word vectors ppmi 50 dimensions - All terms
+
+```{r}
+#| label: fig-graph-weight-de31048b
+#| fig-cap: "SVD word vectors ppmi 50 dimensions; All terms; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_de31048b")
+graph
+```
+
+
+### Predictive model weights glmnet - Adjectives
+
+```{r}
+#| label: fig-graph-weight-f1754419
+#| fig-cap: "Predictive model weights glmnet; Adjectives; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_f1754419")
+graph
+```
+
+
+### Predictive model weights glmnet - Nouns
+
+```{r}
+#| label: fig-graph-weight-c85e14b9
+#| fig-cap: "Predictive model weights glmnet; Nouns; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_c85e14b9")
+graph
+```
+
+
+### Predictive model weights glmnet - Verbs
+
+```{r}
+#| label: fig-graph-weight-39d1a434
+#| fig-cap: "Predictive model weights glmnet; Verbs; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_39d1a434")
+graph
+```
+
+
+### Predictive model weights glmnet - All terms
+
+```{r}
+#| label: fig-graph-weight-331684c5
+#| fig-cap: "Predictive model weights glmnet; All terms; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_331684c5")
+graph
+```
+
+
+### PPMI feature_ppmi - Adjectives
+
+```{r}
+#| label: fig-graph-weight-965cb734
+#| fig-cap: "PPMI feature_ppmi; Adjectives; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_965cb734")
+graph
+```
+
+
+### PPMI feature_ppmi - Nouns
+
+```{r}
+#| label: fig-graph-weight-76747374
+#| fig-cap: "PPMI feature_ppmi; Nouns; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_76747374")
+graph
+```
+
+
+### PPMI feature_ppmi - Verbs
+
+```{r}
+#| label: fig-graph-weight-97b5b94f
+#| fig-cap: "PPMI feature_ppmi; Verbs; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_97b5b94f")
+graph
+```
+
+
+### PPMI feature_ppmi - All terms
+
+```{r}
+#| label: fig-graph-weight-08e99f58
+#| fig-cap: "PPMI feature_ppmi; All terms; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_08e99f58")
+graph
+```
+
+
+### PPMI ppmi_similarities - Adjectives
+
+```{r}
+#| label: fig-graph-weight-288b47e6
+#| fig-cap: "PPMI ppmi_similarities; Adjectives; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_288b47e6")
+graph
+```
+
+
+### PPMI ppmi_similarities - Nouns
+
+```{r}
+#| label: fig-graph-weight-2090d0a0
+#| fig-cap: "PPMI ppmi_similarities; Nouns; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_2090d0a0")
+graph
+```
+
+
+### PPMI ppmi_similarities - Verbs
+
+```{r}
+#| label: fig-graph-weight-e8ff6287
+#| fig-cap: "PPMI ppmi_similarities; Verbs; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_e8ff6287")
+graph
+```
+
+
+### PPMI ppmi_similarities - All terms
+
+```{r}
+#| label: fig-graph-weight-5ba80a99
+#| fig-cap: "PPMI ppmi_similarities; All terms; 40 restricted volumes per period; lowercased. Terms at the top are more closely associated with 'authoritarianism' in later years. The label marks the peak density of association."
+#| fig-width: 11
+#| fig-height: 9
+graph <- targets::tar_read_raw("graph_weight_5ba80a99")
+graph
+```

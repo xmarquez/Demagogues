@@ -1,0 +1,16 @@
+id: authority_jstor_dfr_audit_exact
+description: "Exact JSTOR DfR support audit for authority terms using all available untagged NGRAMS1 counts."
+feature: authority
+source: dfr
+outputs: [jstor_ingest, jstor_audit]
+
+feature_terms: [authority, authorities]
+
+periods:
+  sample_min_year: 1810
+  sample_max_year: 2000
+  sample_slice_size: 10
+  period_name: decade
+
+audit:
+  max_files_per_period: .inf

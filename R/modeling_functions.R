@@ -69,7 +69,8 @@ train_test_splits.character <- function(dfm, feat, downsampled, type) {
     quanteda::dfm_weight(scheme = "boolean")%>%
     quanteda::convert(to = "data.frame")
 
-  split <- rsample::initial_split(df, strata = names(feat))
+  # `feat` is a character scalar naming the target column produced by `convert()`.
+  split <- rsample::initial_split(df, strata = feat)
 
   if(type == "similarity") {
     split <- most_similar_downsample(df, dfm, split)
@@ -141,12 +142,14 @@ most_similar_downsample <- function(df, dfm, split) {
     as.matrix(nrow=1)%>%
     Matrix::t()
 
-  sims <- cosine_sims(dfm_false, dfm_true_vec)%>%
+  sims_df <- cosine_sims(dfm_false, dfm_true_vec)%>%
     quanteda::as.dfm()%>%
     quanteda::convert(to = "data.frame")%>%
-    tibble::as_tibble()%>%
-    dplyr::arrange(-2)%>%
-    dplyr::slice_max(feat1, n = nrow(dfm_true))
+    tibble::as_tibble()
+
+  # The first column is `doc_id`; the second holds the cosine similarity scores.
+  sims <- sims_df %>%
+    dplyr::slice_max(.data[[names(sims_df)[2]]], n = nrow(dfm_true))
 
   ids_true <- quanteda::docnames(dfm_true)
   ids_false <- sims$doc_id
@@ -346,7 +349,8 @@ predictive_model.LiblineaR <- function(training_dfm, feat, weight, model_type, .
       type <- 1
     }
 
-    wi <- table(y_train)
+    tab <- table(y_train)
+    wi <- stats::setNames(as.numeric(sum(tab) / (length(tab) * tab)), names(tab))
 
     svm_model <- LiblineaR::LiblineaR(x_train, y_train, cost = cost,
                                       type = type, wi = wi)
@@ -375,6 +379,11 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
                                      feat = feat, weight = weight,
                                      model_type = model_type,
                                      ...) {
+  xgboost_nthread <- as.integer(Sys.getenv("XGBOOST_NTHREAD", "1"))
+  if(is.na(xgboost_nthread) || xgboost_nthread < 1) {
+    xgboost_nthread <- 1
+  }
+
   x_train <- get_x(training_dfm, feat = feat, weight = weight)
   
   y_train <- get_y(training_dfm, feat, model_type = model_type)
@@ -387,8 +396,6 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
 
   print(table(y_train))
 
-  scale_pos_weight = sum(y_train)/sum(y_train == 0)
-
   if(model_type == "regression") {
     dots <- list(...)
     if("params" %in% names(dots)) {
@@ -397,7 +404,7 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
       if("objective" %in% names(params)) {
         stopifnot(stringr::str_detect(params[["objective"]], "reg:"))
       } else {
-        params <- c(params, objective = "reg:squarederror")
+        params[["objective"]] <- "reg:squarederror"
       }
     } else {
       params <- list(objective = "reg:squarederror")
@@ -407,6 +414,7 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
     } else {
       nrounds <- 20
     }
+    params[["nthread"]] <- xgboost_nthread
     xgboost_model <- xgboost::xgboost(data = x_train, label = y_train,
                                       params = params, nrounds = nrounds)
   } else {
@@ -417,7 +425,7 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
       if("objective" %in% names(params)) {
         stopifnot(stringr::str_detect(params[["objective"]], "binary:"))
       } else {
-        params <- c(params, objective = "binary:logistic")
+        params[["objective"]] <- "binary:logistic"
       }
     } else {
       params <- list(objective = "binary:logistic")
@@ -427,19 +435,34 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
     } else {
       nrounds <- 120
     }
-    params <- c(params, list("scale_pos_weight" = scale_pos_weight,
-                             "eval_metric" = "auc",
-                             "eta" = 0.1,
-                             "max_depth" = 12,
-                             colsample_bytree = 0.5,
-                             lambda = 0.5,
-                             subsample = 0.5,
-                             "nthread" = parallel::detectCores()))
+    if(is.null(params[["scale_pos_weight"]])) {
+      params[["scale_pos_weight"]] <- sum(y_train == 0) / sum(y_train == 1)
+    }
+    if(is.null(params[["eval_metric"]])) {
+      params[["eval_metric"]] <- "auc"
+    }
+    if(is.null(params[["eta"]])) {
+      params[["eta"]] <- 0.1
+    }
+    if(is.null(params[["max_depth"]])) {
+      params[["max_depth"]] <- 12
+    }
+    if(is.null(params[["colsample_bytree"]])) {
+      params[["colsample_bytree"]] <- 0.5
+    }
+    if(is.null(params[["lambda"]])) {
+      params[["lambda"]] <- 0.5
+    }
+    if(is.null(params[["subsample"]])) {
+      params[["subsample"]] <- 0.5
+    }
+    params[["nthread"]] <- xgboost_nthread
 
     xgboost_model <- xgboost::xgboost(data = x_train, label = y_train,
                                       params = params, nrounds = nrounds)
   }
 
+  attr(xgboost_model, "demagogues_objective") <- params[["objective"]]
   xgboost_model
 }
 
@@ -448,8 +471,9 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
 #' Fit a glmnet model with cross-validation
 #'
 #' Fits `glmnet::cv.glmnet()` on the training data, using a Gaussian family for
-#' regression and binomial for classification. Registers a parallel backend via
-#' `doParallel` during fitting.
+#' regression and binomial for classification. Runs sequentially by default
+#' inside targets workers; set `GLMNET_CORES` greater than 1 to opt into a local
+#' PSOCK cluster for cross-validation.
 #'
 #' @param training_dfm A training-only `quanteda` `dfm` (includes target column).
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
@@ -460,8 +484,22 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
 #' @return A fitted `cv.glmnet` object.
 predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...) {
 
-  n_cores <- parallel::detectCores()
-  doParallel::registerDoParallel(n_cores)
+  glmnet_cores <- as.integer(Sys.getenv("GLMNET_CORES", "1"))
+  if(is.na(glmnet_cores) || glmnet_cores < 1) {
+    glmnet_cores <- 1
+  }
+
+  use_parallel <- glmnet_cores > 1
+  if(use_parallel) {
+    cl <- parallel::makeCluster(glmnet_cores)
+    doParallel::registerDoParallel(cl)
+    on.exit({
+      try(parallel::stopCluster(cl), silent = TRUE)
+      doParallel::stopImplicitCluster()
+    }, add = TRUE)
+  } else if(requireNamespace("foreach", quietly = TRUE)) {
+    foreach::registerDoSEQ()
+  }
 
   x_train <- get_x(training_dfm, feat = feat, weight = weight)
 
@@ -469,13 +507,11 @@ predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...)
 
   if(model_type == "regression") {
     glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "gaussian",
-                                      parallel = TRUE, ...)
+                                      parallel = use_parallel, ...)
   } else {
     glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "binomial",
-                                      parallel = TRUE, ...)
+                                      parallel = use_parallel, ...)
   }
-
-  doParallel::stopImplicitCluster()
 
   glmnet_model
 

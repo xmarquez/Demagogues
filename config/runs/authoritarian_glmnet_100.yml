@@ -1,0 +1,45 @@
+id: authoritarian_glmnet_100
+description: "Authoritarian-only run: up to 100 restricted volumes per period, excluding decades with fewer than 40 usable volumes, glmnet, LiblineaR, naive Bayes, and xgboost classification."
+features: [authoritarian]
+outputs: [ingest, dfm, model, graph]
+
+worksets:
+  method: bookworm
+
+periods:
+  sample_min_year: 1890
+  sample_max_year: 2010
+  sample_slice_size: 10
+  period_name: decade
+
+samples:
+  sample_max_vols: [100]
+  sample_type: [restricted]
+  sample_multiplier: [1]
+
+dfm:
+  plans:
+    - id: restricted_feature_pages
+      sample_max_vols: [100]
+      sample_type: [restricted]
+      pages_contain: ["{feature_pages_contain}"]
+      to_lower: [true]
+
+predictive_models:
+  task: [classification]
+  weights: [ppmi]
+  engines: [glmnet, LiblineaR, naivebayes, xgboost]
+
+performance:
+  splits: [testing]
+
+svd:
+  weights: []
+  dims: []
+
+ppmi:
+  funs: []
+
+graphs:
+  patterns: [".","(_nn|_NN)","(_vb|_VB)","(_jj|_JJ)"]
+  collapse_cased: [true,true,true,true]

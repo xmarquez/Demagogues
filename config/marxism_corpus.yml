@@ -1,0 +1,58 @@
+root: ""
+
+sources:
+  marx_engels:
+    raw_html_dir: "raw/marx-engels/html"
+    annotated_rds_dir: "derived/marx-engels/annotated-rds"
+    require_annotations: true
+
+periods:
+  sample_min_year: 1830
+  sample_max_year: 1900
+  sample_slice_size: 10
+  period_name: decade
+
+samples:
+  sample_max_segments: 100
+  negative_multiplier: 1
+  min_positive_segments_per_period: 8
+  min_negative_segments_per_period: 8
+  seed: 20240427
+
+preprocessing:
+  sentences_per_segment: 5
+  token_pattern: "^\\p{L}+$"
+  pos_pattern: "^(NN|NNS|NNP|NNPS|VB|VBD|VBG|VBN|VBP|VBZ|JJ|JJR|JJS)$"
+  min_token_length: 3
+  to_lower: true
+  use_lemma: true
+  exclude_tokens:
+    - align
+    - class
+    - family
+    - font
+    - height
+    - indent
+    - line
+    - margin
+    - roman
+    - serif
+    - style
+    - text
+    - times
+
+dfm:
+  vocab_size: 30000
+
+predictive_models:
+  task: [classification]
+  weights: [ppmi]
+  engines: [glmnet, LiblineaR, naivebayes, xgboost]
+
+graphs:
+  patterns: [".", "(_nn|_NN)", "(_vb|_VB)", "(_jj|_JJ)"]
+  collapse_cased: [true, true, true, true]
+  max_per_slice: [8]
+  max_terms: [40]
+
+outputs: [marxism_ingest, marxism_segments, marxism_audit, marxism_dfm, marxism_model, marxism_graph]

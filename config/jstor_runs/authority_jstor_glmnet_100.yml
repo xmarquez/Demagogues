@@ -1,0 +1,55 @@
+id: authority_jstor_glmnet_100
+description: "Authority run over JSTOR DfR NGRAMS1: top 100 authority-positive articles per decade with matched negative articles; fits glmnet, LiblineaR, naive Bayes, and xgboost classifiers."
+feature: authority
+source: dfr
+outputs: [jstor_ingest, jstor_dfm, jstor_model, jstor_graph]
+
+feature_terms: [authority, authorities]
+
+periods:
+  sample_min_year: 1880
+  sample_max_year: 2000
+  sample_slice_size: 10
+  period_name: decade
+
+samples:
+  sample_max_texts: 100
+  negative_multiplier: 1
+  min_positive_texts_per_period: 100
+  min_negative_texts_per_period: 100
+  positive_strategy: top_frequency
+  negative_strategy: random
+  seed: 20240427
+
+audit:
+  max_files_per_period: .inf
+  min_positive_texts_per_period: 100
+  min_negative_texts_per_period: 100
+  extract_to_temp: true
+  seed: 20240427
+
+preprocessing:
+  token_pattern: "^\\p{L}+$"
+  min_token_length: 3
+  to_lower: true
+  remove_stopwords: true
+  exclude_tokens: []
+
+dfm:
+  vocab_size: 30000
+
+predictive_models:
+  task: [classification]
+  weights: [ppmi]
+  engines: [glmnet, LiblineaR, naivebayes, xgboost]
+
+graphs:
+  patterns: ["."]
+  collapse_cased: [true]
+  max_per_slice: [8]
+  max_terms: [40]
+  tracked_top_n: 10
+  tracked_terms: [legitimate, rights, legitimacy]
+
+report:
+  slug: authority_glmnet_100

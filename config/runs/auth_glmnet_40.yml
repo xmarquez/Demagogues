@@ -1,0 +1,35 @@
+id: auth_glmnet_40
+description: "Authoritarianism/authoritarian combo pilot: 40 restricted volumes per period, glmnet classification."
+features: [authoritarianism_combo]
+outputs: [ingest, dfm, model, graph]
+
+worksets:
+  method: bookworm
+
+periods:
+  sample_min_year: 1840
+  sample_max_year: 2010
+  sample_slice_size: 10
+  period_name: decade
+
+samples:
+  sample_max_vols: [40]
+  sample_type: [restricted]
+  sample_multiplier: [1]
+
+dfm:
+  plans:
+    - id: restricted_feature_pages
+      sample_max_vols: [40]
+      sample_type: [restricted]
+      pages_contain: ["{feature_pages_contain}"]
+      to_lower: [true]
+
+predictive_models:
+  task: [classification]
+  weights: [ppmi]
+  engines: [glmnet]
+
+graphs:
+  patterns: [".","(_nn|_NN)","(_vb|_VB)","(_jj|_JJ)"]
+  collapse_cased: [true,true,true,true]

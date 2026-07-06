@@ -1,0 +1,19 @@
+id: authoritarianism_combo
+name: authoritarianism
+description: "Dictionary for combined authoritarianism and authoritarian terms."
+search_terms: [authoritarianism, authoritarian]
+search_join: OR
+pages_contain: "authoritarian(ism)?"
+dictionary:
+  authoritarianism:
+    - authoritarianism_nn
+    - authoritarianism_nnp
+    - authoritarianism_nns
+    - authoritarian_jj
+    - authoritarian_jjr
+    - authoritarian_jjs
+    - authoritarian_nn
+    - authoritarian_nnp
+    - authoritarian_nns
+graphs:
+  tracked_terms: [legitimate_jj, rights_nn, legitimacy_nn]

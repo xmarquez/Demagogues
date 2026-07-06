@@ -1,0 +1,13 @@
+id: authoritarian_family_jstor_dfr_audit
+description: "JSTOR DfR support audit for authoritarian/authoritarianism terms using untagged NGRAMS1 counts."
+feature: authoritarianism
+source: dfr
+outputs: [jstor_ingest, jstor_audit]
+
+feature_terms: [authoritarian, authoritarianism, authoritarians]
+
+periods:
+  sample_min_year: 1900
+  sample_max_year: 2000
+  sample_slice_size: 10
+  period_name: decade

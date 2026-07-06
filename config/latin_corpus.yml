@@ -1,0 +1,210 @@
+sources:
+  perseus:
+    repo_url: "https://github.com/PerseusDL/canonical-latinLit.git"
+    local_dir: "data/perseus/canonical-latinLit"
+    ref: "b2a135df22f812afc622e7e14d30889718c252ee"
+    update: false
+    edition_language: "lat"
+    max_files:
+
+metadata:
+  default_period: classical
+  author_periods:
+    - pattern: "Plautus|Titus Maccius"
+      period: republican
+      date_year: -200
+    - pattern: "Terence|Publius Terentius"
+      period: republican
+      date_year: -160
+    - pattern: "Cicero|Tullius"
+      period: republican
+      date_year: -50
+    - pattern: "Caesar|Julius"
+      period: republican
+      date_year: -50
+    - pattern: "Sallust"
+      period: republican
+      date_year: -40
+    - pattern: "Lucretius|Catullus|Varro"
+      period: republican
+      date_year: -50
+    - pattern: "Vergil|Virgil|Horace|Ovid|Propertius|Tibullus|Livy"
+      period: augustan
+      date_year: 0
+    - pattern: "Seneca|Lucan|Petronius|Persius|Quintilian|Pliny|Tacitus|Suetonius|Juvenal|Martial|Statius|Silius|Valerius Flaccus"
+      period: imperial
+      date_year: 100
+    - pattern: "Apuleius|Gellius|Tertullian|Minucius|Cyprian"
+      period: late_antique
+      date_year: 200
+    - pattern: "Ammianus|Augustine|Jerome|Prudentius|Boethius"
+      period: late_antique
+      date_year: 400
+
+periods:
+  definitions:
+    - id: republican
+      label: "Republican"
+      min_year: -250
+      max_year: -27
+    - id: augustan
+      label: "Augustan"
+      min_year: -27
+      max_year: 14
+    - id: imperial
+      label: "Imperial"
+      min_year: 14
+      max_year: 180
+    - id: late_antique
+      label: "Late antique"
+      min_year: 180
+      max_year: 600
+    - id: classical
+      label: "Classical/undated Perseus"
+      min_year: -250
+      max_year: 600
+
+preprocessing:
+  token_pattern: "\\p{L}+"
+  min_token_length: 3
+  stopwords:
+    - atque
+    - aut
+    - autem
+    - auct
+    - apud
+    - cett
+    - codd
+    - cum
+    - de
+    - dum
+    - enim
+    - ergo
+    - est
+    - esse
+    - esset
+    - essent
+    - et
+    - etiam
+    - ego
+    - erat
+    - erant
+    - eram
+    - erit
+    - erunt
+    - fore
+    - fuisse
+    - fuerat
+    - fuerint
+    - fuerit
+    - fuerunt
+    - fuit
+    - haec
+    - hanc
+    - hac
+    - haud
+    - hinc
+    - hunc
+    - hoc
+    - huius
+    - iam
+    - igitur
+    - ille
+    - illa
+    - illud
+    - in
+    - inter
+    - ipse
+    - ipsa
+    - ipsum
+    - is
+    - ea
+    - id
+    - eius
+    - eis
+    - eo
+    - eorum
+    - eos
+    - eum
+    - ita
+    - nam
+    - nec
+    - neque
+    - nisi
+    - non
+    - nunc
+    - modo
+    - mea
+    - mihi
+    - omnia
+    - omnibus
+    - omnis
+    - omnium
+    - omnes
+    - per
+    - pro
+    - quae
+    - quam
+    - qua
+    - qui
+    - quid
+    - quem
+    - quia
+    - quibus
+    - quidem
+    - quo
+    - quod
+    - quos
+    - rem
+    - res
+    - re
+    - rei
+    - rebus
+    - rerum
+    - sed
+    - si
+    - sic
+    - sine
+    - sit
+    - sint
+    - sibi
+    - tibi
+    - sua
+    - suae
+    - suam
+    - suas
+    - sui
+    - suis
+    - suo
+    - suos
+    - sunt
+    - tam
+    - tamen
+    - tum
+    - ut
+    - vel
+    - vero
+
+windows:
+  size: 50
+
+weights:
+  min_count: 2
+
+ppmi:
+  min_count: 10
+  min_corpus_count: 30
+  base: 2
+
+svd:
+  dims: 5
+  weight: ppmi
+  base: 10
+  min_term_count: 2
+  top_n: 12
+
+graphs:
+  tracked_terms: []
+  top_n: 12
+
+outputs: [latin_ingest, latin_windows, latin_weights, latin_graph]

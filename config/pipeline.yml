@@ -10,10 +10,9 @@ base:
       # - values = token/POS names as they appear in EF (e.g., `democracy_nn`)
       dictionary:
         democracy:
-          democracy:
-            - democracy_nn
-            - democracy_nnp
-            - democracy_nns
+          - democracy_nn
+          - democracy_nnp
+          - democracy_nns
 
   periods:
     # Period slicing for the corpus: boundaries are created with
@@ -111,6 +110,8 @@ base:
     max_per_slice: 8
     # Max terms to show overall across all periods (passed to `graph_similarities(max_n=...)`).
     max_terms: 60
+    # Number of top terms per model/POS group to plot in run-level graph reports.
+    tracked_top_n: 10
     # If true, exclude fiction worksets from graph runs.
     exclude_fiction: true
 

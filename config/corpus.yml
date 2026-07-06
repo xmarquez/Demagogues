@@ -1,0 +1,80 @@
+periods:
+  sample_min_year: 1700
+  sample_max_year: 2010
+  sample_slice_size: 10
+  period_name: decade
+
+corpora:
+  - id: hathi_all
+    filter: "TRUE"
+    description: "All HathiTrust volumes (language restriction handled downstream)."
+
+worksets:
+  method: auto
+
+samples:
+  sample_max_vols: [40, 500]
+  sample_type: [unrestricted, restricted]
+  sample_multiplier: [Inf, 1]
+  # Volume deduplication before per-period sampling. Default `none` keeps
+  # multiple editions/copies, treating multiplicity as a popularity signal.
+  # `bib_key` keeps one volume per HathiTrust bibliographic key; `author_title`
+  # keeps one per author+title. Use the latter two only as robustness checks.
+  # Values: none | bib_key | author_title
+  dedupe: none
+
+dfm:
+  vocab_size: [30000]
+  pos_pattern: ["NN|VB|JJ"]
+  include_pattern: ["^\\p{L}+$"]
+  pages_contain: [".", "{feature_pages_contain}"]
+  min_length: [2]
+  page_language: ["en"]
+  min_sentence_count: [3]
+  to_lower: [true, false]
+
+weights:
+  # How signed model weights are turned into a probability-like distribution for
+  # entropy/KL/JSD (see normalize_weights()). Values: positive | shift | softmax.
+  normalization: positive
+
+kl:
+  # When true, additionally compute KL on the across-period vocabulary
+  # intersection (common vocabulary) for the appendix. The union-vocabulary KL
+  # remains the headline measure regardless.
+  common_vocab_robustness: false
+
+predictive_models:
+  task: [classification]
+  weights: [ppmi, tfidf, none]
+  engines: [naivebayes, glmnet, LiblineaR, xgboost]
+
+svd:
+  weights: [ppmi, tfidf]
+  dims: [50]
+
+ppmi:
+  funs: [feature_ppmi, ppmi_similarities]
+
+topic_models:
+  K: [20]
+  reduced_vocab: 50
+
+graphs:
+  patterns: [".","(_nn|_NN)","(_vb|_VB)","(_jj|_JJ)","ism_","^[A-Z].+NN"]
+  collapse_cased: [true,true,true,true,true,false]
+  max_per_slice: 8
+  max_terms: 60
+  tracked_top_n: 10
+  exclude_fiction: true
+
+outputs: [ingest, dfm, model, graph, corpus_stats, document]
+
+profiles:
+  explore:
+    predictive_models:
+      engines: [glmnet, naivebayes]
+      weights: [ppmi, tfidf]
+    graphs:
+      patterns: [".","(_nn|_NN)","(_vb|_VB)"]
+      collapse_cased: [true,true,true]

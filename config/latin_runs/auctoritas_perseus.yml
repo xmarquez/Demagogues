@@ -1,0 +1,11 @@
+id: auctoritas_perseus
+description: "Initial Perseus-only Latin run for auctoritas. This uses occurrence-centered windows around configured forms and reports context-term PPMI, SVD dimensions, and broad period/author summaries."
+feature: auctoritas
+source_id: perseus
+outputs: [latin_ingest, latin_windows, latin_weights, latin_graph]
+
+overrides:
+  windows:
+    size: 50
+  weights:
+    min_count: 2

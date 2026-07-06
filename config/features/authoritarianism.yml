@@ -1,0 +1,13 @@
+id: authoritarianism
+name: authoritarianism
+description: "Dictionary for authoritarianism noun forms only."
+search_terms: [authoritarianism]
+search_join: OR
+pages_contain: "authoritarianism"
+dictionary:
+  authoritarianism:
+    - authoritarianism_nn
+    - authoritarianism_nnp
+    - authoritarianism_nns
+graphs:
+  tracked_terms: [legitimate_jj, rights_nn, legitimacy_nn]

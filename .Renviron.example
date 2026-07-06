@@ -1,0 +1,22 @@
+# Copy this file to .Renviron for local runs. Do not commit .Renviron.
+
+# Split-config run ID. Use auth_glmnet_40 for the authoritarianism pilot.
+TARGET_RUN=full_democracy
+
+# Optional profile override; "full" means no profile override.
+TARGET_PROFILE=full
+
+# Leave blank to use config/corpus.yml plus config/features and config/runs.
+# Set to config/pipeline.yml to force the legacy monolithic config.
+TARGET_CONFIG=
+
+# Targets/crew local worker count.
+TARGET_WORKERS=6
+
+# Model-level parallelism. Keep these at 1 when TARGET_WORKERS > 1 on Windows.
+GLMNET_CORES=1
+XGBOOST_NTHREAD=1
+
+# Execution backend: leave unset/"local" on Windows. "slurm" is set by
+# slurm/launch.sh on Raapoi (see HPC.md); do not set it locally.
+TARGETS_BACKEND=

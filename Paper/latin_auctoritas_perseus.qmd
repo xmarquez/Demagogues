@@ -1,0 +1,212 @@
+---
+title: "Latin Perseus Report: auctoritas"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: right
+    df-print: paged
+execute:
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(stringr)
+library(targets)
+library(here)
+targets::tar_config_set(store = here::here("_targets"), config = "custom.yaml")
+theme_set(theme_minimal(base_size = 12))
+```
+
+Initial Perseus-only Latin run for auctoritas. This uses occurrence-centered windows around configured forms and reports context-term PPMI, SVD dimensions, and broad period/author summaries.
+
+## Occurrences
+
+```{r occurrence-summary}
+summary <- tar_read(latin_window_summary)
+if (nrow(summary)) {
+  summary %>%
+    arrange(desc(n_occurrences)) %>%
+    head(30) %>%
+    knitr::kable()
+} else {
+  cat('No occurrences found for this run.')
+}
+```
+
+## PPMI Associations
+
+### Overall
+
+```{r global_ppmi_terms}
+#| fig-height: 7
+#| fig-width: 9
+global_ppmi <- tar_read(latin_global_ppmi_weights)
+if (nrow(global_ppmi)) {
+  plot_df <- global_ppmi %>%
+    slice_max(value, n = 30, with_ties = FALSE) %>%
+    mutate(word = reorder(word, value))
+  ggplot(plot_df, aes(value, word)) +
+    geom_col(fill = '#2f5f6a') +
+    labs(x = 'PPMI x log count', y = NULL)
+} else {
+  cat('No global PPMI associations available.')
+}
+```
+
+### By Period
+
+```{r period_ppmi_terms}
+#| fig-height: 8
+#| fig-width: 10
+period_ppmi <- tar_read(latin_period_ppmi_weights)
+if (nrow(period_ppmi)) {
+  label_col <- if ('period_label' %in% names(period_ppmi)) 'period_label' else 'period'
+  plot_df <- period_ppmi %>%
+    group_by(.data[[label_col]]) %>%
+    slice_max(value, n = 10, with_ties = FALSE) %>%
+    ungroup() %>%
+    mutate(word = tidytext::reorder_within(word, value, .data[[label_col]]))
+  ggplot(plot_df, aes(value, word)) +
+    geom_col(fill = '#2f5f6a') +
+    facet_wrap(vars(.data[[label_col]]), scales = 'free_y') +
+    tidytext::scale_y_reordered() +
+    labs(x = 'PPMI x log count', y = NULL)
+} else {
+  cat('No period PPMI associations available.')
+}
+```
+
+## SVD Context Dimensions
+
+### Term Loadings
+
+```{r svd_term_loadings}
+#| fig-height: 10
+#| fig-width: 10
+svd_terms <- tar_read(latin_svd_terms)
+if (nrow(svd_terms)) {
+  plot_df <- svd_terms %>%
+    filter(dimension <= 5) %>%
+    mutate(
+      panel = paste('Dimension', dimension, side),
+      signed_loading = if_else(side == 'negative', -abs_loading, abs_loading),
+      word = tidytext::reorder_within(word, abs_loading, panel)
+    )
+  ggplot(plot_df, aes(abs_loading, word, fill = side)) +
+    geom_col(show.legend = FALSE) +
+    facet_wrap(vars(panel), scales = 'free_y', ncol = 2) +
+    tidytext::scale_y_reordered() +
+    scale_fill_manual(values = c(negative = '#8a4f45', positive = '#2f5f6a')) +
+    labs(x = 'Absolute loading', y = NULL)
+} else {
+  cat('No SVD term loadings available.')
+}
+```
+
+### Window Map
+
+```{r svd_window_map}
+#| fig-height: 6
+#| fig-width: 8
+svd_windows <- tar_read(latin_svd_windows)
+if (all(c('dim_1', 'dim_2') %in% names(svd_windows))) {
+  label_col <- if ('period_label' %in% names(svd_windows)) 'period_label' else 'period'
+  centroids <- svd_windows %>%
+    group_by(.data[[label_col]]) %>%
+    summarise(dim_1 = median(dim_1, na.rm = TRUE), dim_2 = median(dim_2, na.rm = TRUE), .groups = 'drop')
+  ggplot(svd_windows, aes(dim_1, dim_2, color = .data[[label_col]])) +
+    geom_point(alpha = 0.35, size = 1.2) +
+    geom_text(data = centroids, aes(label = .data[[label_col]]), color = 'black', size = 3.5) +
+    labs(x = 'SVD dimension 1', y = 'SVD dimension 2', color = NULL)
+} else {
+  cat('SVD did not produce at least two dimensions.')
+}
+```
+
+## Period-Distinctive Context Terms
+
+```{r top_period_terms}
+#| fig-height: 7
+#| fig-width: 10
+period_terms <- tar_read(latin_period_term_weights)
+if (nrow(period_terms)) {
+  label_col <- if ('period_label' %in% names(period_terms)) 'period_label' else 'period'
+  plot_df <- period_terms %>%
+    group_by(.data[[label_col]]) %>%
+    slice_max(value, n = 12, with_ties = FALSE) %>%
+    ungroup() %>%
+    mutate(word = tidytext::reorder_within(word, value, .data[[label_col]]))
+  ggplot(plot_df, aes(value, word)) +
+    geom_col(fill = '#2f5f6a') +
+    facet_wrap(vars(.data[[label_col]]), scales = 'free_y') +
+    tidytext::scale_y_reordered() +
+    labs(x = 'Context weight', y = NULL)
+} else {
+  cat('No period term weights available.')
+}
+```
+
+## Top Context Terms By Author
+
+```{r top_author_terms}
+#| fig-height: 10
+#| fig-width: 10
+author_terms <- tar_read(latin_author_term_weights)
+if (nrow(author_terms)) {
+  top_authors <- tar_read(latin_window_summary) %>%
+    group_by(author) %>%
+    summarise(n_occurrences = sum(n_occurrences), .groups = 'drop') %>%
+    slice_max(n_occurrences, n = 8, with_ties = FALSE) %>%
+    pull(author)
+  plot_df <- author_terms %>%
+    filter(author %in% top_authors) %>%
+    group_by(author) %>%
+    slice_max(value, n = 8, with_ties = FALSE) %>%
+    ungroup() %>%
+    mutate(word = tidytext::reorder_within(word, value, author))
+  ggplot(plot_df, aes(value, word)) +
+    geom_col(fill = '#6f5d2f') +
+    facet_wrap(vars(author), scales = 'free_y') +
+    tidytext::scale_y_reordered() +
+    labs(x = 'Context weight', y = NULL)
+} else {
+  cat('No author term weights available.')
+}
+```
+
+## Tracked Terms
+
+```{r tracked_terms}
+#| fig-height: 5
+#| fig-width: 9
+tracked <- tar_read(latin_tracked_terms_period)
+if (nrow(tracked)) {
+  label_col <- if ('period_label' %in% names(tracked)) 'period_label' else 'period'
+  ggplot(tracked, aes(.data[[label_col]], rate_per_window, group = word)) +
+    geom_line(color = '#2f5f6a') +
+    geom_point(color = '#2f5f6a') +
+    facet_wrap(vars(word), scales = 'free_y') +
+    labs(x = NULL, y = 'Uses per occurrence window')
+} else {
+  cat('No configured tracked terms were found in the period weights.')
+}
+```
+
+## Concordance Sample
+
+```{r concordance-sample}
+windows <- tar_read(latin_windows)
+if (nrow(windows)) {
+  windows %>%
+    select(author, title, matched_form, concordance) %>%
+    head(30) %>%
+    knitr::kable()
+} else {
+  cat('No concordance lines available.')
+}
+```

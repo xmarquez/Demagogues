@@ -317,18 +317,30 @@ restricted_json_to_dfm <- function(path,
                  tibble::as_tibble_row()) %>%
     purrr::list_rbind()
 
+  required_pagemeta <- c("seq", "sentenceCount", "calculatedLanguage")
+  missing_pagemeta <- setdiff(required_pagemeta, names(pagemeta))
+  for(missing_col in missing_pagemeta) {
+    pagemeta[[missing_col]] <- NA
+  }
+  pagemeta$calculatedLanguage <- as.character(pagemeta$calculatedLanguage)
+  pagemeta$sentenceCount <- suppressWarnings(as.numeric(pagemeta$sentenceCount))
+
   is_null_body <- purrr::map_lgl(body, is.null)
 
   body <- body[!is_null_body]
   pagemeta <- pagemeta[!is_null_body, ]
 
-  body <- body[ pagemeta$calculatedLanguage == page_language &
-                  !is.na(pagemeta$calculatedLanguage) &
-                  pagemeta$sentenceCount >= min_sentence_count ]
+  keep_pages <- !is.na(pagemeta$calculatedLanguage) &
+    pagemeta$calculatedLanguage == page_language &
+    !is.na(pagemeta$sentenceCount) &
+    pagemeta$sentenceCount >= min_sentence_count
 
-  pagemeta <- pagemeta %>%
-    dplyr::filter(calculatedLanguage == page_language,
-                  sentenceCount >= min_sentence_count)
+  body <- body[keep_pages]
+  pagemeta <- pagemeta[keep_pages, , drop = FALSE]
+
+  if(!length(body)) {
+    return(quanteda:::make_null_dfm())
+  }
 
   body <- body %>%
     purrr::map(function(x) x[stringr::str_detect(names(x), include_pattern)]) %>%
@@ -363,6 +375,10 @@ restricted_json_to_dfm <- function(path,
 
   flattened_body <- flattened_body[ stringr::str_detect(names(flattened_body), pos_pattern) ]
 
+  if(!length(flattened_body)) {
+    return(quanteda:::make_null_dfm())
+  }
+
   featnames <- sort(unique(names(flattened_body)))
 
   j <- body %>%
@@ -374,6 +390,10 @@ restricted_json_to_dfm <- function(path,
   j <- j[!is_zero]
 
   pagemeta <- pagemeta[!is_zero, ]
+
+  if(!length(j)) {
+    return(quanteda:::make_null_dfm())
+  }
 
   i <- rep(1:length(j), times = lengths(j))
 

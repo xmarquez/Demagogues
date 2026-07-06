@@ -1,8 +1,8 @@
 
-```{r fig-graphs_505d78b261dc0f7b77a328a38a3b78f5}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, adjectives only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE}
+#| fig-cap: Weights of svd decomposition of doc-term matrix, weighted by ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_505d78b261dc0f7b77a328a38a3b78f5)
+graph <- tar_read(graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE)
 
 graph
 
@@ -10,10 +10,10 @@ graph
 
 
 
-```{r fig-graphs_4817dc4d5b86330c3643e86b260c3fbc}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE}
+#| fig-cap: Weights of svd decomposition of doc-term matrix, weighted by ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_4817dc4d5b86330c3643e86b260c3fbc)
+graph <- tar_read(graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE)
 
 graph
 
@@ -21,10 +21,10 @@ graph
 
 
 
-```{r fig-graphs_f9db384c1eab49c9c0911874ea4b465e}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE}
+#| fig-cap: Weights of svd decomposition of doc-term matrix, weighted by ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_f9db384c1eab49c9c0911874ea4b465e)
+graph <- tar_read(graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE)
 
 graph
 
@@ -32,10 +32,10 @@ graph
 
 
 
-```{r fig-graphs_b4a698fc7afba49925ec458946d238cb}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, all POS. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE}
+#| fig-cap: Weights of svd decomposition of doc-term matrix, weighted by ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_b4a698fc7afba49925ec458946d238cb)
+graph <- tar_read(graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE)
 
 graph
 
@@ -43,10 +43,10 @@ graph
 
 
 
-```{r fig-graphs_c3196dcecaddf626cb20f2fe54cbefde}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE}
+#| fig-cap: Weights of svd decomposition of doc-term matrix, weighted by ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_c3196dcecaddf626cb20f2fe54cbefde)
+graph <- tar_read(graph_weight_svd_e0c6e4de_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE)
 
 graph
 
@@ -54,10 +54,10 @@ graph
 
 
 
-```{r fig-graphs_68ff94f02fe39526264ad74f2b0eab5f}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE}
+#| fig-cap: Weights of glmnet 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_68ff94f02fe39526264ad74f2b0eab5f)
+graph <- tar_read(graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE)
 
 graph
 
@@ -65,10 +65,10 @@ graph
 
 
 
-```{r fig-graphs_58a29ed93ac719fc483e29726a78a893}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, nouns only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE}
+#| fig-cap: Weights of glmnet 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_58a29ed93ac719fc483e29726a78a893)
+graph <- tar_read(graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE)
 
 graph
 
@@ -76,10 +76,10 @@ graph
 
 
 
-```{r fig-graphs_829f6e4f19cc31435f87adab9c701082}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE}
+#| fig-cap: Weights of glmnet 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_829f6e4f19cc31435f87adab9c701082)
+graph <- tar_read(graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE)
 
 graph
 
@@ -87,10 +87,10 @@ graph
 
 
 
-```{r fig-graphs_2697506a95928b1f47286ad5ee451202}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE}
+#| fig-cap: Weights of glmnet 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_2697506a95928b1f47286ad5ee451202)
+graph <- tar_read(graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE)
 
 graph
 
@@ -98,10 +98,10 @@ graph
 
 
 
-```{r fig-graphs_8dba4d2bac1bd72f7b849e627a74689c}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, terms beginning with uppercase. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE}
+#| fig-cap: Weights of glmnet 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_8dba4d2bac1bd72f7b849e627a74689c)
+graph <- tar_read(graph_weight_pred_predictive_model_94bb9289_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE)
 
 graph
 
@@ -109,10 +109,10 @@ graph
 
 
 
-```{r fig-graphs_e49bc8bfe48224174873f84417a70525}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, verbs only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE}
+#| fig-cap: Weights of LiblineaR 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_e49bc8bfe48224174873f84417a70525)
+graph <- tar_read(graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE)
 
 graph
 
@@ -120,10 +120,10 @@ graph
 
 
 
-```{r fig-graphs_7ffd7d220ad92683ff3b33df87ad99ab}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE}
+#| fig-cap: Weights of LiblineaR 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_7ffd7d220ad92683ff3b33df87ad99ab)
+graph <- tar_read(graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE)
 
 graph
 
@@ -131,10 +131,10 @@ graph
 
 
 
-```{r fig-graphs_d9c3be6cddf151efdd79b4f4a4a987b4}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE}
+#| fig-cap: Weights of LiblineaR 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_d9c3be6cddf151efdd79b4f4a4a987b4)
+graph <- tar_read(graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE)
 
 graph
 
@@ -142,10 +142,10 @@ graph
 
 
 
-```{r fig-graphs_3aeede41146616af3f7ff7aaff9884ed}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE}
+#| fig-cap: Weights of LiblineaR 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_3aeede41146616af3f7ff7aaff9884ed)
+graph <- tar_read(graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE)
 
 graph
 
@@ -153,10 +153,10 @@ graph
 
 
 
-```{r fig-graphs_9889d3a58fd257b656ea01bfbe024da1}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE}
+#| fig-cap: Weights of LiblineaR 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_9889d3a58fd257b656ea01bfbe024da1)
+graph <- tar_read(graph_weight_pred_predictive_model_01c6ac6c_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE)
 
 graph
 
@@ -164,10 +164,10 @@ graph
 
 
 
-```{r fig-graphs_dc81976b3600e463c5b74524d0882faf}
-#| fig-cap: Cosine similarity to target feature across PPMI-weighted DFM, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE}
+#| fig-cap: Weights of naivebayes 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_dc81976b3600e463c5b74524d0882faf)
+graph <- tar_read(graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE)
 
 graph
 
@@ -175,10 +175,10 @@ graph
 
 
 
-```{r fig-graphs_6087916d36e2b0eb0111bf7f5433fe5a}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, adjectives only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE}
+#| fig-cap: Weights of naivebayes 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_6087916d36e2b0eb0111bf7f5433fe5a)
+graph <- tar_read(graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE)
 
 graph
 
@@ -186,10 +186,10 @@ graph
 
 
 
-```{r fig-graphs_f15793bfc4eb7ab8200fe99c2755983a}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE}
+#| fig-cap: Weights of naivebayes 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_f15793bfc4eb7ab8200fe99c2755983a)
+graph <- tar_read(graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE)
 
 graph
 
@@ -197,10 +197,10 @@ graph
 
 
 
-```{r fig-graphs_280394fbd69734dd70346c2a03bfe4d2}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE}
+#| fig-cap: Weights of naivebayes 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_280394fbd69734dd70346c2a03bfe4d2)
+graph <- tar_read(graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE)
 
 graph
 
@@ -208,10 +208,10 @@ graph
 
 
 
-```{r fig-graphs_c3b7496af869b4dfc8b87e8984bfb8b8}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, all POS. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE}
+#| fig-cap: Weights of naivebayes 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_c3b7496af869b4dfc8b87e8984bfb8b8)
+graph <- tar_read(graph_weight_pred_predictive_model_d0247f65_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE)
 
 graph
 
@@ -219,10 +219,10 @@ graph
 
 
 
-```{r fig-graphs_3a4aaa9fd17bdb9c367cc289b6454745}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE}
+#| fig-cap: Weights of xgboost 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_3a4aaa9fd17bdb9c367cc289b6454745)
+graph <- tar_read(graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_jj_JJ_TRUE)
 
 graph
 
@@ -230,10 +230,10 @@ graph
 
 
 
-```{r fig-graphs_9ab2093063a3d1d187914fc07d9b7658}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE}
+#| fig-cap: Weights of xgboost 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_9ab2093063a3d1d187914fc07d9b7658)
+graph <- tar_read(graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_nn_NN_TRUE)
 
 graph
 
@@ -241,10 +241,10 @@ graph
 
 
 
-```{r fig-graphs_ce86b5219256657d8ba61c9e81f7b82a}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, nouns only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE}
+#| fig-cap: Weights of xgboost 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_ce86b5219256657d8ba61c9e81f7b82a)
+graph <- tar_read(graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_vb_VB_TRUE)
 
 graph
 
@@ -252,10 +252,10 @@ graph
 
 
 
-```{r fig-graphs_69a0796995964d78a772d7f0a9d3a04c}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE}
+#| fig-cap: Weights of xgboost 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_69a0796995964d78a772d7f0a9d3a04c)
+graph <- tar_read(graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_TRUE)
 
 graph
 
@@ -263,10 +263,10 @@ graph
 
 
 
-```{r fig-graphs_f0fc287447549632b487f800d1ce5c20}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE}
+#| fig-cap: Weights of xgboost 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_f0fc287447549632b487f800d1ce5c20)
+graph <- tar_read(graph_weight_pred_predictive_model_68f4b16b_workset_meta_workset_feature_democracy_corpus_hathi_all_period_decade_1700_2010_10_corpus_hathi_all_ism_TRUE)
 
 graph
 
@@ -274,10 +274,10 @@ graph
 
 
 
-```{r fig-graphs_34db7cf76cf4b5884f984ca8c048bc00}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, terms beginning with uppercase. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_ff59c994}
+#| fig-cap: PPMI with target feature feature_ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_34db7cf76cf4b5884f984ca8c048bc00)
+graph <- tar_read(graph_ff59c994)
 
 graph
 
@@ -285,10 +285,10 @@ graph
 
 
 
-```{r fig-graphs_4a7300d7bcbf861e0a495cc6afd77244}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, verbs only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_dfab65d6}
+#| fig-cap: PPMI with target feature feature_ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_4a7300d7bcbf861e0a495cc6afd77244)
+graph <- tar_read(graph_dfab65d6)
 
 graph
 
@@ -296,10 +296,10 @@ graph
 
 
 
-```{r fig-graphs_3f2aa417e393245e251e63f4d7b81f06}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_973769ff}
+#| fig-cap: PPMI with target feature feature_ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_3f2aa417e393245e251e63f4d7b81f06)
+graph <- tar_read(graph_973769ff)
 
 graph
 
@@ -307,10 +307,10 @@ graph
 
 
 
-```{r fig-graphs_5acf4910679459b95856f3d64a231bee}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_fe0520e7}
+#| fig-cap: PPMI with target feature feature_ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_5acf4910679459b95856f3d64a231bee)
+graph <- tar_read(graph_fe0520e7)
 
 graph
 
@@ -318,10 +318,10 @@ graph
 
 
 
-```{r fig-graphs_cf501799ce7b997f08259d2951d9ca6f}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_8d26a8e4}
+#| fig-cap: PPMI with target feature feature_ppmi 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_cf501799ce7b997f08259d2951d9ca6f)
+graph <- tar_read(graph_8d26a8e4)
 
 graph
 
@@ -329,10 +329,10 @@ graph
 
 
 
-```{r fig-graphs_170a884d2e825b0c5167aeb666a9e343}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_f6a2aa93}
+#| fig-cap: PPMI with target feature ppmi_similarities 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_170a884d2e825b0c5167aeb666a9e343)
+graph <- tar_read(graph_f6a2aa93)
 
 graph
 
@@ -340,10 +340,10 @@ graph
 
 
 
-```{r fig-graphs_fda59dd175b681760f3b04c5527d4707}
-#| fig-cap: Cosine similarity to target term in SVD word vector space, PPMI weights, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_35f890d8}
+#| fig-cap: PPMI with target feature ppmi_similarities 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_fda59dd175b681760f3b04c5527d4707)
+graph <- tar_read(graph_35f890d8)
 
 graph
 
@@ -351,10 +351,10 @@ graph
 
 
 
-```{r fig-graphs_3dd1edfdb7e5ff93dc4429c39dae490e}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, adjectives only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
+```{r fig-graph_88b7cb0f}
+#| fig-cap: PPMI with target feature ppmi_similarities 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_3dd1edfdb7e5ff93dc4429c39dae490e)
+graph <- tar_read(graph_88b7cb0f)
 
 graph
 
@@ -362,10 +362,10 @@ graph
 
 
 
-```{r fig-graphs_bbaa4a5cf2d0e1a072186662980b6ae0}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_53a23a19}
+#| fig-cap: PPMI with target feature ppmi_similarities 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_bbaa4a5cf2d0e1a072186662980b6ae0)
+graph <- tar_read(graph_53a23a19)
 
 graph
 
@@ -373,681 +373,10 @@ graph
 
 
 
-```{r fig-graphs_bc884a2f9b79710a9db5366f1b16e5c4}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
+```{r fig-graph_9946a17b}
+#| fig-cap: PPMI with target feature ppmi_similarities 500 vols. sample lowercased. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
 #| fig-height: 9
-graph <- tar_read(graphs_bc884a2f9b79710a9db5366f1b16e5c4)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_82e8d15f8fc46ab92d618014b370463c}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, all POS. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_82e8d15f8fc46ab92d618014b370463c)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_e30b71d27d759791e4c4dd52da94b27b}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_e30b71d27d759791e4c4dd52da94b27b)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_dd33e4ebcc5f20309c3dd830769889d1}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_dd33e4ebcc5f20309c3dd830769889d1)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_80b451a665cbbc802ade55062b219cef}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, nouns only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_80b451a665cbbc802ade55062b219cef)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_86c9fae71a8043cb4d8cd3d8e977091e}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_86c9fae71a8043cb4d8cd3d8e977091e)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_790cb3d57455cf6d5ba263060aff3df7}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_790cb3d57455cf6d5ba263060aff3df7)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_59ec1a00376f7a3093b1d19f108a980f}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, terms beginning with uppercase. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_59ec1a00376f7a3093b1d19f108a980f)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_d1b620b1621b2dc1705dc9f95ae5ce59}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, verbs only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_d1b620b1621b2dc1705dc9f95ae5ce59)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_46df2be3c66228eba416bf78cc147cdf}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_46df2be3c66228eba416bf78cc147cdf)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_a3c92ff060dcd39aa0c7bea1dfd0333b}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_a3c92ff060dcd39aa0c7bea1dfd0333b)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_402de962c164b0f594449e2641af850c}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_402de962c164b0f594449e2641af850c)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_b0ae6b1ea6dcbaed256d1a2c68706e85}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_b0ae6b1ea6dcbaed256d1a2c68706e85)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_01afa123031dd765ae217b89ff8d47c4}
-#| fig-cap: Single-feature PPMI to target feature, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_01afa123031dd765ae217b89ff8d47c4)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_4b32fbf9dac49b49d57a30854758d68b}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, adjectives only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_4b32fbf9dac49b49d57a30854758d68b)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_87bf939d5dfd97f981cf9d5d150ce52a}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_87bf939d5dfd97f981cf9d5d150ce52a)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_9114a3d0fcd85ba1200614f56e0d7200}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_9114a3d0fcd85ba1200614f56e0d7200)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_d1b1df1746d708101b11e0cc76a33a06}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, all POS. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_d1b1df1746d708101b11e0cc76a33a06)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_6c5f1dbb5566bb47dcd63a69f5a0e82f}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_6c5f1dbb5566bb47dcd63a69f5a0e82f)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_9ec2cbf223fb18a9524303231a4851ac}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_9ec2cbf223fb18a9524303231a4851ac)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_01a9987a06c5b1bf1983dc7327b4abe9}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, nouns only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_01a9987a06c5b1bf1983dc7327b4abe9)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_441dbd54d0726000cac0c265dc672722}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_441dbd54d0726000cac0c265dc672722)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_22e7537a03ad184ac1cf6f0c2beb42f2}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_22e7537a03ad184ac1cf6f0c2beb42f2)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_f7904460e50221853208c40798d84d2b}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, terms beginning with uppercase. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_f7904460e50221853208c40798d84d2b)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_781a78d15a657fa8bedc1e09541993ff}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, verbs only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_781a78d15a657fa8bedc1e09541993ff)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_e759683eb40c0e074823e7cca34685cd}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_e759683eb40c0e074823e7cca34685cd)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_8bbb2ddd0eb3fc00d9fd6dbf0d89b9b6}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_8bbb2ddd0eb3fc00d9fd6dbf0d89b9b6)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_4f32ce0cfc0cb0396bca1d9b8896396b}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_4f32ce0cfc0cb0396bca1d9b8896396b)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_b243d358bb58dbc0278e62797d92dc5c}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_b243d358bb58dbc0278e62797d92dc5c)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_16bbacd10f258ad58ac500d98ea6c129}
-#| fig-cap: Coefficients of logistic regression, glmnet, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_16bbacd10f258ad58ac500d98ea6c129)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_fe6027d2d8f9ad7ef7b3cd757b4b4e7d}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, adjectives only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_fe6027d2d8f9ad7ef7b3cd757b4b4e7d)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_a0d838d179671d3e5aa3c2de22199576}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_a0d838d179671d3e5aa3c2de22199576)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_dd2e49b76672e63dcdcf69d5129bf604}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_dd2e49b76672e63dcdcf69d5129bf604)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_cfda509d8172889f8b5b6a41c78e0af5}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, all POS. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_cfda509d8172889f8b5b6a41c78e0af5)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_4ac7c41486a4df038754dd65777bdbe8}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_4ac7c41486a4df038754dd65777bdbe8)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_4c6af60807fb1cd9625d6a42734681c9}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_4c6af60807fb1cd9625d6a42734681c9)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_ec7204ad84ab56b3a6392d59060b26c0}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, nouns only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_ec7204ad84ab56b3a6392d59060b26c0)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_dfa84d0fc1cfe04421cf9d6908a1062c}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_dfa84d0fc1cfe04421cf9d6908a1062c)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_6f0291229c29a7e93d97a351a2448eee}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_6f0291229c29a7e93d97a351a2448eee)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_e712281e5fd6b0831ad39fe7e8a81bf0}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, terms beginning with uppercase. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_e712281e5fd6b0831ad39fe7e8a81bf0)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_2ece1148b0da26a819aceb2f7c7ac9b4}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, verbs only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_2ece1148b0da26a819aceb2f7c7ac9b4)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_7e2dee1e990a6e1c735a1136e42997cd}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_7e2dee1e990a6e1c735a1136e42997cd)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_5f99e8ca6838dcc61480a12b4b2e1266}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_5f99e8ca6838dcc61480a12b4b2e1266)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_1cedc1463791aa4c765bd7cad9333150}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_1cedc1463791aa4c765bd7cad9333150)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_57aa1b04dfba413d0c0d6c5e61179747}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_57aa1b04dfba413d0c0d6c5e61179747)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_9b3f9a05612b9bc1e969c06c7ccbbc10}
-#| fig-cap: Weights of gradient-boosted random forest model, xgboost, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_9b3f9a05612b9bc1e969c06c7ccbbc10)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_b6a0e88fb7f20afc5e5bd5ac3872192f}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, adjectives only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_b6a0e88fb7f20afc5e5bd5ac3872192f)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_f1eb6a562eec6c4aaedb416b2c987f85}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_f1eb6a562eec6c4aaedb416b2c987f85)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_c559ec6777a98c685b07fbab1e1d33dd}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, adjectives only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_c559ec6777a98c685b07fbab1e1d33dd)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_4ddecb72e7674fc1c02e224530c70fd5}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, all POS. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_4ddecb72e7674fc1c02e224530c70fd5)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_6d353696f0cc3cf62ef8d2583cc2acbd}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_6d353696f0cc3cf62ef8d2583cc2acbd)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_7215e07b09b9b6885db1063add373ef7}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, all POS. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_7215e07b09b9b6885db1063add373ef7)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_fd8a7e1661f330ee03ab8162a8158d45}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, nouns only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_fd8a7e1661f330ee03ab8162a8158d45)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_48d6b4faa896a34fe7f85f93578d8939}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_48d6b4faa896a34fe7f85f93578d8939)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_275cfe683ee2005316d37fc66f79512e}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, nouns only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_275cfe683ee2005316d37fc66f79512e)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_200e1fef262a4f623c7f809bd7f340e9}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, terms beginning with uppercase. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_200e1fef262a4f623c7f809bd7f340e9)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_116e12229ae769abf0cee29932e84b2c}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, verbs only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_116e12229ae769abf0cee29932e84b2c)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_b37ffa2220ac99d4dec06a6f1f95e29d}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_b37ffa2220ac99d4dec06a6f1f95e29d)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_36d2f8fe94bdb7202cea8e8c5d6bdd79}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, verbs only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_36d2f8fe94bdb7202cea8e8c5d6bdd79)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_325ff91260d4ecb252567d5ddd91439d}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'NA' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_325ff91260d4ecb252567d5ddd91439d)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_93232f990292a52488c5110c32af5600}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_93232f990292a52488c5110c32af5600)
-
-graph
-
-```
-
-
-
-```{r fig-graphs_a8fa29a4d7d93734e67cc499f0be0310}
-#| fig-cap: Weights of SVM model, LiblineaR, no downsampling, words ending in ism only. Terms at the top are more closely associated with 'democracy' in later years. Label indicates the peak density of association.
-#| fig-height: 9
-graph <- tar_read(graphs_a8fa29a4d7d93734e67cc499f0be0310)
+graph <- tar_read(graph_9946a17b)
 
 graph
 

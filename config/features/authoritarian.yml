@@ -1,0 +1,16 @@
+id: authoritarian
+name: authoritarian
+description: "Dictionary for authoritarian adjective and noun forms."
+search_terms: [authoritarian]
+search_join: OR
+pages_contain: "authoritarian"
+dictionary:
+  authoritarian:
+    - authoritarian_jj
+    - authoritarian_jjr
+    - authoritarian_jjs
+    - authoritarian_nn
+    - authoritarian_nnp
+    - authoritarian_nns
+graphs:
+  tracked_terms: [legitimate_jj, rights_nn, legitimacy_nn]

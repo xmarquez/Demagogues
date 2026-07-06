@@ -1,0 +1,11 @@
+id: democracy
+name: democracy
+description: "Dictionary for democracy nouns (case-sensitive)."
+search_terms: [democracy]
+search_join: OR
+pages_contain: democracy
+dictionary:
+  democracy:
+    - democracy_nn
+    - democracy_nnp
+    - democracy_nns

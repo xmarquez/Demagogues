@@ -1,0 +1,13 @@
+id: legitimacy
+name: legitimacy
+description: "Dictionary for legitimacy noun forms."
+search_terms: [legitimacy]
+search_join: OR
+pages_contain: "legitimacy"
+dictionary:
+  legitimacy:
+    - legitimacy_nn
+    - legitimacy_nnp
+    - legitimacy_nns
+graphs:
+  tracked_terms: [legitimate_jj, rights_nn, authority_nn]

@@ -1,0 +1,4 @@
+id: authority_jstor_dfr_audit
+description: "JSTOR DfR support audit for authority terms using untagged NGRAMS1 counts."
+features: [authority]
+outputs: [jstor_ingest, jstor_audit]

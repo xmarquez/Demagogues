@@ -1,0 +1,31 @@
+root: ""
+
+sources:
+  dfr:
+    type: dfr_zip
+    zip_glob: "*.zip"
+    ngram_type: NGRAMS1
+  polisci_sample:
+    type: polisci_jsonl
+    metadata_file: "random-sample-polisci/b2783f37-622c-ddbe-a1e0-7b89a63eb902-sampled-metadata.csv"
+    jsonl_file: "random-sample-polisci/b2783f37-622c-ddbe-a1e0-7b89a63eb902-sampled-jsonl.jsonl.gz"
+
+periods:
+  sample_min_year: 1810
+  sample_max_year: 2000
+  sample_slice_size: 10
+  period_name: decade
+
+samples:
+  seed: 20240427
+
+audit:
+  # The full DfR ngram inventory is large enough that interactive exact scans
+  # are slow. Set this to null for an exact all-file support audit.
+  max_files_per_period: 500
+  min_positive_texts_per_period: 8
+  min_negative_texts_per_period: 8
+  extract_to_temp: true
+  seed: 20240427
+
+outputs: [jstor_ingest, jstor_audit]

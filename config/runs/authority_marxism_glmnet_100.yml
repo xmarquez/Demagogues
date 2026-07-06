@@ -1,0 +1,4 @@
+id: authority_marxism_glmnet_100
+description: "Authority run over the annotated Marx/Engels corpus: up to 100 positive segments per decade with matched negative segments; fits glmnet, LiblineaR, naive Bayes, and xgboost classifiers."
+features: [authority]
+outputs: [marxism_ingest, marxism_segments, marxism_audit, marxism_dfm, marxism_model, marxism_graph]

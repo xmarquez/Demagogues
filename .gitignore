@@ -4,6 +4,8 @@
 .RData
 .Ruserdata
 .Rdata
+.Renviron
+.Renviron.local
 *.Rproj
 .Rapp.history
 .httr-oauth
@@ -24,7 +26,7 @@ _targets_old.R
 # Custom targets config (keep pipeline.yml tracked)
 custom.yaml
 
-# Renv (keep renv.lock but not library)
+# Renv (keep renv.lock and renv/settings.json but not the library)
 renv/library/
 renv/local/
 renv/cellar/
@@ -32,10 +34,10 @@ renv/lock/
 renv/python/
 renv/sandbox/
 renv/staging/
-renv/settings.json
 
 # Quarto outputs
 Paper/*.html
+Paper/*.knit.md
 Paper/*_files/
 Paper/.quarto/
 .quarto/
@@ -51,6 +53,7 @@ similarity_data.csv
 # Raw data directories
 raw-hathifiles
 hathi-ef
+data/perseus/
 
 # VS Code
 .vscode/
@@ -78,3 +81,6 @@ Desktop.ini
 # Cluster-specific
 .slurm*
 slurm-*.out
+
+# Cluster results bundles (fetched by slurm/fetch_results.ps1)
+exports/

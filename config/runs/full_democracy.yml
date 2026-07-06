@@ -1,0 +1,4 @@
+id: full_democracy
+description: "Full democracy pipeline using the shared corpus defaults."
+features: [democracy]
+outputs: [ingest, dfm, model, graph, corpus_stats, document]

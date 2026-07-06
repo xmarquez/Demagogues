@@ -209,17 +209,42 @@ dfm_tsne <- function(dfm, ...) {
 #'
 #' @return A `quanteda` `dfm` weighted by PPMI.
 dfm_ppmi <- function(dfm, base = 10) {
-  # this is for a column-oriented sparse matrix; transpose if necessary
+  dfm_col_sum <- Matrix::colSums(dfm)
+  N <- sum(Matrix::rowSums(dfm))
+  col_prob <- dfm_col_sum / N
+  dfm_ppmi_worker(dfm, col_prob = col_prob, N = N, base = base)
+}
+
+#' PPMI sparse-matrix worker
+#'
+#' Internal worker shared by [dfm_ppmi()] and [dfm_ppmi_apply()]. Iterates over
+#' the non-zero entries of a column-oriented sparse `dfm` and replaces each entry
+#' with its positive pointwise mutual information, using the supplied feature
+#' (column) marginal probabilities `col_prob` and total count `N`. Document (row)
+#' marginals are always taken from `dfm` itself, since they are document-local.
+#'
+#' `col_prob` must be indexed to align with the columns of `dfm` (same length and
+#' order as `Matrix::colSums(dfm)`); callers are responsible for matching `dfm`'s
+#' features to the vocabulary the marginals were computed on.
+#'
+#' @param dfm A count-weighted `quanteda` `dfm` (or `dgCMatrix`).
+#' @param col_prob Numeric vector of feature (column) marginal probabilities,
+#'   aligned to the columns of `dfm`.
+#' @param N Total count used as the normalizing constant in the PMI formula.
+#' @param base Log base for PMI.
+#'
+#' @return A `quanteda` `dfm` weighted by PPMI.
+#' @keywords internal
+dfm_ppmi_worker <- function(dfm, col_prob, N, base = 10) {
   dfm_row_sum <- Matrix::rowSums(dfm)
   dfm_col_sum <- Matrix::colSums(dfm)
-  N <- sum(dfm_row_sum)
-  col_prob <- dfm_col_sum/N
-  row_prob <- dfm_row_sum/N
+  row_prob <- dfm_row_sum / N
   pp = dfm@p+1
   ip = dfm@i+1
   tmpx = rep(0,length(dfm@x)) # new values go here, just a numeric vector
-  # iterate through sparse matrix:
-  all_zeros <- which(dfm_col_sum == 0)
+  # iterate through sparse matrix, skipping columns with no reference mass or no
+  # entries in `dfm` (avoids descending index ranges on empty columns):
+  all_zeros <- which(col_prob == 0 | dfm_col_sum == 0)
   col_indexes_used <- 1:(length(dfm@p)-1)
   col_indexes_used <- col_indexes_used[ !col_indexes_used %in% all_zeros ]
   for(i in col_indexes_used){
@@ -234,6 +259,65 @@ dfm_ppmi <- function(dfm, base = 10) {
   dfm@x[which(dfm@x < 0)] <- 0
   dfm <- Matrix::drop0(dfm)
   quanteda::as.dfm(dfm)
+}
+
+#' Apply PPMI weighting using reference-set statistics
+#'
+#' Weights `dfm` by positive pointwise mutual information, but takes the feature
+#' (column) marginal probabilities and the total count `N` from `reference_dfm`
+#' rather than from `dfm` itself. Document (row) marginals are still taken from
+#' `dfm`, since they are inherently document-local. This is used at evaluation
+#' time so the transformation applied to a test/OOD set matches the marginals the
+#' model saw during training.
+#'
+#' `dfm` is first matched to the feature set of `reference_dfm` (via
+#' [quanteda::dfm_match()]); features absent from the reference are dropped, so
+#' the output lives in the reference's feature space.
+#'
+#' When `reference_dfm` is identical to `dfm`, this returns exactly the same
+#' result as [dfm_ppmi()].
+#'
+#' @param dfm A count-weighted `quanteda` `dfm` to weight.
+#' @param reference_dfm A count-weighted `quanteda` `dfm` supplying the feature
+#'   marginals and total count (typically the training partition).
+#' @param base Log base for PMI.
+#'
+#' @return A `quanteda` `dfm` weighted by PPMI, with the features of
+#'   `reference_dfm`.
+dfm_ppmi_apply <- function(dfm, reference_dfm, base = 10) {
+  dfm <- quanteda::dfm_match(dfm, quanteda::featnames(reference_dfm))
+  ref_col_sum <- Matrix::colSums(reference_dfm)
+  N <- sum(Matrix::rowSums(reference_dfm))
+  col_prob <- ref_col_sum / N
+  dfm_ppmi_worker(dfm, col_prob = col_prob, N = N, base = base)
+}
+
+#' Apply TF-IDF weighting using reference-set document frequencies
+#'
+#' Weights `dfm` by TF-IDF, but computes the inverse document frequencies from
+#' `reference_dfm` rather than from `dfm` itself. This matches the defaults of
+#' [quanteda::dfm_tfidf()] (term-frequency scheme `"count"`, document-frequency
+#' scheme `"inverse"`, base 10): `idf = log10(ndoc(reference) / docfreq(reference))`.
+#'
+#' `dfm` is first matched to the feature set of `reference_dfm` (via
+#' [quanteda::dfm_match()]). Non-finite idf values (e.g. features with zero
+#' reference document frequency) are set to 0.
+#'
+#' When `reference_dfm` is identical to `dfm`, this returns the same result as
+#' [quanteda::dfm_tfidf()].
+#'
+#' @param dfm A count-weighted `quanteda` `dfm` to weight.
+#' @param reference_dfm A count-weighted `quanteda` `dfm` supplying document
+#'   frequencies (typically the training partition).
+#'
+#' @return A `quanteda` `dfm` weighted by TF-IDF, with the features of
+#'   `reference_dfm`.
+dfm_tfidf_apply <- function(dfm, reference_dfm) {
+  dfm_matched <- quanteda::dfm_match(dfm, quanteda::featnames(reference_dfm))
+  ref_docfreq <- quanteda::docfreq(reference_dfm)
+  idf <- log10(quanteda::ndoc(reference_dfm) / ref_docfreq)
+  idf[!is.finite(idf)] <- 0
+  quanteda::dfm_weight(dfm_matched, weights = idf)
 }
 
 #' Compute feature-specific PPMI scores (S3 generic)

@@ -1,46 +1,3 @@
-#' Pairwise KL divergence for a sparse DFM
-#'
-#' Computes the Kullback–Leibler divergence `KL(P || Q)` between every pair of
-#' document distributions in a `quanteda` DFM, treating each document as a
-#' probability distribution over features (`dfm_weight(dfm, "prop")`).
-#'
-#' This implementation operates directly on the underlying sparse matrix slots
-#' and returns a dense document-by-document matrix.
-#'
-#' @param dfm A count-weighted `quanteda` `dfm` (documents x features).
-#' @param epsilon Small smoothing constant used when `Q` has zero probability
-#'   for a feature present in `P`.
-#'
-#' @return A dense numeric matrix of KL divergences with row/column names set to
-#'   `docnames(dfm)`.
-kl_sparse <- function(dfm, epsilon = 1e-5) {
-  dfm <- dfm_weight(dfm, "prop")
-  dp <- diff(dfm@p)
-  col_idx <- rep(seq_along(dp), dp)
-  row_idx <- dfm@i + 1
-  dense_matrix <- matrix(0, nrow = dfm@Dim[1], ncol = dfm@Dim[1],
-                         dimnames = c(unname(dfm@Dimnames[1]),
-                                      unname(dfm@Dimnames[1])))
-  for(i in 1:nrow(dense_matrix)) {
-    for(j in 1:ncol(dense_matrix)) {
-      idx_features_P <- which(row_idx == i)
-      idx_features_Q <- which(row_idx == j)
-      cols_P <- col_idx[idx_features_P]
-      cols_Q <- col_idx[idx_features_Q]
-      cols_P_and_Q <- union(cols_P, cols_Q)
-      cols_P_and_Q_nonzero <- intersect(cols_P, cols_Q)
-      cols_P_and_Q_zero <- setdiff(cols_P, cols_Q)
-      P <- dfm@x[idx_features_P]
-      Q <- dfm@x[idx_features_Q]
-      PQ_ratio <- numeric(length(P))
-      PQ_ratio[cols_P %in% cols_P_and_Q_nonzero] <- P[cols_P %in% cols_P_and_Q_nonzero]/Q[cols_Q %in% cols_P_and_Q_nonzero]
-      PQ_ratio[cols_P %in% cols_P_and_Q_zero] <- 1/epsilon
-      dense_matrix[i,j] <- sum(P*log2(PQ_ratio))
-    }
-  }
-  dense_matrix
-}
-
 #' Intersection of vocabularies across groups
 #'
 #' Computes the set of words that appear in every level of a grouping variable.
@@ -69,9 +26,12 @@ vocab_intersection <- function(weight_object, var) {
 #' KL divergences using `philentropy::kullback_leibler_distance()`.
 #'
 #' @param weight_object A data frame/tibble with (at minimum) columns `period`,
-#'   `word`, and `value`.
+#'   `word`, and `normalized_value`. The `normalized_value` column must already
+#'   be a non-negative, probability-like weight as produced by
+#'   `normalize_weights()`; it is cast directly and no further re-normalization
+#'   is performed here.
 #' @param var Grouping column (string or symbol). Used for optional vocabulary
-#'   intersection and for shifting weights by subtracting the group minimum.
+#'   intersection.
 #' @param common_vocab_only Logical; if `TRUE`, restrict to the vocabulary shared
 #'   by all groups (via `vocab_intersection()`).
 #' @param epsilon Smoothing constant passed to
@@ -86,10 +46,8 @@ kl_simple <- function(weight_object, var, common_vocab_only = FALSE, epsilon = 1
       filter(word %in% vocab_intersect)
   }
   dfm <- weight_object |>
-    group_by(!!var) |>
-    mutate(value = value - min(value),
-           period_var = period) |>
-    tidytext::cast_dfm(period_var, word, value) |>
+    mutate(period_var = period) |>
+    tidytext::cast_dfm(period_var, word, normalized_value) |>
     quanteda::dfm_weight("prop")
 
   kl <- matrix(0, nrow = nrow(dfm), ncol = nrow(dfm))
@@ -186,7 +144,10 @@ entropy <- function(weight_object) {
 #' divergences with `philentropy::jensen_shannon()`.
 #'
 #' @param weight_object A data frame/tibble with columns `weight_id`, `period`,
-#'   `word`, and `value`.
+#'   `word`, and `normalized_value`. The `normalized_value` column must already
+#'   be a non-negative, probability-like weight as produced by
+#'   `normalize_weights()`; it is cast directly and no further re-normalization
+#'   is performed here.
 #' @param period_filter Period value to filter on before computing divergences.
 #' @param epsilon Unused (reserved for future use; included for signature
 #'   compatibility).
@@ -196,9 +157,7 @@ entropy <- function(weight_object) {
 jsd_simple <- function(weight_object, period_filter = 1700, epsilon = 1e-10) {
   dfm <- weight_object |>
     filter(period == period_filter) |>
-    group_by(weight_id, period) |>
-    mutate(value = value - min(value)) |>
-    tidytext::cast_dfm(weight_id, word, value) |>
+    tidytext::cast_dfm(weight_id, word, normalized_value) |>
     quanteda::dfm_weight("prop")
 
   jsd <- matrix(0, nrow = nrow(dfm), ncol = nrow(dfm))

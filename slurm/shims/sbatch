@@ -1,0 +1,6 @@
+#!/bin/bash
+# Proxy sbatch to the Slurm submit host over ssh. Used inside the coordinator
+# container, where no Slurm client exists (crew finds this shim via
+# SINGULARITYENV_PREPEND_PATH). Requires passwordless intra-cluster ssh
+# (set up once by slurm/setup_raapoi.sh).
+exec ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new "${DEMAGOGUES_SUBMIT_HOST:-${SLURM_SUBMIT_HOST:-raapoi.vuw.ac.nz}}" sbatch "$@"

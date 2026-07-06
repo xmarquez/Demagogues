@@ -1,4 +1,52 @@
 
+#' Build evaluation predictors with training-time weighting statistics
+#'
+#' Constructs the predictor `dfm` used at evaluation time. The predictor matrix
+#' is first built unweighted (target feature tokens removed via `get_x()` with
+#' `weight = "none"`); the requested weighting is then applied using statistics
+#' from a reference set rather than from the evaluation set itself. This keeps the
+#' TF-IDF / PPMI transformation consistent with what the model saw at training
+#' time (see [dfm_tfidf_apply()] and [dfm_ppmi_apply()]).
+#'
+#' The reference predictor space is `reference_dfm` when supplied; otherwise the
+#' training partition of `dfm` (via `get_training_sample()`) when `initial_split`
+#' is available; otherwise `dfm` itself (self-statistics, matching the historical
+#' behavior of the per-volume methods, which have no split).
+#'
+#' @param testing_dfm A `quanteda` `dfm` to score (already subset to the desired
+#'   partition).
+#' @param dfm The full `quanteda` `dfm` the model was derived from.
+#' @param feat Target feature specification used by `get_x()`.
+#' @param weight Feature weighting scheme (`"ppmi"`, `"tfidf"`, or `"none"`).
+#' @param initial_split Optional `rsample` split used to derive the training
+#'   reference when `reference_dfm` is `NULL`.
+#' @param reference_dfm Optional `quanteda` `dfm` whose statistics define the
+#'   weighting; overrides the split-derived training reference.
+#'
+#' @return A `quanteda` `dfm` of predictors, weighted using reference statistics.
+#' @keywords internal
+get_x_eval <- function(testing_dfm, dfm, feat, weight = c("ppmi", "tfidf", "none"),
+                       initial_split = NULL, reference_dfm = NULL) {
+  weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
+  x <- get_x(testing_dfm, feat = feat, weight = "none")
+  if(weight == "none") {
+    return(x)
+  }
+  if(is.null(reference_dfm)) {
+    reference_dfm <- if(!is.null(initial_split)) {
+      get_training_sample(dfm, initial_split)
+    } else {
+      dfm
+    }
+  }
+  ref <- get_x(reference_dfm, feat = feat, weight = "none")
+  if(weight == "tfidf") {
+    dfm_tfidf_apply(x, ref)
+  } else {
+    dfm_ppmi_apply(x, ref)
+  }
+}
+
 #' Evaluate model performance aggregated by volume (S3 generic)
 #'
 #' Computes model performance metrics per volume (`htid`) by scoring each page
@@ -13,10 +61,14 @@
 #'   `quanteda` dictionary).
 #' @param weight Feature weighting scheme used when constructing predictors
 #'   (`"ppmi"`, `"tfidf"`, or `"none"`).
+#' @param reference_dfm Optional `quanteda` `dfm` whose statistics define the
+#'   TF-IDF/PPMI weighting applied at evaluation time (see [get_x_eval()]). When
+#'   `NULL`, the scoring `dfm`'s own statistics are used.
 #'
 #' @return A tibble of `yardstick` metrics (often grouped by `htid`), with an
 #'   added `model_type` column describing the engine/task.
-model_performance_per_volume <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+model_performance_per_volume <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none"),
+                                         reference_dfm = NULL) {
   invisible()
   UseMethod("model_performance_per_volume")
 }
@@ -41,6 +93,41 @@ get_xgb_feature_names <- function(model) {
   feature_names
 }
 
+#' Extract the training objective from an xgboost model
+#'
+#' Prefer the project-specific objective attribute set at model fit time, then
+#' fall back to the fields used by different xgboost versions.
+#'
+#' @param model An `xgboost` model object.
+#'
+#' @return A scalar objective string, or `NA_character_` if unavailable.
+get_xgb_objective <- function(model) {
+  objective <- attr(model, "demagogues_objective")
+  if(is.null(objective) && !is.null(model$params)) {
+    objective <- model$params$objective
+  }
+  if(is.null(objective) && !is.null(attr(model, "params"))) {
+    objective <- attr(model, "params")$objective
+  }
+  if(length(objective) != 1 || is.na(objective)) {
+    return(NA_character_)
+  }
+  objective
+}
+
+#' Infer whether an xgboost model is a classifier or regressor
+#'
+#' @param model An `xgboost` model object.
+#'
+#' @return `"classification"` for binary objectives, otherwise `"regression"`.
+get_xgb_model_type <- function(model) {
+  objective <- get_xgb_objective(model)
+  if(!is.na(objective) && stringr::str_detect(objective, "binary:")) {
+    return("classification")
+  }
+  "regression"
+}
+
 #' Per-volume performance for `cv.glmnet` models
 #'
 #' Scores all documents in `dfm`, matches features to the fitted glmnet model,
@@ -52,8 +139,12 @@ get_xgb_feature_names <- function(model) {
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Feature weighting scheme (`"ppmi"`, `"tfidf"`, or `"none"`).
 #'
+#' @param reference_dfm Optional `quanteda` `dfm` supplying evaluation-time
+#'   weighting statistics (see [get_x_eval()]).
+#'
 #' @return A tibble of metrics by `htid` with a `model_type` label.
-model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none"),
+                                                   reference_dfm = NULL) {
 
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   if("lognet" %in% class(model$glmnet.fit)) {
@@ -63,7 +154,7 @@ model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c(
     model_type <- "regression"
   }
 
-  x_test <- get_x(dfm, feat = feat, weight = weight)
+  x_test <- get_x_eval(dfm, dfm, feat = feat, weight = weight, reference_dfm = reference_dfm)
 
   x_test <- quanteda::dfm_match(x_test, model$glmnet.fit$beta@Dimnames[[1]])
 
@@ -112,14 +203,18 @@ model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c(
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Feature weighting scheme (`"ppmi"`, `"tfidf"`, or `"none"`).
 #'
+#' @param reference_dfm Optional `quanteda` `dfm` supplying evaluation-time
+#'   weighting statistics (see [get_x_eval()]).
+#'
 #' @return A tibble of metrics by `htid` with a `model_type` label.
-model_performance_per_volume.LiblineaR <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none")) {
+model_performance_per_volume.LiblineaR <- function(model, dfm, feat, weight = c("ppmi", "tfidf", "none"),
+                                                   reference_dfm = NULL) {
 
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   model_type <- ifelse(model$Type %in% c(0:7), "classification",
                        "regression")
 
-  x_test <- quanteda::dfm_match(get_x(dfm, feat = feat, weight = weight),
+  x_test <- quanteda::dfm_match(get_x_eval(dfm, dfm, feat = feat, weight = weight, reference_dfm = reference_dfm),
                                 colnames(model$W)[colnames(model$W) != "Bias"]) %>%
     as("dgCMatrix") %>%
     as("RsparseMatrix") %>%
@@ -158,16 +253,19 @@ model_performance_per_volume.LiblineaR <- function(model, dfm, feat, weight = c(
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Feature weighting scheme (`"ppmi"`, `"tfidf"`, or `"none"`).
 #'
+#' @param reference_dfm Optional `quanteda` `dfm` supplying evaluation-time
+#'   weighting statistics (see [get_x_eval()]).
+#'
 #' @return A tibble of metrics by `htid` with a `model_type` label.
 model_performance_per_volume.xgb.Booster <-  function(model, dfm, feat,
-                                                      weight = c("ppmi", "tfidf", "none")) {
+                                                      weight = c("ppmi", "tfidf", "none"),
+                                                      reference_dfm = NULL) {
 
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
 
-  model_type <- ifelse(stringr::str_detect(model$params$objective, "reg:"), "regression",
-                       "classification")
+  model_type <- get_xgb_model_type(model)
 
-  x_test <- get_x(dfm, feat = feat, weight = weight)
+  x_test <- get_x_eval(dfm, dfm, feat = feat, weight = weight, reference_dfm = reference_dfm)
   feature_names <- get_xgb_feature_names(model)
   if(is.null(feature_names)) {
     feature_names <- quanteda::featnames(x_test)
@@ -203,7 +301,7 @@ model_performance_per_volume.xgb.Booster <-  function(model, dfm, feat,
   }
 
   res %>%
-    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
+    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", get_xgb_objective(model)))
 
 }
 
@@ -221,10 +319,15 @@ model_performance_per_volume.xgb.Booster <-  function(model, dfm, feat,
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Feature weighting scheme (`"ppmi"`, `"tfidf"`, or `"none"`).
 #' @param use Which data to evaluate: `"testing"`, `"training"`, or `"testing - OOD"`.
+#' @param reference_dfm Optional `quanteda` `dfm` whose statistics define the
+#'   TF-IDF/PPMI weighting applied at evaluation time (see [get_x_eval()]). When
+#'   `NULL`, the training partition of `dfm` (via the `initial_split`) is used, so
+#'   the evaluation weighting matches the model's training statistics.
 #'
 #' @return A tibble of `yardstick` metrics (and sometimes a confusion matrix), with
 #'   an added `model_type` column.
-model_performance <- function(model, dfm, initial_split, feat, weight, use = "testing") {
+model_performance <- function(model, dfm, initial_split, feat, weight, use = "testing",
+                              reference_dfm = NULL) {
   UseMethod("model_performance")
 }
 
@@ -239,14 +342,16 @@ model_performance <- function(model, dfm, initial_split, feat, weight, use = "te
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Feature weighting scheme (`"ppmi"`, `"tfidf"`, or `"none"`).
 #' @param use Which data to evaluate: `"testing"`, `"training"`, or `"testing - OOD"`.
+#' @param reference_dfm Optional `quanteda` `dfm` supplying evaluation-time
+#'   weighting statistics (see [get_x_eval()]).
 #'
 #' @return A tibble of binary classification metrics with a `model_type` label.
 model_performance.multinomial_naive_bayes <- function(model, dfm, initial_split, feat,
                                                       weight = c("ppmi", "tfidf", "none"),
-                                                      use = "testing") {
+                                                      use = "testing",
+                                                      reference_dfm = NULL) {
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   use <- match.arg(use, c("testing", "training", "testing - OOD"))
-  dfm <- compress_dfm_to_target_features(dfm, feat)
   if(use == "testing") {
     testing_dfm <- get_test_sample(dfm, initial_split)
   } else if(use == "training") {
@@ -255,8 +360,10 @@ model_performance.multinomial_naive_bayes <- function(model, dfm, initial_split,
     testing_dfm <- dfm
   }
 
-  x_test <- get_x(testing_dfm, feat = feat, weight = weight) %>%
-    as("dgCMatrix")
+  x_test <- get_x_eval(testing_dfm, dfm, feat = feat, weight = weight,
+                       initial_split = initial_split, reference_dfm = reference_dfm) %>%
+    quanteda::dfm_match(rownames(model$params)) %>%
+    as.matrix()
 
   y_test <- get_y(testing_dfm, feat, model_type = "classification")
 
@@ -264,7 +371,7 @@ model_performance.multinomial_naive_bayes <- function(model, dfm, initial_split,
   predictions_probs <- naivebayes:::predict.multinomial_naive_bayes(model, x_test, "prob")
 
   preds <- tibble::tibble(truth = y_test, class = predictions) |>
-    bind_cols(predictions_probs)
+    dplyr::bind_cols(predictions_probs)
 
   res <- preds %>%
     dplyr::mutate(estimate = (`TRUE`-`FALSE` + 1)/2) %>%
@@ -286,11 +393,14 @@ model_performance.multinomial_naive_bayes <- function(model, dfm, initial_split,
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Feature weighting scheme (`"ppmi"`, `"tfidf"`, or `"none"`).
 #' @param use Which data to evaluate: `"testing"`, `"training"`, or `"testing - OOD"`.
+#' @param reference_dfm Optional `quanteda` `dfm` supplying evaluation-time
+#'   weighting statistics (see [get_x_eval()]).
 #'
 #' @return A tibble of metrics with a `model_type` label (and `conf_mat` for classification).
 model_performance.LiblineaR <- function(model, dfm, initial_split, feat,
                                         weight = c("ppmi", "tfidf", "none"),
-                                        use = "testing") {
+                                        use = "testing",
+                                        reference_dfm = NULL) {
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   use <- match.arg(use, c("testing", "training", "testing - OOD"))
   if(use == "testing") {
@@ -303,26 +413,39 @@ model_performance.LiblineaR <- function(model, dfm, initial_split, feat,
   model_type <- ifelse(model$Type %in% c(0:7), "classification",
                        "regression")
 
-  x_test <- get_x(testing_dfm, feat = feat, weight = weight) %>%
+  x_test <- get_x_eval(testing_dfm, dfm, feat = feat, weight = weight,
+                       initial_split = initial_split, reference_dfm = reference_dfm) %>%
     as("dgCMatrix") %>%
     as("RsparseMatrix") %>%
     as("dgRMatrix")
 
   y_test <- get_y(testing_dfm, feat, model_type = model_type)
 
-  predictions <- LiblineaR:::predict.LiblineaR(model, newx = x_test)
-
-  preds <- tibble::tibble(truth = y_test, estimate = predictions$predictions)
-
-  res <- preds %>%
-    yardstick::metrics(truth = truth, estimate = estimate)
-
   if(model_type == "classification") {
+    predictions <- LiblineaR:::predict.LiblineaR(model, newx = x_test)
+    preds <- tibble::tibble(
+      truth = factor(y_test, levels = c(FALSE, TRUE)),
+      class = factor(predictions$predictions, levels = c(FALSE, TRUE))
+    )
     conf_mat <- preds %>%
-      yardstick::conf_mat(truth = truth, estimate = estimate)
+      yardstick::conf_mat(truth = truth, estimate = class)
 
-    res <- res %>%
+    res <- preds %>%
+      yardstick::metrics(truth = truth, estimate = class) %>%
+      dplyr::bind_rows(yardstick::f_meas(
+        preds,
+        truth = truth,
+        estimate = class,
+        event_level = "second"
+      )) %>%
       dplyr::mutate(conf_mat = list(conf_mat))
+  } else {
+    predictions <- LiblineaR:::predict.LiblineaR(model, newx = x_test)
+
+    preds <- tibble::tibble(truth = y_test, estimate = predictions$predictions)
+
+    res <- preds %>%
+      yardstick::metrics(truth = truth, estimate = estimate)
   }
 
   res  %>%
@@ -341,12 +464,15 @@ model_performance.LiblineaR <- function(model, dfm, initial_split, feat,
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Feature weighting scheme (`"ppmi"`, `"tfidf"`, or `"none"`).
 #' @param use Which data to evaluate: `"testing"`, `"training"`, or `"testing - OOD"`.
+#' @param reference_dfm Optional `quanteda` `dfm` supplying evaluation-time
+#'   weighting statistics (see [get_x_eval()]).
 #'
 #' @return A tibble of metrics with a `model_type` label.
 model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
                                            weight = c("ppmi", "tfidf", "none"),
-                                           use = "testing") {
-  
+                                           use = "testing",
+                                           reference_dfm = NULL) {
+
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   use <- match.arg(use, c("testing", "training", "testing - OOD"))
   if(use == "testing") {
@@ -356,10 +482,10 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
   } else {
     testing_dfm <- dfm
   }
-  model_type <- ifelse(stringr::str_detect(attr(model, "params")$objective, "reg:"), "regression",
-                       "classification")
+  model_type <- get_xgb_model_type(model)
 
-  x_test <- get_x(testing_dfm, feat = feat, weight = weight)
+  x_test <- get_x_eval(testing_dfm, dfm, feat = feat, weight = weight,
+                       initial_split = initial_split, reference_dfm = reference_dfm)
 
   feature_names <- xgboost::getinfo(model, "feature_name")
 
@@ -392,7 +518,7 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
   }
 
   res %>%
-    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
+    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", get_xgb_objective(model)))
 
 }
 
@@ -408,11 +534,14 @@ model_performance.xgb.Booster <-  function(model, dfm, initial_split, feat,
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Feature weighting scheme (`"ppmi"`, `"tfidf"`, or `"none"`).
 #' @param use Which data to evaluate: `"testing"`, `"training"`, or `"testing - OOD"`.
+#' @param reference_dfm Optional `quanteda` `dfm` supplying evaluation-time
+#'   weighting statistics (see [get_x_eval()]).
 #'
 #' @return A tibble of metrics with a `model_type` label.
 model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
                                         weight = c("ppmi", "tfidf", "none"),
-                                        use = "testing") {
+                                        use = "testing",
+                                        reference_dfm = NULL) {
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   use <- match.arg(use, c("testing", "training", "testing - OOD"))
   if(use == "testing") {
@@ -429,7 +558,8 @@ model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
     model_type <- "regression"
   }
 
-  x_test <- get_x(testing_dfm, feat = feat, weight = weight) %>%
+  x_test <- get_x_eval(testing_dfm, dfm, feat = feat, weight = weight,
+                       initial_split = initial_split, reference_dfm = reference_dfm) %>%
     quanteda::dfm_match(model$glmnet.fit$beta@Dimnames[[1]])
 
   y_test <- get_y(testing_dfm, feat, model_type = model_type)
@@ -483,7 +613,11 @@ binary_metrics <- function(preds) {
     dplyr::filter(.metric != "roc_auc") %>%
     dplyr::bind_rows(yardstick::roc_auc(preds,
                                         estimate, truth = truth,
-                                        event_level = "second"))
+                                        event_level = "second")) %>%
+    dplyr::bind_rows(yardstick::f_meas(preds,
+                                       truth = truth,
+                                       estimate = class,
+                                       event_level = "second"))
 
   conf_mat <- preds %>%
     yardstick::conf_mat(truth = truth, estimate = class)

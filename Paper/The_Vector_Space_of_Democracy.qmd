@@ -90,7 +90,7 @@ Despite its size and structure, however, the bare corpus cannot give us unbiased
 
 ## Descriptive Statistics: The frequency of democracy {.unnumbered}
 
-The simplest way of thinking about the importance of a concept is to look at its salience, and frequency in the corpus is a good proxy for salience. About `r format(num_1700_2020, big.mark = ",")` of the Hathi Trust volumes have approximate publication date information between 1700 and 2020, and of these about `r nrow(tar_read(workset_4ef79d414b4586ffde933480da92978f, store = here::here("_targets"))) %>% format(big.mark = ",")` mention the word "democracy." (This includes books in any language; if we restrict ourselves to books primarily written in English, `r tar_read(workset_meta_22b87106e349bba71f68f86e6a1e1254, store = here::here("_targets")) %>% filter(lang == "eng") %>% nrow() %>% format(big.mark = ",")` mention "democracy" at least once). A striking fact evident in this corpus is the rise of 'democracy' as a topic, both in terms of the number of books in which the word is mentioned, and in terms of the number of words per million in the corpus (@fig-percentTextsDemocracy and @fig-wordsPerMillionDemocracy).
+The simplest way of thinking about the importance of a concept is to look at its salience, and frequency in the corpus is a good proxy for salience. About `r format(num_1700_2020, big.mark = ",")` of the Hathi Trust volumes have approximate publication date information between 1700 and 2020, and of these about `r format(tar_read(workset_volume_count_democracy, store = here::here("_targets")), big.mark = ",")` mention the word "democracy." (This includes books in any language; if we restrict ourselves to books primarily written in English, `r format(tar_read(workset_meta_volume_count_democracy, store = here::here("_targets")), big.mark = ",")` mention "democracy" at least once). A striking fact evident in this corpus is the rise of 'democracy' as a topic, both in terms of the number of books in which the word is mentioned, and in terms of the number of words per million in the corpus (@fig-percentTextsDemocracy and @fig-wordsPerMillionDemocracy).
 
 ```{r fig-percentTextsDemocracy}
 #| fig-cap: "Percent of texts in the Hathi Trust corpus mentioning 'democracy'. This includes only texts that have publication date information. Shaded areas denote major wars and revolutions - the American and French revolutions (up to 1810), the revolutions of 1848, the American Civil War, the First and the Second World Wars, and the end of the Cold War."
@@ -326,6 +326,7 @@ combined_performance %>%
        alpha = "Sample split",
        color = "Sample split", x ="", y = "")
 ```
+
 Even in the largest samples, predictive performance decreases around 1830, evidence of the increasing heterogeneity of the features associated with democracy (as we shall see later in more detail). While predictive performance for all models could in principle be improved with clever feature engineering or parameter tuning, we are less interested in maximizing their predictive accuracy than in understanding the story that their coefficients or weights tell us; and for that purpose we do not need perfect accuracy. Each model's weights gives us a measure of the strength of the association between a particular word in our vocabulary and the term "democracy". While the specific magnitude of these weights would change with increased predictive performance, as a whole the top features will tend to be reasonably stable, as they will contribute the most to prediction under any model; and overall the *distribution* of weights will stabilize past a certain point. 
 
 To be sure, the weights of each model are not directly comparable. The weights of a naive Bayes classifier represent the class-conditional densities ($P(Vocabulary|Class)$), i.e., the probability that a given word in the vocabulary appears in a document with class C, while the coefficients of a logistic model represent the change in the log odds of class C for a one-unit change in the features, the weights of a support vector machine represent the normal vector defining the hyperplane separating the classes (for some input scaling), and the feature importance in gradient-boosted decision trees represent the "gain" (the reduction in the loss) achieved at splits where the feature appears, summed across all trees in the ensemble. We do not want to use them, however, to make predictions on new text but instead want to compare them as measures of *feature importance* under some interpretation (model) of the data. 
@@ -557,10 +558,6 @@ sentiments_bing <- tidytext::get_sentiments("bing") |>
   mutate(sentiment = case_when(sentiment == "negative" ~ 0,
                                TRUE ~ 1),
          lexicon = "bing")
-
-sentiments_afinn <- tidytext::get_sentiments("afinn") |>
-  mutate(sentiment = scales::rescale(value),
-         lexicon = "afinn")
 
 sentiments_afinn <- tidytext::get_sentiments("afinn") |>
   mutate(sentiment = scales::rescale(value),

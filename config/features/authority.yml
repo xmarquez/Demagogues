@@ -1,0 +1,13 @@
+id: authority
+name: authority
+description: "Dictionary for authority noun forms."
+search_terms: [authority]
+search_join: OR
+pages_contain: "authority"
+dictionary:
+  authority:
+    - authority_nn
+    - authority_nnp
+    - authority_nns
+graphs:
+  tracked_terms: [legitimate_jj, rights_nn, legitimacy_nn]

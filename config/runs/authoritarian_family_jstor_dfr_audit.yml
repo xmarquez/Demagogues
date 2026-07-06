@@ -1,0 +1,4 @@
+id: authoritarian_family_jstor_dfr_audit
+description: "JSTOR DfR support audit for authoritarian/authoritarianism terms using untagged NGRAMS1 counts."
+features: [authoritarianism]
+outputs: [jstor_ingest, jstor_audit]

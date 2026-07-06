@@ -1,0 +1,4 @@
+id: authoritarianism_jstor_glmnet_100
+description: "JSTOR DfR authoritarianism run: top 100 authoritarianism-positive articles per decade with matched negative articles; glmnet, LiblineaR, naive Bayes, and xgboost classification."
+features: [authoritarianism]
+outputs: [jstor_ingest, jstor_dfm, jstor_model, jstor_graph]

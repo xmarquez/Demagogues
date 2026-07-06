@@ -1,0 +1,24 @@
+id: auctoritas
+name: auctoritas
+description: "Perseus Latin prototype for auctoritas and its inflected forms."
+lemma: auctoritas
+forms:
+  - auctoritas
+  - auctoritatis
+  - auctoritati
+  - auctoritatem
+  - auctoritate
+  - auctoritates
+  - auctoritatum
+  - auctoritatibus
+tracked_terms:
+  - potestas
+  - potestatem
+  - imperium
+  - leges
+  - lex
+  - libertas
+  - dignitas
+  - dignitatem
+  - senatus
+  - populus

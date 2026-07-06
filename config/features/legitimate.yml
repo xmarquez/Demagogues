@@ -1,0 +1,19 @@
+id: legitimate
+name: legitimate
+description: "Dictionary for legitimate adjective and verb forms."
+search_terms: [legitimate]
+search_join: OR
+pages_contain: "legitimate"
+dictionary:
+  legitimate:
+    - legitimate_jj
+    - legitimate_jjr
+    - legitimate_jjs
+    - legitimate_vb
+    - legitimate_vbd
+    - legitimate_vbg
+    - legitimate_vbn
+    - legitimate_vbp
+    - legitimate_vbz
+graphs:
+  tracked_terms: [legitimacy_nn, rights_nn, authority_nn]
