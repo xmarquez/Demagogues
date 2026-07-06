@@ -75,9 +75,14 @@ demagogues_singularity <- Sys.getenv(
 # straight into the container. Do NOT re-exec "$0" instead: under sbatch, $0
 # is Slurm's spooled script copy on node-local /var/lib/slurm, which does not
 # exist inside the container (observed failure on the first shakedown).
+# The `cd` matters: the sbatch shim submits over ssh from $HOME, so Slurm
+# starts the worker there, but targets' store paths (_targets/objects/...)
+# are relative to the project root.
 slurm_script_lines <- c(
   paste0(
-    "Rscript() { exec ",
+    "Rscript() { cd ",
+    shQuote(demagogues_scratch),
+    " && exec ",
     shQuote(demagogues_singularity),
     " exec --bind /nfs/scratch ",
     shQuote(demagogues_sif),
