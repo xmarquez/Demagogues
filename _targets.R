@@ -217,6 +217,9 @@ ingest_targets <- list(
       storage = "worker",
       retrieval = "worker",
       format = "file",
+      # A failed branch/run is recorded in tar_meta() and becomes NULL rather
+      # than aborting the whole pipeline.
+      error = "null",
       description = "Ingest: Download and cache EF JSON files for the sampled volumes."
     )
   )
@@ -529,6 +532,9 @@ model_targets <- list(
         kl_matrix_to_df() %>%
         dplyr::mutate(kl_id = kl_id),
       deployment = "main",
+      # A failed branch/run is recorded in tar_meta() and becomes NULL rather
+      # than aborting the whole pipeline.
+      error = "null",
       description = "Model: KL divergences of weight distributions across periods."
     )
   ),
@@ -539,6 +545,9 @@ model_targets <- list(
       command = entropy(weight_object) |>
         dplyr::mutate(entropy_id = entropy_id),
       deployment = "main",
+      # A failed branch/run is recorded in tar_meta() and becomes NULL rather
+      # than aborting the whole pipeline.
+      error = "null",
       description = "Model Weights: Entropy of weight distributions across periods."
     )
   ),
@@ -682,6 +691,9 @@ graph_targets <- list(
       memory = "transient",
       garbage_collection = TRUE,
       deployment = "main",
+      # A failed branch/run is recorded in tar_meta() and becomes NULL rather
+      # than aborting the whole pipeline.
+      error = "null",
       description = "Graph: Graph objects visualizing nearest neighbors by part of speech."
     )
   ),

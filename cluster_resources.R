@@ -79,6 +79,12 @@ demagogues_singularity <- Sys.getenv(
 # starts the worker there, but targets' store paths (_targets/objects/...)
 # are relative to the project root.
 slurm_script_lines <- c(
+  # Workers do not inherit the coordinator's environment (submission goes
+  # through the ssh shims), so pipeline env vars are baked in literally here.
+  paste0(
+    "export RESEARCH_DATA_ROOT=",
+    shQuote(Sys.getenv("RESEARCH_DATA_ROOT", "/nfs/scratch/marquexa/corpora"))
+  ),
   paste0(
     "Rscript() { cd ",
     shQuote(demagogues_scratch),

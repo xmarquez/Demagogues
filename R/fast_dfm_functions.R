@@ -169,15 +169,56 @@ dfm_from_json <- function(paths,
 #' Uses `hathiTools` to rsync EF JSON files for a set of sampled volumes and
 #' returns the local filesystem paths to the cached JSON files.
 #'
+#' The EF cache directory is derived here from `RESEARCH_DATA_ROOT` rather than
+#' relying on the `hathiTools.ef.dir` option set in `_targets.R`: crew workers
+#' never source `_targets.R`, so on a worker that option holds the hathiTools
+#' load-time default (`./hathi-ef`), which silently misses the real cache.
+#'
 #' @param democracy_samples A data frame/tibble of sampled volumes accepted by
 #'   `hathiTools::rsync_from_hathi()` and `hathiTools::find_cached_htids()` (must
 #'   include HTIDs).
 #'
-#' @return A character vector of local JSON file paths.
+#' @return A character vector of local JSON file paths (existing files only).
 cache_ef_files <- function(democracy_samples) {
-  hathiTools::rsync_from_hathi(democracy_samples)
+  research_data_root <- normalizePath(
+    Sys.getenv("RESEARCH_DATA_ROOT", "D:/ResearchData/corpora"),
+    winslash = "/",
+    mustWork = FALSE
+  )
+  ef_dir <- file.path(research_data_root, "hathi", "hathi-ef")
+  old_opts <- options(hathiTools.ef.dir = ef_dir)
+  on.exit(options(old_opts), add = TRUE)
+
+  # Cache hits need no network; rsync failure (e.g. compute nodes without
+  # outbound access) only matters for volumes not already cached.
+  tryCatch(
+    hathiTools::rsync_from_hathi(democracy_samples),
+    error = function(e) {
+      warning(
+        "rsync_from_hathi failed (compute node without outbound network?): ",
+        conditionMessage(e),
+        call. = FALSE
+      )
+      NULL
+    }
+  )
+
   json_paths <- hathiTools::find_cached_htids(democracy_samples, cache_type = "none")
-  json_paths$local_loc
+  paths <- json_paths$local_loc
+  paths <- paths[file.exists(paths)]
+
+  # Zero files for a non-empty sample means the cache dir is wrong or the data
+  # is unstaged: fail loudly rather than poisoning downstream targets with an
+  # empty-but-"completed" result.
+  if (length(paths) == 0L && nrow(democracy_samples) > 0L) {
+    stop(
+      "No cached EF files under ", ef_dir, " for ", nrow(democracy_samples),
+      " sampled volumes, and rsync could not fetch them.",
+      call. = FALSE
+    )
+  }
+
+  paths
 }
 
 #' Build a trimmed DFM with page-level restriction/downsampling
