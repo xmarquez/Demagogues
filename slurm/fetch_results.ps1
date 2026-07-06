@@ -28,7 +28,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot   # slurm/ -> project root
 
 # --- Locate newest bundle on the cluster -------------------------------------
 Write-Host "== Looking for the newest bundle in ${remote}:$Scratch/exports ..."
-$newest = ssh -o BatchMode=yes -o ConnectTimeout=8 $remote "ls -1t $Scratch/exports/results_*.tar.gz 2>/dev/null | head -n 1"
+$newest = ssh -n -o BatchMode=yes -o ConnectTimeout=8 $remote "ls -1t $Scratch/exports/results_*.tar.gz 2>/dev/null | head -n 1"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "SSH failed. Check VPN / keys (see slurm/deploy.ps1 guidance)." -ForegroundColor Red
     exit 1
