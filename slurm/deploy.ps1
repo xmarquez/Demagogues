@@ -74,7 +74,9 @@ Write-Host "   SSH OK."
 
 # --- 3. Sync cluster clone to this commit -------------------------------------
 Write-Host "== Checking out $headSha on the cluster ($Scratch)..."
-$checkoutCmd = "cd $Scratch && git fetch --all --quiet && git checkout --detach $headSha && git rev-parse HEAD"
+# -f: the cluster clone is disposable; stray local changes there (e.g. a
+# manual chmod during debugging) must never block a deploy.
+$checkoutCmd = "cd $Scratch && git fetch --all --quiet && git checkout -f --detach $headSha && git rev-parse HEAD"
 $remoteSha = ssh $remote $checkoutCmd
 if ($LASTEXITCODE -ne 0) {
     Fail "Remote checkout failed. Has slurm/setup_raapoi.sh been run on the cluster yet?"
