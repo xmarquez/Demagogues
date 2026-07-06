@@ -101,7 +101,7 @@ if ($Walltime) { $sbatchArgs = "$sbatchArgs --time=$Walltime" }
 
 Write-Host "== Submitting $script (run=$Run profile=$Profile)..."
 $submitCmd = "cd $Scratch && mkdir -p logs && sbatch $sbatchArgs $script"
-$submitOut = ssh -n -n $remote $submitCmd
+$submitOut = ssh -n $remote $submitCmd
 if ($LASTEXITCODE -ne 0) { Fail "sbatch submission failed:`n$submitOut" }
 Write-Host "   $submitOut"
 
