@@ -101,6 +101,10 @@ fi
 # --- 4. Container image --------------------------------------------------------
 step "Pulling container image from GHCR"
 # Non-interactive shells have a bare MODULEPATH: add the EasyBuild tree first.
+# Lmod ``module`` is a shell function that non-login shells lack: init it first.
+if ! command -v module >/dev/null 2>&1; then
+  source /etc/profile.d/lmod.sh 2>/dev/null || source /opt/ohpc/admin/lmod/lmod/init/bash
+fi
 module use /home/software/tools/eb_modulefiles/all/Core 2>/dev/null || true
 module load GCC/10.2.0 OpenMPI/4.0.5 Singularity/3.10.2
 singularity pull --force "$DEMAGOGUES_SIF" docker://ghcr.io/xmarquez/demagogues:latest
