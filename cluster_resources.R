@@ -70,18 +70,19 @@ demagogues_singularity <- Sys.getenv(
   "/home/software/EasyBuild/software/Singularity/3.10.2-gompi-2020b/bin/singularity"
 )
 
+# A shell function named Rscript shadows PATH lookup in crew's generated
+# worker script, so its final `Rscript -e '<crew_worker call>'` line execs
+# straight into the container. Do NOT re-exec "$0" instead: under sbatch, $0
+# is Slurm's spooled script copy on node-local /var/lib/slurm, which does not
+# exist inside the container (observed failure on the first shakedown).
 slurm_script_lines <- c(
-  'if [ -z "${DEMAGOGUES_IN_CONTAINER:-}" ]; then',
-  "  export SINGULARITYENV_DEMAGOGUES_IN_CONTAINER=1",
   paste0(
-    "  exec ",
+    "Rscript() { exec ",
     shQuote(demagogues_singularity),
     " exec --bind /nfs/scratch ",
-    "--env DEMAGOGUES_IN_CONTAINER=1 ",
     shQuote(demagogues_sif),
-    ' /bin/bash "$0"'
-  ),
-  "fi"
+    ' /usr/local/bin/Rscript "$@"; }'
+  )
 )
 
 # --- Slurm controller group -------------------------------------------------
@@ -109,6 +110,10 @@ build_slurm_controller_group <- function() {
       name = "std",
       workers = workers_std,
       seconds_idle = 300,
+      # Declare a launch lost (and relaunch) after 30 min without the worker
+      # dialing in; the default grace is so long that a failed sbatch (e.g.
+      # the exec-bit incident) stalls the pipeline for hours.
+      seconds_launch = 1800,
       options_cluster = slurm_options(
         partition = "parallel",
         memory_gb_per_cpu = 6,
@@ -120,6 +125,10 @@ build_slurm_controller_group <- function() {
       name = "bigmem",
       workers = workers_bigmem,
       seconds_idle = 300,
+      # Declare a launch lost (and relaunch) after 30 min without the worker
+      # dialing in; the default grace is so long that a failed sbatch (e.g.
+      # the exec-bit incident) stalls the pipeline for hours.
+      seconds_launch = 1800,
       options_cluster = slurm_options(
         partition = "bigmem",
         memory_gb_per_cpu = 40,
