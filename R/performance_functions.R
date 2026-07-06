@@ -147,6 +147,10 @@ model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c(
                                                    reference_dfm = NULL) {
 
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
+  lambda_rule <- attr(model, "lambda_rule")
+  if(is.null(lambda_rule)) {
+    lambda_rule <- "lambda.min"
+  }
   if("lognet" %in% class(model$glmnet.fit)) {
     model_type <- "classification"
 
@@ -160,10 +164,10 @@ model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c(
 
   y_test <- get_y(dfm, feat, model_type = model_type)
 
-  predictions_estimate <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "response") %>%
+  predictions_estimate <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = lambda_rule, type = "response") %>%
     as.vector()
 
-  predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
+  predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = lambda_rule, type = "class") %>%
     factor(levels = c("FALSE", "TRUE"))
 
   if(model_type == "regression") {
@@ -177,7 +181,7 @@ model_performance_per_volume.cv.glmnet <- function(model, dfm, feat, weight = c(
   }
 
   if(model_type == "classification") {
-    predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
+    predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = lambda_rule, type = "class") %>%
       factor(levels = c("FALSE", "TRUE"))
 
     preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)  %>%
@@ -544,6 +548,10 @@ model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
                                         reference_dfm = NULL) {
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   use <- match.arg(use, c("testing", "training", "testing - OOD"))
+  lambda_rule <- attr(model, "lambda_rule")
+  if(is.null(lambda_rule)) {
+    lambda_rule <- "lambda.min"
+  }
   if(use == "testing") {
     testing_dfm <- get_test_sample(dfm, initial_split)
   } else if(use == "training") {
@@ -564,10 +572,10 @@ model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
 
   y_test <- get_y(testing_dfm, feat, model_type = model_type)
 
-  predictions_estimate <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "response") %>%
+  predictions_estimate <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = lambda_rule, type = "response") %>%
     as.vector()
 
-  predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
+  predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = lambda_rule, type = "class") %>%
     factor(levels = c("FALSE", "TRUE"))
 
   preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)
@@ -580,7 +588,7 @@ model_performance.cv.glmnet <- function(model, dfm, initial_split, feat,
   }
 
   if(model_type == "classification") {
-    predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = "lambda.min", type = "class") %>%
+    predictions_class <- glmnet:::predict.cv.glmnet(model, newx = x_test, s = lambda_rule, type = "class") %>%
       factor(levels = c("FALSE", "TRUE"))
 
     preds <- tibble::tibble(truth = y_test, estimate = predictions_estimate, class = predictions_class)

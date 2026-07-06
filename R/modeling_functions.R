@@ -236,18 +236,37 @@ cosine_sims <- function(x, y) {
 #'   `"naivebayes"`).
 #' @param pattern Regular expression used to select predictor features after
 #'   removing the target feature token(s).
+#' @param params A named list of engine hyperparameters supplied from the YAML
+#'   config (see `config/pipeline.yml` / `config/corpus.yml`,
+#'   `predictive_models.engines`). Each engine merges these over its hard-coded
+#'   defaults with [utils::modifyList()], so an empty list reproduces the
+#'   historical defaults exactly. Recognized keys are engine-specific, e.g.
+#'   `laplace` (naivebayes); `type`/`cost` (LiblineaR); `alpha`/`nfolds` and the
+#'   glmnet-only pseudo-param `lambda_rule` (`"lambda.min"`/`"lambda.1se"`);
+#'   `nrounds`/`eta`/`max_depth`/`colsample_bytree`/`lambda`/`subsample` and the
+#'   accepted-but-unsupported `early_stopping_rounds` (xgboost).
 #' @param ... Additional engine-specific arguments passed through.
 #'
 #' @return A fitted model object; class depends on the selected `engine`.
+#'
+#' @details `lambda_rule` is a glmnet-only pseudo-parameter: it is not forwarded
+#'   to [glmnet::cv.glmnet()] but instead controls which lambda (`lambda.min` or
+#'   `lambda.1se`) is used when reading coefficients/predictions downstream. To
+#'   avoid threading it through extra parameter-grid columns and target
+#'   signatures, the chosen rule is stored as an attribute on the fitted model
+#'   object (`attr(model, "lambda_rule")`) at fit time; `model_weights.cv.glmnet()`
+#'   and the `cv.glmnet` performance methods read it back from the model.
 predictive_model <- function(dfm, initial_split, feat,
                              weight = c("ppmi", "tfidf", "none"),
                              model_type = c("regression", "classification"),
                              engine = c("LiblineaR", "glmnet", "xgboost"),
                              pattern = ".",
+                             params = list(),
                              ...) {
   engine <- match.arg(engine, c("LiblineaR", "glmnet", "xgboost", "naivebayes"))
   weight <- match.arg(weight, c("ppmi", "tfidf", "none"))
   model_type <- match.arg(model_type, c("regression", "classification"))
+  params <- if (is.null(params)) list() else as.list(params)
   dfm_feat <- dfm_select(dfm, feat)
   dfm <- compress_dfm_to_target_features(dfm, feat)
   dfm <- dfm %>%
@@ -261,18 +280,22 @@ predictive_model <- function(dfm, initial_split, feat,
          LiblineaR = predictive_model.LiblineaR(training_dfm = training_dfm,
                                                 feat = feat, weight = weight,
                                                 model_type = model_type,
+                                                params = params,
                                                 ...),
          glmnet = predictive_model.glmnet(training_dfm = training_dfm,
                                           feat = feat, weight = weight,
                                           model_type = model_type,
+                                          params = params,
                                           ...),
          xgboost = predictive_model.xgboost(training_dfm = training_dfm,
                                             feat = feat, weight = weight,
                                             model_type = model_type,
+                                            params = params,
                                             ...),
          naivebayes = predictive_model.naivebayes(training_dfm = training_dfm,
                                                   feat = feat, weight = weight,
                                                   model_type = model_type,
+                                                  params = params,
                                                   ...))
 
 }
@@ -286,10 +309,15 @@ predictive_model <- function(dfm, initial_split, feat,
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Weighting scheme passed to `get_x()`.
 #' @param model_type Modeling task; must be `"classification"` for this engine.
+#' @param params Named list of hyperparameters merged over the defaults
+#'   (`list(laplace = 1)`).
 #' @param ... Unused; present for interface consistency.
 #'
 #' @return A fitted naive Bayes model object.
-predictive_model.naivebayes <- function(training_dfm, feat, weight, model_type, ...) {
+predictive_model.naivebayes <- function(training_dfm, feat, weight, model_type, params = list(), ...) {
+
+  defaults <- list(laplace = 1)
+  params <- utils::modifyList(defaults, params)
 
   x_train <- get_x(training_dfm, feat = feat, weight = weight)
 
@@ -299,7 +327,7 @@ predictive_model.naivebayes <- function(training_dfm, feat, weight, model_type, 
 
   stopifnot(model_type == "classification")
 
-  model <- naivebayes::multinomial_naive_bayes(x_train, y_train, laplace = 1)
+  model <- naivebayes::multinomial_naive_bayes(x_train, y_train, laplace = params$laplace)
 
   model
 }
@@ -314,46 +342,42 @@ predictive_model.naivebayes <- function(training_dfm, feat, weight, model_type, 
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Weighting scheme passed to `get_x()`.
 #' @param model_type Modeling task (`"regression"` or `"classification"`).
-#' @param ... Optional engine arguments, notably `type`.
+#' @param params Named list of hyperparameters merged over the defaults. For
+#'   classification the defaults are `list(type = 1, cost = <heuristic>)`; for
+#'   regression `list(type = 11, cost = <heuristic>, svr_eps = 0.1)`. `cost`
+#'   defaults to `1 / mean(sqrt(rowSums(x_train^2)))`.
+#' @param ... Optional engine arguments (superseded by `params`).
 #'
 #' @return A fitted LiblineaR model object.
-predictive_model.LiblineaR <- function(training_dfm, feat, weight, model_type, ...) {
+predictive_model.LiblineaR <- function(training_dfm, feat, weight, model_type, params = list(), ...) {
 
   x_train <- get_x(training_dfm, feat = feat, weight = weight)
 
   y_train <- get_y(training_dfm, feat, model_type = model_type)
 
-  cost <- 1/mean(sqrt(Matrix::rowSums(x_train^2)))
+  cost_default <- 1/mean(sqrt(Matrix::rowSums(x_train^2)))
 
   x_train <- as(x_train, "dgCMatrix") %>%
     as("RsparseMatrix") %>%
     as("dgRMatrix")
 
   if(model_type == "regression") {
-    dots <- list(...)
-    if("type" %in% names(dots)) {
-      type <- dots[["type"]]
-      stopifnot(type %in% c(11:13))
-    } else {
-      type <- 11
-    }
+    defaults <- list(type = 11, cost = cost_default, svr_eps = 0.1)
+    params <- utils::modifyList(defaults, params)
+    stopifnot(params$type %in% c(11:13))
 
-    svm_model <- LiblineaR::LiblineaR(x_train, y_train, cost = cost,
-                                      type = type, svr_eps = 0.1)
+    svm_model <- LiblineaR::LiblineaR(x_train, y_train, cost = params$cost,
+                                      type = params$type, svr_eps = params$svr_eps)
   } else {
-    dots <- list(...)
-    if("type" %in% names(dots)) {
-      type <- dots[["type"]]
-      stopifnot(type %in% c(0:7))
-    } else {
-      type <- 1
-    }
+    defaults <- list(type = 1, cost = cost_default)
+    params <- utils::modifyList(defaults, params)
+    stopifnot(params$type %in% c(0:7))
 
     tab <- table(y_train)
     wi <- stats::setNames(as.numeric(sum(tab) / (length(tab) * tab)), names(tab))
 
-    svm_model <- LiblineaR::LiblineaR(x_train, y_train, cost = cost,
-                                      type = type, wi = wi)
+    svm_model <- LiblineaR::LiblineaR(x_train, y_train, cost = params$cost,
+                                      type = params$type, wi = wi)
   }
 
   svm_model
@@ -372,12 +396,22 @@ predictive_model.LiblineaR <- function(training_dfm, feat, weight, model_type, .
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Weighting scheme passed to `get_x()`.
 #' @param model_type Modeling task (`"regression"` or `"classification"`).
-#' @param ... Optional engine arguments such as `params` and `nrounds`.
+#' @param params Named list of hyperparameters merged over the engine defaults
+#'   with [utils::modifyList()]. For classification the defaults are
+#'   `objective = "binary:logistic"`, `scale_pos_weight` (class-imbalance ratio),
+#'   `eval_metric = "auc"`, `eta = 0.1`, `max_depth = 12`,
+#'   `colsample_bytree = 0.5`, `lambda = 0.5`, `subsample = 0.5`, `nrounds = 120`;
+#'   for regression `objective = "reg:squarederror"`, `nrounds = 20`. `nrounds`
+#'   may be supplied in `params`. `early_stopping_rounds` is accepted but not
+#'   supported here (the fit has no held-out validation set) and is dropped with
+#'   a warning; use a tuning study (`xgb.cv`) to choose `nrounds`.
+#' @param ... Optional engine arguments (superseded by `params`).
 #'
 #' @return A fitted `xgboost` model.
 predictive_model.xgboost <- function(training_dfm = training_dfm,
                                      feat = feat, weight = weight,
                                      model_type = model_type,
+                                     params = list(),
                                      ...) {
   xgboost_nthread <- as.integer(Sys.getenv("XGBOOST_NTHREAD", "1"))
   if(is.na(xgboost_nthread) || xgboost_nthread < 1) {
@@ -385,7 +419,7 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
   }
 
   x_train <- get_x(training_dfm, feat = feat, weight = weight)
-  
+
   y_train <- get_y(training_dfm, feat, model_type = model_type)
 
   if(model_type == "classification") {
@@ -396,71 +430,57 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
 
   print(table(y_train))
 
-  if(model_type == "regression") {
-    dots <- list(...)
-    if("params" %in% names(dots)) {
-      params <- dots[["params"]]
-      stopifnot(is.list(params))
-      if("objective" %in% names(params)) {
-        stopifnot(stringr::str_detect(params[["objective"]], "reg:"))
-      } else {
-        params[["objective"]] <- "reg:squarederror"
-      }
-    } else {
-      params <- list(objective = "reg:squarederror")
-    }
-    if("nrounds" %in% names(dots)) {
-      nrounds <- dots[["nrounds"]]
-    } else {
-      nrounds <- 20
-    }
-    params[["nthread"]] <- xgboost_nthread
-    xgboost_model <- xgboost::xgboost(data = x_train, label = y_train,
-                                      params = params, nrounds = nrounds)
-  } else {
-    dots <- list(...)
-    if("params" %in% names(dots)) {
-      params <- dots[["params"]]
-      stopifnot(is.list(params))
-      if("objective" %in% names(params)) {
-        stopifnot(stringr::str_detect(params[["objective"]], "binary:"))
-      } else {
-        params[["objective"]] <- "binary:logistic"
-      }
-    } else {
-      params <- list(objective = "binary:logistic")
-    }
-    if("nrounds" %in% names(dots)) {
-      nrounds <- dots[["nrounds"]]
-    } else {
-      nrounds <- 120
-    }
-    if(is.null(params[["scale_pos_weight"]])) {
-      params[["scale_pos_weight"]] <- sum(y_train == 0) / sum(y_train == 1)
-    }
-    if(is.null(params[["eval_metric"]])) {
-      params[["eval_metric"]] <- "auc"
-    }
-    if(is.null(params[["eta"]])) {
-      params[["eta"]] <- 0.1
-    }
-    if(is.null(params[["max_depth"]])) {
-      params[["max_depth"]] <- 12
-    }
-    if(is.null(params[["colsample_bytree"]])) {
-      params[["colsample_bytree"]] <- 0.5
-    }
-    if(is.null(params[["lambda"]])) {
-      params[["lambda"]] <- 0.5
-    }
-    if(is.null(params[["subsample"]])) {
-      params[["subsample"]] <- 0.5
-    }
-    params[["nthread"]] <- xgboost_nthread
+  params <- if (is.null(params)) list() else as.list(params)
 
-    xgboost_model <- xgboost::xgboost(data = x_train, label = y_train,
-                                      params = params, nrounds = nrounds)
+  # `nrounds` and `early_stopping_rounds` are handled outside the xgboost
+  # `params` list (they are arguments to xgboost(), not booster parameters).
+  nrounds_override <- params[["nrounds"]]
+  params[["nrounds"]] <- NULL
+  early_stopping_rounds <- params[["early_stopping_rounds"]]
+  params[["early_stopping_rounds"]] <- NULL
+
+  if(model_type == "regression") {
+    defaults <- list(objective = "reg:squarederror")
+    nrounds_default <- 20
+  } else {
+    defaults <- list(
+      objective = "binary:logistic",
+      scale_pos_weight = sum(y_train == 0) / sum(y_train == 1),
+      eval_metric = "auc",
+      eta = 0.1,
+      max_depth = 12,
+      colsample_bytree = 0.5,
+      lambda = 0.5,
+      subsample = 0.5
+    )
+    nrounds_default <- 120
   }
+
+  params <- utils::modifyList(defaults, params)
+
+  if(model_type == "regression") {
+    stopifnot(stringr::str_detect(params[["objective"]], "reg:"))
+  } else {
+    stopifnot(stringr::str_detect(params[["objective"]], "binary:"))
+  }
+
+  nrounds <- if (is.null(nrounds_override)) nrounds_default else nrounds_override
+  params[["nthread"]] <- xgboost_nthread
+
+  if(!is.null(early_stopping_rounds)) {
+    warning("`early_stopping_rounds` is not supported by predictive_model.xgboost(): ",
+            "the fit has no held-out validation set. Ignoring it; use a tuning ",
+            "study (xgb.cv) to choose `nrounds` instead.", call. = FALSE)
+  }
+
+  # Use the low-level xgb.train()/xgb.DMatrix() interface: as of xgboost 3.x the
+  # high-level xgboost(data=, label=, params=) interface is deprecated and
+  # *silently drops* the `params` list, so hyperparameters (max_depth, eta, ...)
+  # would never reach the booster. xgb.train() is the stable interface that
+  # honors a `params` list.
+  dtrain <- xgboost::xgb.DMatrix(data = x_train, label = y_train, nthread = xgboost_nthread)
+  xgboost_model <- xgboost::xgb.train(params = params, data = dtrain, nrounds = nrounds,
+                                      verbose = 0)
 
   attr(xgboost_model, "demagogues_objective") <- params[["objective"]]
   xgboost_model
@@ -479,10 +499,17 @@ predictive_model.xgboost <- function(training_dfm = training_dfm,
 #' @param feat Target feature specification used by `get_x()`/`get_y()`.
 #' @param weight Weighting scheme passed to `get_x()`.
 #' @param model_type Modeling task (`"regression"` or `"classification"`).
-#' @param ... Additional arguments passed to `glmnet::cv.glmnet()`.
+#' @param params Named list of hyperparameters forwarded to
+#'   [glmnet::cv.glmnet()] (e.g. `alpha`, `nfolds`; defaults are cv.glmnet's own
+#'   `alpha = 1`, `nfolds = 10`). The glmnet-only pseudo-param `lambda_rule`
+#'   (`"lambda.min"` or `"lambda.1se"`, default `"lambda.min"`) is *not* passed to
+#'   cv.glmnet; instead it is recorded as `attr(model, "lambda_rule")` and read
+#'   back downstream (see [predictive_model()] details).
+#' @param ... Unused; present for interface consistency (use `params` to pass
+#'   cv.glmnet arguments).
 #'
-#' @return A fitted `cv.glmnet` object.
-predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...) {
+#' @return A fitted `cv.glmnet` object, carrying a `"lambda_rule"` attribute.
+predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, params = list(), ...) {
 
   glmnet_cores <- as.integer(Sys.getenv("GLMNET_CORES", "1"))
   if(is.na(glmnet_cores) || glmnet_cores < 1) {
@@ -501,17 +528,29 @@ predictive_model.glmnet <- function(training_dfm, feat, weight, model_type, ...)
     foreach::registerDoSEQ()
   }
 
+  params <- if (is.null(params)) list() else as.list(params)
+
+  # `lambda_rule` is a pseudo-parameter: it selects which lambda is used when
+  # reading coefficients/predictions downstream, not a cv.glmnet() argument.
+  lambda_rule <- params[["lambda_rule"]]
+  params[["lambda_rule"]] <- NULL
+  if(is.null(lambda_rule)) {
+    lambda_rule <- "lambda.min"
+  }
+  lambda_rule <- match.arg(lambda_rule, c("lambda.min", "lambda.1se"))
+
   x_train <- get_x(training_dfm, feat = feat, weight = weight)
 
   y_train <- get_y(training_dfm, feat, model_type = model_type)
 
-  if(model_type == "regression") {
-    glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "gaussian",
-                                      parallel = use_parallel, ...)
-  } else {
-    glmnet_model <- glmnet::cv.glmnet(x = x_train, y = y_train, family = "binomial",
-                                      parallel = use_parallel, ...)
-  }
+  family <- if(model_type == "regression") "gaussian" else "binomial"
+
+  glmnet_model <- do.call(
+    glmnet::cv.glmnet,
+    c(list(x = x_train, y = y_train, family = family, parallel = use_parallel), params)
+  )
+
+  attr(glmnet_model, "lambda_rule") <- lambda_rule
 
   glmnet_model
 

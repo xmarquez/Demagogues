@@ -165,25 +165,40 @@ model_weights.xgb.Booster <- function(model, method = c("positive", "shift", "so
     dplyr::mutate(scaled_value = as.numeric(scale(value)),
                   normalized_value = normalize_weights(value, method = method))
 
+  # Prefer the objective attribute set at fit time (xgb.train() does not populate
+  # `model$params`), falling back to `model$params$objective` for compatibility.
+  objective <- attr(model, "demagogues_objective")
+  if(is.null(objective)) {
+    objective <- model$params$objective
+  }
+
   ret %>%
-    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", model$params$objective))
+    dplyr::mutate(model_type = paste("xgboost gradient boosted trees", objective))
 
 }
 
 #' Model weights for cv.glmnet models
 #'
-#' Extracts coefficients from a fitted `glmnet::cv.glmnet()` model at
-#' `lambda.min`, averages across classes if applicable, and returns a normalized
-#' weight table (excluding the intercept).
+#' Extracts coefficients from a fitted `glmnet::cv.glmnet()` model at the lambda
+#' selected by the model's `"lambda_rule"` attribute (`lambda.min` by default;
+#' `lambda.1se` when configured), averages across classes if applicable, and
+#' returns a normalized weight table (excluding the intercept).
 #'
-#' @param model A fitted `glmnet` cross-validated model.
+#' @param model A fitted `glmnet` cross-validated model. When present, its
+#'   `"lambda_rule"` attribute (set at fit time by [predictive_model()]) selects
+#'   the lambda used to read coefficients.
 #' @param method Normalization scheme passed to [normalize_weights()].
 #'
 #' @return A tibble of coefficients with normalization columns.
 model_weights.cv.glmnet <- function(model, method = c("positive", "shift", "softmax")) {
   method <- match.arg(method)
 
-  glmnet:::predict.cv.glmnet(model, s = "lambda.min", type = "coef") %>%
+  lambda_rule <- attr(model, "lambda_rule")
+  if(is.null(lambda_rule)) {
+    lambda_rule <- "lambda.min"
+  }
+
+  glmnet:::predict.cv.glmnet(model, s = lambda_rule, type = "coef") %>%
     Matrix::rowMeans() %>%
     tibble::enframe() %>%
     dplyr::rename(word = name) %>%

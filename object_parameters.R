@@ -173,6 +173,56 @@ deep_merge <- function(base, override) {
   out
 }
 
+#' Normalize predictive-model engine specifications
+#'
+#' Predictive-model engines may be configured in two forms in the YAML config:
+#' - scalar form: `engines: [glmnet, naivebayes]` (no per-engine params); and
+#' - mapping form: a sequence of `{ name: <engine>, params: { ... } }` entries.
+#'
+#' This helper collapses either form (or a mix) into one canonical
+#' representation: a list of `list(name = <chr>, params = <named list>)` entries,
+#' with an empty `params` list when none are supplied. Downstream code therefore
+#' only ever sees the mapping form.
+#'
+#' @param engines Raw engines value from the merged config (a character vector,
+#'   a list of scalar strings, or a list of `name`/`params` mappings).
+#'
+#' @return A list of `list(name, params)` entries (possibly empty).
+#' @keywords internal
+normalize_engines <- function(engines) {
+  if (is.null(engines) || length(engines) == 0) {
+    return(list())
+  }
+  purrr::map(engines, function(e) {
+    if (is.list(e)) {
+      list(
+        name = as.character(e$name %||% e[[1]]),
+        params = as.list(e$params %||% list())
+      )
+    } else {
+      list(name = as.character(e), params = list())
+    }
+  })
+}
+
+#' Resolve engines across a base/profile merge (wholesale override)
+#'
+#' A profile-level `engines` override replaces the base engine list wholesale
+#' (rather than being merged element-wise). This preserves that semantic
+#' regardless of whether either side uses the scalar or mapping form, then
+#' normalizes the winning list via [normalize_engines()].
+#'
+#' @param base_engines Base (pre-profile) engines value.
+#' @param override_engines Profile-level engines value, or `NULL` when the
+#'   profile does not override engines.
+#'
+#' @return A normalized list of `list(name, params)` entries.
+#' @keywords internal
+normalize_engines_for_merge <- function(base_engines, override_engines) {
+  chosen <- if (!is.null(override_engines)) override_engines else base_engines
+  normalize_engines(chosen)
+}
+
 #' Read a YAML file when it exists
 #'
 #' @param path Path to a YAML file.
@@ -207,6 +257,12 @@ read_legacy_pipeline_config <- function(profile = Sys.getenv("TARGET_PROFILE", "
   base_cfg <- raw$base %||% raw
   profile_cfg <- raw$profiles[[profile]] %||% list()
   cfg <- deep_merge(base_cfg, profile_cfg)
+  # Normalize engines to the canonical name/params form immediately after the
+  # merge. A profile override replaces the base engine list wholesale.
+  cfg$predictive_models$engines <- normalize_engines_for_merge(
+    base_cfg$predictive_models$engines,
+    profile_cfg$predictive_models$engines
+  )
   cfg$profile <- profile
   cfg$run_id <- profile
   cfg$run_description <- cfg$description %||% raw$description %||% ""
@@ -282,9 +338,19 @@ read_split_pipeline_config <- function(run = Sys.getenv("TARGET_RUN", "full_demo
   cfg <- deep_merge(corpus_cfg, direct_overrides)
   cfg <- deep_merge(cfg, run_cfg$overrides %||% list())
 
+  # Engines resolved by the corpus/run layers (before the profile is applied).
+  pre_profile_engines <- cfg$predictive_models$engines
+
   profile_cfg <- cfg$profiles[[profile]] %||% list()
   cfg <- deep_merge(cfg, profile_cfg)
   cfg$profiles <- NULL
+
+  # Normalize engines to the canonical name/params form immediately after the
+  # merge. A profile override replaces the corpus/run engine list wholesale.
+  cfg$predictive_models$engines <- normalize_engines_for_merge(
+    pre_profile_engines,
+    profile_cfg$predictive_models$engines
+  )
 
   cfg$features <- feature_configs[run_feature_ids]
   cfg$outputs <- run_cfg$outputs %||% cfg$outputs %||% NULL
@@ -639,15 +705,39 @@ split_df <- dfm_df %>%
 
 # Predictive models -----------------------------------------------------------
 
+# Stable 8-char hash of a (canonicalized) engine params list. Empty params hash
+# to "" so slugify() drops the fragment and default/scalar-form configs keep the
+# same target names as before this parameterization was introduced. Names are
+# sorted before hashing so YAML key order does not affect the id.
+predictive_model_params_id <- function(params) {
+  if (length(params) == 0) {
+    return("")
+  }
+  canonical <- params[order(names(params))]
+  substr(digest::digest(canonical, algo = "xxhash32"), 1, 8)
+}
+
+# Engine tibble carries each engine name alongside its (possibly empty) params
+# list, keeping name and params paired through the grid expansion.
+engines_tbl <- tibble(
+  predictive_model_engine = purrr::map_chr(cfg$predictive_models$engines, "name"),
+  predictive_model_params = purrr::map(cfg$predictive_models$engines, "params")
+)
+
 predictive_model_params <- expand_grid(
   predictive_model_task = cfg$predictive_models$task,
   predictive_model_dfm_weight = cfg$predictive_models$weights,
-  predictive_model_engine = cfg$predictive_models$engines,
-  predictive_model_params = NA
+  engines_tbl
 )
 
 predictive_model_df <- expand_grid(split_df, predictive_model_params) %>%
-  add_target("predictive_model", c("split_id", "predictive_model_engine", "predictive_model_dfm_weight")) %>%
+  mutate(
+    predictive_model_params_hash = purrr::map_chr(predictive_model_params, predictive_model_params_id)
+  ) %>%
+  add_target(
+    "predictive_model",
+    c("split_id", "predictive_model_engine", "predictive_model_dfm_weight", "predictive_model_params_hash")
+  ) %>%
   mutate(
     predictive_model_object = predictive_model_object %>%
       purrr::map(~ {

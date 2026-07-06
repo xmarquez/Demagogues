@@ -83,6 +83,20 @@ Still to observe on the first **full** run: memory/walltime adequacy at 500 vols
 
 ---
 
+### 2026-07-07 — Phase 3 P1 complete (delegated, reviewed and verified)
+
+Config-driven hyperparameters, per the P1 spec (decision: Phase 3 P1–P4 run **before** the first full democracy run so the expensive run happens once with final settings).
+
+- **Config:** `predictive_models.engines` now accepts scalar form (`[glmnet, …]`, historical defaults) and mapping form (`- name: xgboost` / `params: {max_depth: 6, …}`), mixable, in both the legacy (`pipeline.yml`) and split (`corpus.yml` + runs) config paths; profile overrides still replace the engine list wholesale. `normalize_engines()` canonicalizes both forms to `name`+`params` immediately after the merge.
+- **Grid/ids:** `params` is a list-column paired with the engine name; an 8-char `xxhash32` of the name-sorted params enters `predictive_model_id` **only when params are non-empty** — verified `tar_manifest()` is byte-identical to HEAD under the default config (383 targets), and that a `max_depth` override invalidates only xgboost targets + their downstream closure. Duplicate engine entries with different params are allowed (this is what the P2 tuning run will use).
+- **Engines:** each method merges user params over the exact former hard-coded defaults via `modifyList()`. `lambda_rule` (`lambda.min`/`lambda.1se`) is a glmnet pseudo-param stored as `attr(model, "lambda_rule")` at fit time and read back by `model_weights.cv.glmnet()` and both glmnet performance methods (three formerly hard-coded `s = "lambda.min"` sites) — no target-signature changes. xgboost `early_stopping_rounds` is accepted-but-warned (no held-out set at fit time; the tuning study uses `xgb.cv` instead).
+- **Pre-existing bug found and fixed (important): under xgboost 3.x the high-level `xgboost(data=, label=, params=)` interface silently drops the `params` list.** Every xgboost fit since the 3.x upgrade ignored ALL hyperparameters (including the old hard-coded `max_depth=12, eta=0.1, …`) and used xgboost's built-in defaults (`max_depth=6, eta=0.3`, no subsampling, no `scale_pos_weight`). Never caught because the explore profile only runs glmnet+naivebayes. Fits migrated to `xgb.train()`/`xgb.DMatrix()`, which honors params — so historical xgboost results reflect xgboost defaults, not the documented settings, and will legitimately change on the next run. (Objective now also travels as a fit-time attribute since `xgb.train` doesn't populate `$params`.)
+- Tests: `tests/testthat/test-model-params.R` adds 20 assertions (parse equivalence, wholesale override, hash semantics/order-invariance, default-vs-override fits for xgboost/glmnet, `lambda_rule` respected by weights). Suite: **111 pass / 0 fail.**
+
+Next in Phase 3: P2 tuning run config (3 decades, xgboost depth×eta grid, glmnet α grid) on Rāpoi → tuned defaults into config; then P3 `n_repeats` and P4 `sampled_htids`.
+
+---
+
 ## Phase 1 — Correctness fixes (do these before re-running anything expensive)
 
 > **Status: ✅ done 2026-07-06** except the paper-text items (M3.1, M4 caveats) — see Progress log above for what was actually implemented, including two additional bugs (B7, B8) discovered and fixed during review.
@@ -279,6 +293,8 @@ Create `slurm/` with:
 ---
 
 ## Phase 3 — Model parameterization & statistical robustness
+
+> **P1 status: ✅ done 2026-07-07** (see Progress log — includes a pre-existing xgboost-3.x params-dropping bug found and fixed). P2–P4 pending.
 
 ### P1. Move all hyperparameters from code to config
 

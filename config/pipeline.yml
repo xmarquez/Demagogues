@@ -82,6 +82,16 @@ base:
     # - `glmnet`: penalized regression/logit with CV (`glmnet`)
     # - `LiblineaR`: linear SVM / linear models (`LiblineaR`)
     # - `xgboost`: gradient-boosted trees (`xgboost`)
+    # Two forms are accepted (mixable). Scalar form uses each engine's hard-coded
+    # defaults. Mapping form attaches per-engine hyperparameters merged over the
+    # defaults, e.g.:
+    #   engines:
+    #     - name: glmnet
+    #       params: { alpha: 0.5, nfolds: 10, lambda_rule: lambda.1se }
+    #     - name: xgboost
+    #       params: { nrounds: 200, eta: 0.1, max_depth: 6 }
+    # Non-default params add a short hash to that engine's target names; scalar
+    # engines keep their historical target names.
     engines: [naivebayes, glmnet, LiblineaR, xgboost]
 
   svd:

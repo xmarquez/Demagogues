@@ -306,7 +306,8 @@ model_targets <- list(
         initial_split = split_object,
         feat = feature_object,
         engine = predictive_model_engine,
-        model_type = predictive_model_task
+        model_type = predictive_model_task,
+        params = predictive_model_params
       ),
       pattern = map(dfm_object, split_object),
       packages = c("quanteda"),
