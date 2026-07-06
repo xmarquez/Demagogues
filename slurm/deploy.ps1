@@ -83,7 +83,13 @@ Write-Host "   Cluster clone at: $remoteSha (detached HEAD)"
 
 # --- 4. Submit ------------------------------------------------------------------
 $script = "slurm/launch.sh"
-if ($Smoke) { $script = "slurm/smoke.sh" }
+if ($Smoke) {
+    $script = "slurm/smoke.sh"
+    # Don't let this script's full-run defaults override smoke.sh's own
+    # small-run defaults unless the caller passed -Run/-Profile explicitly.
+    if (-not $PSBoundParameters.ContainsKey('Run')) { $Run = "auth_glmnet_40" }
+    if (-not $PSBoundParameters.ContainsKey('Profile')) { $Profile = "explore" }
+}
 
 $exports = "ALL,TARGET_RUN=$Run,TARGET_PROFILE=$Profile"
 $sbatchArgs = "--export=$exports"
