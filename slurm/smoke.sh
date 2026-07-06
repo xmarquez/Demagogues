@@ -29,6 +29,7 @@ export DEMAGOGUES_SUBMIT_HOST="${DEMAGOGUES_SUBMIT_HOST:-${SLURM_SUBMIT_HOST:-ra
 cd "$DEMAGOGUES_SCRATCH" || exit 1
 mkdir -p logs logs/crew exports
 
+module use /home/software/tools/eb_modulefiles/all/Core 2>/dev/null || true
 module load GCC/10.2.0 OpenMPI/4.0.5 Singularity/3.10.2
 
 export SINGULARITYENV_PREPEND_PATH="$DEMAGOGUES_SCRATCH/slurm/shims"

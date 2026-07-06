@@ -52,6 +52,14 @@ fi
 
 mkdir -p "$DEMAGOGUES_SCRATCH/logs/crew" "$DEMAGOGUES_SCRATCH/exports"
 
+# The pull above may have updated THIS script while bash was executing the old
+# buffered copy. Re-exec the fresh repo copy once so later steps run current code.
+if [ -z "${DEMAGOGUES_SETUP_REEXEC:-}" ] && [ -f "$DEMAGOGUES_SCRATCH/slurm/setup_raapoi.sh" ]; then
+  export DEMAGOGUES_SETUP_REEXEC=1
+  echo "   Re-executing the updated setup script..."
+  exec bash "$DEMAGOGUES_SCRATCH/slurm/setup_raapoi.sh"
+fi
+
 # --- 3. Intra-cluster passwordless ssh ----------------------------------------
 # The coordinator container submits/monitors worker jobs by ssh-ing back to the
 # login node (slurm/shims/*). That needs a key held on the cluster itself,
@@ -92,6 +100,8 @@ fi
 
 # --- 4. Container image --------------------------------------------------------
 step "Pulling container image from GHCR"
+# Non-interactive shells have a bare MODULEPATH: add the EasyBuild tree first.
+module use /home/software/tools/eb_modulefiles/all/Core 2>/dev/null || true
 module load GCC/10.2.0 OpenMPI/4.0.5 Singularity/3.10.2
 singularity pull --force "$DEMAGOGUES_SIF" docker://ghcr.io/xmarquez/demagogues:latest
 done_list+=("Pulled $DEMAGOGUES_SIF")

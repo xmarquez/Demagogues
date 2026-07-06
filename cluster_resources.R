@@ -62,6 +62,7 @@ demagogues_crew_dir <- file.path(demagogues_scratch, "logs", "crew")
 # the guard variable short-circuits, the #SBATCH lines are inert comments, and
 # execution falls through to the Rscript line inside the container.
 slurm_script_lines <- c(
+  "module use /home/software/tools/eb_modulefiles/all/Core 2>/dev/null || true",
   "module load GCC/10.2.0 OpenMPI/4.0.5 Singularity/3.10.2",
   'if [ -z "${DEMAGOGUES_IN_CONTAINER:-}" ]; then',
   "  export SINGULARITYENV_DEMAGOGUES_IN_CONTAINER=1",
