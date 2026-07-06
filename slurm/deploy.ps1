@@ -61,9 +61,11 @@ SSH to $remote failed. First-time setup checklist:
   1. Off-campus? Connect to the VUW VPN first.
   2. No key yet? Generate one:
        ssh-keygen -t ed25519
-  3. Copy it to the cluster (Windows equivalent of ssh-copy-id):
-       type `$env:USERPROFILE\.ssh\id_ed25519.pub | ssh $remote "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
-     (You will be asked for your Raapoi password once.)
+  3. Copy it to the cluster (Windows equivalent of ssh-copy-id; run in
+     PowerShell, not WSL -- this script uses the Windows OpenSSH client):
+       type `$env:USERPROFILE\.ssh\id_ed25519.pub | ssh $remote "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+     (You will be asked for your Raapoi password once. The chmods matter:
+     sshd ignores authorized_keys with loose permissions.)
   4. Re-run this script.
 "@ -ForegroundColor Yellow
     exit 1

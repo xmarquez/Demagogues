@@ -65,12 +65,19 @@ Key design points:
 ## One-time setup
 
 1. **VPN** (off-campus only): connect to the VUW VPN.
-2. **SSH key to Rāpoi** (from Windows):
+2. **SSH key to Rāpoi** — run this in **PowerShell**, not bash/WSL
+   (`deploy.ps1` uses the *Windows* OpenSSH client, so the Windows key in
+   `C:\Users\<you>\.ssh\` is the one that must be authorized on the cluster):
    ```powershell
    ssh-keygen -t ed25519        # if you have no key yet
-   type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh marquexa@raapoi.vuw.ac.nz "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
-   ssh marquexa@raapoi.vuw.ac.nz true    # should return silently
+   type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh marquexa@raapoi.vuw.ac.nz "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+   ssh -o BatchMode=yes marquexa@raapoi.vuw.ac.nz true    # should return silently
    ```
+   The `chmod`s matter: sshd's `StrictModes` silently ignores an
+   `authorized_keys` file with loose permissions, leaving you stuck at password
+   prompts with no explanation. If you prefer WSL, pipe the **Windows** key
+   (WSL has its own separate `~/.ssh`):
+   `cat /mnt/c/Users/<you>/.ssh/id_ed25519.pub | ssh marquexa@raapoi.vuw.ac.nz "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"`
    (`deploy.ps1` prints this guidance automatically if its SSH check fails.)
 3. **First container build**: push any commit touching `renv.lock`, `docker/**`
    or the workflow to `master` (or run the *Build container image* workflow
