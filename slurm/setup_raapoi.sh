@@ -92,7 +92,7 @@ fi
 
 # --- 4. Container image --------------------------------------------------------
 step "Pulling container image from GHCR"
-module load Singularity/3.10.2
+module load GCC/10.2.0 OpenMPI/4.0.5 Singularity/3.10.2
 singularity pull --force "$DEMAGOGUES_SIF" docker://ghcr.io/xmarquez/demagogues:latest
 done_list+=("Pulled $DEMAGOGUES_SIF")
 

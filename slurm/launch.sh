@@ -39,7 +39,7 @@ export DEMAGOGUES_SUBMIT_HOST="${DEMAGOGUES_SUBMIT_HOST:-${SLURM_SUBMIT_HOST:-ra
 cd "$DEMAGOGUES_SCRATCH" || exit 1
 mkdir -p logs logs/crew exports
 
-module load Singularity/3.10.2
+module load GCC/10.2.0 OpenMPI/4.0.5 Singularity/3.10.2
 
 # Everything the pipeline reads from the environment must survive the
 # `singularity exec` boundary. Singularity 3.10 passes most host env through,
