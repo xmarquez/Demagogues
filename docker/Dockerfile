@@ -33,6 +33,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libglpk-dev \
       zlib1g-dev \
       libicu-dev \
+      cmake \
+      libmbedtls-dev \
+      libx11-dev \
       git \
       ca-certificates \
       curl \
