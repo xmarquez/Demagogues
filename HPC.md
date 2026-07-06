@@ -192,7 +192,9 @@ default to quicktest, 2 CPU, 2 GB, 1 h.
 | Coordinator log: `sbatch: command not found` or shim auth failure | Intra-cluster ssh key missing / not authorized, or shims not executable | Re-run `slurm/setup_raapoi.sh`; test on a compute node: `ssh raapoi.vuw.ac.nz sbatch --version` |
 | R inside container can't find packages / renv activation messages | renv autoloader hijacked `.libPaths()` | Image sets `RENV_CONFIG_AUTOLOADER_ENABLED=FALSE`; make sure you're not overriding it, and the image is current (`slurm/pull_image.sh`) |
 | Workers launch then die instantly, `logs/worker-*.err` empty | Worker script not readable from compute node | Worker scripts must be on scratch: check `logs/crew/` exists under `DEMAGOGUES_SCRATCH` (created by launch.sh) |
-| `Rscript: command not found` in worker logs | Re-exec into container didn't happen (module load failed?) | Check `module load GCC/10.2.0 OpenMPI/4.0.5 Singularity/3.10.2` works in a fresh shell; check `DEMAGOGUES_SIF` path in `logs/worker-*.out` |
+| `Rscript: command not found` in worker logs | Re-exec into container didn't happen | Check the singularity binary path (`DEMAGOGUES_SINGULARITY`; default is the EasyBuild absolute path) and `DEMAGOGUES_SIF` in `logs/worker-*.out` |
+| `Oilpan: CagedHeap reservation` / `QUARTO_DENO` error | Quarto's deno/V8 needs ~66G of virtual ADDRESS SPACE; Slurm sets RLIMIT_AS = --mem (VSizeFactor), so small coordinators kill it | Keep coordinator `--mem=96G` (launch.sh/smoke.sh); do not "optimize" it down |
+| `module: command not found` in any job | Lmod init is unreliable in batch shells | Scripts call singularity by absolute path precisely to avoid this; only the fallback path needs Lmod |
 | EF download failures on workers | Compute nodes have no outbound network | Pre-stage `hathi-ef/` via rsync (see Data staging) |
 | `deploy.ps1` SSH check fails | VPN down / no key | Follow the printed key-setup guidance |
 | Container build fails on GitHub rate limits (GitHub-remote pkgs) | Unauthenticated API limit | Workflow already passes `GITHUB_TOKEN` as `GITHUB_PAT` build-arg; re-run the job |

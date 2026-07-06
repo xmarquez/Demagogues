@@ -61,20 +61,22 @@ demagogues_crew_dir <- file.path(demagogues_scratch, "logs", "crew")
 # script inside the container, where /usr/local/bin/Rscript exists. On re-exec
 # the guard variable short-circuits, the #SBATCH lines are inert comments, and
 # execution falls through to the Rscript line inside the container.
-# The module lines run twice: on the host (where they must succeed so
-# `singularity` resolves) and again inside the container after re-exec (where
-# Lmod does not exist). They are therefore tolerant (`|| true`): inside the
-# container their failure is harmless because the guard short-circuits to the
-# Rscript line. `.` not `source`: the script runs under /bin/sh, and Lmod's
-# `module` is a shell function absent from non-login shells.
+# Singularity is invoked by ABSOLUTE PATH (EasyBuild tree, NFS-shared to all
+# nodes), not via `module load`: Lmod init is unreliable in non-interactive
+# batch shells (missing shell function, bare MODULEPATH, non-set-u-safe init
+# scripts - all observed on Raapoi during the first shakedown).
+demagogues_singularity <- Sys.getenv(
+  "DEMAGOGUES_SINGULARITY",
+  "/home/software/EasyBuild/software/Singularity/3.10.2-gompi-2020b/bin/singularity"
+)
+
 slurm_script_lines <- c(
-  "if ! command -v module >/dev/null 2>&1; then . /etc/profile.d/lmod.sh 2>/dev/null || . /opt/ohpc/admin/lmod/lmod/init/bash 2>/dev/null || true; fi",
-  "module use /home/software/tools/eb_modulefiles/all/Core 2>/dev/null || true",
-  "module load GCC/10.2.0 OpenMPI/4.0.5 Singularity/3.10.2 2>/dev/null || true",
   'if [ -z "${DEMAGOGUES_IN_CONTAINER:-}" ]; then',
   "  export SINGULARITYENV_DEMAGOGUES_IN_CONTAINER=1",
   paste0(
-    "  exec singularity exec --bind /nfs/scratch ",
+    "  exec ",
+    shQuote(demagogues_singularity),
+    " exec --bind /nfs/scratch ",
     "--env DEMAGOGUES_IN_CONTAINER=1 ",
     shQuote(demagogues_sif),
     ' /bin/bash "$0"'
