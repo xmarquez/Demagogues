@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       zlib1g-dev \
       libicu-dev \
       cmake \
+      xz-utils \
       libmbedtls-dev \
       libx11-dev \
       git \
