@@ -53,7 +53,7 @@ Write-Host "   HEAD $headSha is clean and pushed."
 
 # --- 2. SSH connectivity ------------------------------------------------------
 Write-Host "== Testing SSH to $remote..."
-ssh -o BatchMode=yes -o ConnectTimeout=8 $remote true
+ssh -n -o BatchMode=yes -o ConnectTimeout=8 $remote true
 if ($LASTEXITCODE -ne 0) {
     Write-Host @"
 SSH to $remote failed. First-time setup checklist:
@@ -79,7 +79,7 @@ Write-Host "== Checking out $headSha on the cluster ($Scratch)..."
 # -q on checkout: git narrates "Previous HEAD position" on stderr, which
 # PowerShell 5.1 wraps as a NativeCommandError.
 $checkoutCmd = "cd $Scratch && git fetch --all --quiet && git checkout -f -q --detach $headSha && git rev-parse HEAD"
-$remoteSha = ssh $remote $checkoutCmd
+$remoteSha = ssh -n $remote $checkoutCmd
 if ($LASTEXITCODE -ne 0) {
     Fail "Remote checkout failed. Has slurm/setup_raapoi.sh been run on the cluster yet?"
 }
@@ -101,7 +101,7 @@ if ($Walltime) { $sbatchArgs = "$sbatchArgs --time=$Walltime" }
 
 Write-Host "== Submitting $script (run=$Run profile=$Profile)..."
 $submitCmd = "cd $Scratch && mkdir -p logs && sbatch $sbatchArgs $script"
-$submitOut = ssh $remote $submitCmd
+$submitOut = ssh -n -n $remote $submitCmd
 if ($LASTEXITCODE -ne 0) { Fail "sbatch submission failed:`n$submitOut" }
 Write-Host "   $submitOut"
 
@@ -110,7 +110,7 @@ if ($submitOut -match "Submitted batch job (\d+)") { $jobId = $Matches[1] }
 
 # --- 5. Status + monitoring hints -------------------------------------------
 Write-Host "== Current queue for ${User}:"
-ssh $remote "squeue -u $User"
+ssh -n $remote "squeue -u $User"
 
 Write-Host @"
 
