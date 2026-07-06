@@ -4,10 +4,12 @@ How to run the full targets pipeline on VUW's Rāpoi cluster from this Windows
 machine, using a Singularity container built from `renv.lock` and a
 `crew.cluster` Slurm backend.
 
-> **Status:** the local backend, `tar_validate()` on both backends, and the
-> bundle/test machinery are verified on Windows. Everything that touches the
-> actual cluster is **UNTESTED until the first real run** — see the checklist
-> at the bottom.
+> **Status: VERIFIED END-TO-END (2026-07-07).** The full loop — deploy.ps1 →
+> sbatch coordinator (container) → crew workers via ssh shims → scratch store →
+> bundle → fetch_results.ps1 → local tar_read() — completed a green smoke run
+> (auth_glmnet_40/explore: 420 targets, 12 min, 5 workers). The first-shakedown
+> fixes are recorded in IMPROVEMENT_PLAN.md's progress log; the troubleshooting
+> table below covers every trap that was actually hit.
 
 ## Architecture
 

@@ -58,7 +58,28 @@ What was built:
 
 ⚠️ **renv.lock incident:** during the work, a `renv::snapshot(packages=...)` call destroyed the working-tree lockfile (HEAD's copy was an ancient R 4.2 stub). It was rebuilt from the intact project library via `renv::snapshot(type="all")`: 224 packages, R 4.5.1, all spot-checked versions match the destroyed file (targets 1.11.4, crew 1.3.0, xgboost 3.1.2.1, hathiTools/wordVectors GitHub remotes intact) + crew.cluster 0.4.0. Independently re-verified: 21 critical packages all present. Possibly a slight superset of the original (harmless). If paranoid, Dropbox version history for `renv.lock` can recover the pre-incident file for diffing. **renv.lock must be committed** — the Docker build copies it.
 
-Verified on Windows: `_targets.R` parses; `tar_validate()` passes on both backends; 91/91 tests pass; all shell files bash-syntax-clean with LF endings; both .ps1 parse. **Untested until the first cluster run:** GHCR pull, worker re-exec under Singularity 3.10.2, compute-node→login-node ssh for the shims, outbound network for EF downloads from workers, resource adequacy, in-container Quarto renders, and the full deploy→fetch round trip (see HPC.md).
+Verified on Windows: `_targets.R` parses; `tar_validate()` passes on both backends; 91/91 tests pass; all shell files bash-syntax-clean with LF endings; both .ps1 parse.
+
+### 2026-07-07 — First cluster shakedown: ✅ GREEN SMOKE RUN
+
+`auth_glmnet_40`/explore completed end-to-end on Rāpoi: **420 targets in 12 min** across 4 std + 1 bigmem crew workers; bundle fetched and `tar_read()` locally (1.48M weight rows incl. the new `rank_agreements`). Twelve real bugs were found and fixed during the shakedown, each committed individually:
+
+1. Singularity module needs its toolchain prerequisites → later mooted by (5).
+2. Non-interactive shells have a bare MODULEPATH → mooted by (5).
+3. Batch shells lack the Lmod `module` function entirely → mooted by (5).
+4. `lmod.sh` is not `set -u`-safe; unbound-var errors are fatal even in `||` chains (silent zero-output death) → mooted by (5).
+5. **Singularity now invoked by absolute EasyBuild path** (`DEMAGOGUES_SINGULARITY`); Lmod demoted to fallback.
+6. `deploy.ps1 -Smoke` exported full-run parameters over smoke.sh's defaults (would have run full_democracy in quicktest's 5 h window).
+7. **Quarto's deno/V8 needs ~66 GB of virtual address space** (V8 sandbox cages); Slurm sets `RLIMIT_AS` = `--mem` (soft AND hard, unliftable; same on Quarto 1.6). Coordinator jobs request 96G — do not "optimize" down.
+8. **Windows git strips exec bits**: every cluster checkout de-executabled the shims (`Permission denied` on crew's sbatch). Modes now recorded via `git update-index --chmod=+x`.
+9. **Worker container entry**: `$0` under sbatch is the spooled script on node-local `/var/lib/slurm` — invisible in-container. Replaced re-exec with an `Rscript()` shell function that shadows PATH lookup. Also `seconds_launch = 1800` (crew's cluster default waits hours before retrying a failed launch).
+10. **Worker CWD**: ssh-shim submission starts jobs in `$HOME`; targets' relative store paths broke dependency retrieval. The function now `cd`s to the project root.
+11. **Workers never source `_targets.R`** — its `options(hathiTools.ef.dir=)` was coordinator-only, so workers looked in `./hathi-ef`, found nothing, couldn't rsync (parallel nodes lack outbound network), and "completed" files targets with zero paths, poisoning downstream. `cache_ef_files()` now derives the dir from `RESEARCH_DATA_ROOT` itself, tolerates rsync failure (pre-staged cache hits need no network), and errors loudly on empty results. Worker scripts bake in `RESEARCH_DATA_ROOT`.
+12. `ssh` without `-n` blocks on stdin when deploy/fetch scripts run non-interactively.
+
+Robustness added along the way: `restricted_dfm_from_json()` returns NULL for empty period slices, and the branch-heavy model chain (files/dfm/split/model/svd/weights/topic/kl/entropy/graph) uses `error = "null"` so a failed branch is recorded in `tar_meta()` (shipped home in the bundle via `meta`) instead of aborting a multi-day run.
+
+Still to observe on the first **full** run: memory/walltime adequacy at 500 vols/decade (bigmem DFM builds), worker `free(): invalid pointer` at teardown (cosmetic so far — results unaffected), and quarto report renders on the coordinator (the smoke run's graph reports rendered? verify on full run).
 
 ---
 
