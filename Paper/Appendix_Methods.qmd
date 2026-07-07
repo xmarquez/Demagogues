@@ -179,14 +179,25 @@ derived from their own training statistics.
 
 ## Sampling uncertainty
 
-<!-- TODO(P3): update when n_repeats lands. -->
+The headline results replicate the entire sample → DFM → train/test split →
+model → weights → entropy/divergence chain **five times per decade** with
+independent volume samples (`samples.n_repeats: 5`; replicate seeds are
+derived deterministically from target names by the {targets} framework).
+Replication is applied to the model-bearing chain (restricted samples at the
+maximum volume cap); the corpus-descriptive chain is computed once. Time-series
+figures report the across-replicate mean with replicate-range bands.
 
-The headline pipeline computes one realization per decade: one volume sample,
-one train/test split, one fit per model configuration. A configurable
-`samples.n_repeats` replication of the sample → DFM → model → weights chain
-(with independent seeds) is planned; entropy/divergence time-series figures
-will then carry mean ± range bands, addressing the question of how much
-decade-to-decade movement is sampling noise.
+These are *replicate ranges*, not confidence intervals: five replicates is
+far too few for tail quantiles, and no interval-coverage claim is made. The
+bands answer the specific question they are designed for — whether
+decade-to-decade movements in entropy and divergence exceed volume-sampling
+noise — and for that purpose the effective information is larger than "n = 5"
+suggests: the noise level can be pooled across the ~31 decades (over 120
+degrees of freedom for the replicate variance). The replicates capture
+volume-sampling, page-sampling, split, and model-fitting stochasticity; they
+do not capture workset construction, OCR, or catalog uncertainty, which are
+shared across replicates. Out-of-distribution evaluations pair every
+replicate's models with the first replicate's unrestricted evaluation DFM.
 
 ## Reproducibility
 
@@ -197,9 +208,10 @@ decade-to-decade movement is sampling noise.
   `config/runs/`; the parameter grids that generate the pipeline's targets are
   derived from it deterministically.
 - **Sampling:** volume sampling uses {targets}' deterministic per-target
-  seeding.
-<!-- TODO(P4): when the sampled_htids export lands, reference the published
-htid × period × sample table here as supplementary material. -->
+  seeding, and the exact volumes drawn are exported: the `sampled_htids`
+  target records every sampled htid × period × replicate × sample
+  configuration, and is published as supplementary material so the corpus
+  sample can be reconstructed exactly.
 
 ## How this appendix is maintained
 

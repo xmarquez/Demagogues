@@ -202,6 +202,26 @@ ingest_targets <- list(
     deployment = "main",
     description = "Ingest: Parameter grid for sampling volumes across corpora and periods."
   ),
+  tar_target(
+    name = sampled_htids,
+    # Reproducibility export (P4): the exact HTIDs drawn by every sample target,
+    # one row per volume x sample, so the corpus sample can be published as
+    # supplementary material. The !!! splice makes every sample_object a tracked
+    # dependency; sample_df supplies the identifying metadata at run time.
+    command = purrr::map(
+      rlang::set_names(list(!!!sample_df$sample_object), sample_df$sample_id),
+      ~ if (is.null(.x)) NULL else dplyr::ungroup(.x) %>% dplyr::select(htid, period)
+    ) %>%
+      dplyr::bind_rows(.id = "sample_id") %>%
+      dplyr::left_join(
+        sample_df %>%
+          dplyr::select(sample_id, sample_rep, sample_type, sample_max_vols, feature_name),
+        by = "sample_id"
+      ) %>%
+      dplyr::select(htid, period, sample_id, sample_rep, sample_type, sample_max_vols, feature_name),
+    deployment = "main",
+    description = "Ingest: HTIDs drawn by every sample target (reproducibility export)."
+  ),
   tar_eval(
     values = files_df,
     tar_target(

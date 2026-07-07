@@ -81,7 +81,11 @@ Robustness added along the way: `restricted_dfm_from_json()` returns NULL for em
 
 Still to observe on the first **full** run: memory/walltime adequacy at 500 vols/decade (bigmem DFM builds — *validated by the P2 tuning runs 2026-07-07*), worker `free(): invalid pointer` at teardown (cosmetic so far — results unaffected), and quarto report renders on the coordinator (the smoke run's graph reports rendered? verify on full run).
 
-EF-cache attrition (observed on the tuning runs, 2026-07-07): sampled volumes whose EF files are not pre-staged in `/nfs/scratch/marquexa/corpora/hathi/hathi-ef` are silently dropped by `cache_ef_files()` because parallel compute nodes have no outbound network for the rsync top-up. Tuning coverage was 999/1000 (1790s–1800s), 978/1000 (1860s–70s), 1000/1000 (1940s–50s) — ≤2.2% loss. Before the full run, consider a pre-stage step: materialize the sampled htids, run `hathiTools::rsync_from_hathi()` for them from the login node (which has network), then start the pipeline; or accept the ~2% attrition and note it in the paper's sample description.
+EF-cache attrition (observed on the tuning runs 2026-07-07; **root-caused the same day — the paragraph below supersedes shakedown item 11's "parallel nodes lack outbound network" claim, which was WRONG**). Diagnostic (delegated, verified on the cluster): parallel compute nodes have full outbound network (test job on spj01: DNS, HTTPS, and the HTRC rsync module all reachable). The 23 missing volumes (999/1000, 978/1000, 1000/1000 coverage) were all fetchable; none dropped out of HathiTrust. Two real bugs:
+1. **hathiTools 0.2.0 pairtree-encoding bug**: `stubby_url_to_rsync()` uses `id_clean()` (no `.`→`,`) instead of `id_encode()`, so every htid with dots in its local id (miun/miua Michigan ids) 404s against the comma-encoded HTRC tree. All 23 missing volumes fit this fingerprint. *Worth reporting upstream.*
+2. **No `rsync` binary in the container** — the in-pipeline top-up never ran anywhere; `rsync_from_hathi()` returns exit 127 without raising, and the old `cache_ef_files()` ignored the return value.
+
+Fixes (2026-07-07): `rsync` added to docker/Dockerfile (rebuild via Actions; **run `slurm/pull_image.sh` on the cluster before the full run**); `cache_ef_files()` now checks the rsync exit status, warns on partial coverage with counts, and falls back to `rsync_ef_comma_encoded()` — a corrected-path fetcher (`ef_remote_path()`, parity-tested against hathiTools for undotted ids, live-tree-verified for dotted ones) that stores fetched files at the dot-encoded local path `find_cached_htids()` expects. The 23 tuning-run volumes were also rsynced into the cluster cache directly, so re-runs get 1000/1000. No pre-stage step needed.
 
 ---
 
@@ -121,6 +125,13 @@ All three tuning runs completed on Rāpoi with **zero errored targets** (~20 min
 Written into `config/corpus.yml` (mapping-form xgboost entry) + adopted-defaults paragraph and updated defaults table in `Paper/Appendix_Methods.qmd` in the same commit. Verified: exactly the 73-target xgboost closure changes names in the full_democracy manifest (checked changed names ⊆ xgboost-chain object names from the grid; 0 outside); tests 123/0.
 
 **Full-run impact:** xgboost model targets and their downstream closure will (correctly) rebuild with the new params; glmnet/naivebayes/LiblineaR chains keep their names.
+
+### 2026-07-07 — P3 + P4 complete (delegated, reviewed and verified); EF-cache root cause fixed
+
+**P3 (sampling repeats):** `samples.n_repeats` (default 1) + `samples.repeats_scope` (`headline` = restricted chain at max volume cap only, `all`); `full_democracy.yml` sets `n_repeats: 5`. Design: `sample_rep` column with `sample_rep_label` empty for rep 1 (byte-identical rep-1 target names — same convention as dedupe/common-vocab flags); no explicit seed plumbing (targets derives per-target RNG seeds from the rep-labelled names); OOD evaluation pairs every rep's models with the rep-1 unrestricted testing DFM; `sample_rep_label` added to kl/entropy name columns (the semantic-label collision class found twice now — tuning grid, then reps). Verified independently: n=1 manifest = prior + exactly `sampled_htids`; n=5 manifest 853 targets (385 + 468 rep-2..5 closure, 0 drops, 0 duplicates); rep flows into all info tables for grouping. Tests 156 pass / 0 fail (25 new for repeats, 8 for EF paths).
+**P4:** static `sampled_htids` target (htid × period × sample_id × rep × type × cap × feature) in the ingest group; included in `headline_target_names()` so every bundle carries the exact sample. Appendix B's "Sampling uncertainty" and "Reproducibility" sections updated to describe what shipped (replicate-range framing, not CIs; pooled-noise rationale; OOD rep-1 pairing).
+**Full-run cost note:** manifest grows ×2.22 (853 targets); the extra load is 4×31 bigmem DFM builds + the downstream model chain — estimated +3–4 h wall with 4 bigmem workers.
+**Prerequisite before deploying the full run:** fresh container image on the cluster (`slurm/pull_image.sh`) — the EF-cache fix (rsync binary + encoding workaround, see the corrected attrition note above) landed in the image today.
 
 ---
 
@@ -321,7 +332,7 @@ Create `slurm/` with:
 
 ## Phase 3 — Model parameterization & statistical robustness
 
-> **P1 status: ✅ done 2026-07-07** (see Progress log — includes a pre-existing xgboost-3.x params-dropping bug found and fixed). **P2 status: ✅ done 2026-07-07** — tuning study ran on Rāpoi; defaults adopted (xgboost depth=6/eta=0.05; glmnet unchanged) per Xavier. P3–P4 pending.
+> **Phase 3 complete 2026-07-07.** P1 ✅ (config-driven hyperparameters; incl. the xgboost-3.x params-dropping bug). P2 ✅ (tuning study on Rāpoi; xgboost depth=6/eta=0.05 adopted per Xavier, glmnet unchanged). P3 ✅ (`samples.n_repeats: 5`, headline scope, rep-1 names byte-identical). P4 ✅ (`sampled_htids` export in the results bundle). See Progress log.
 
 ### P1. Move all hyperparameters from code to config
 

@@ -2,3 +2,8 @@ id: full_democracy
 description: "Full democracy pipeline using the shared corpus defaults."
 features: [democracy]
 outputs: [ingest, dfm, model, graph, corpus_stats, document]
+samples:
+  # Five independent volume samples for the headline (restricted, max-vols)
+  # chain, for uncertainty bands on entropy/KL/JSD (P3). Deep-merges with the
+  # corpus.yml samples block; all other sample settings inherit.
+  n_repeats: 5

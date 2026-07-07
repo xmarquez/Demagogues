@@ -611,8 +611,41 @@ sample_params <- expand_grid(
     sample_dedupe_label = dplyr::if_else(sample_dedupe == "none", "", sample_dedupe)
   )
 
+# Independent volume-sample replicates for uncertainty quantification (P3). No
+# explicit seed plumbing: targets derives each target's RNG seed from its name,
+# and the rep label changes reps 2..n names, so each replicate samples volumes
+# independently. `samples_repeats_scope` gates which rows are replicated:
+# "headline" (default) replicates only the model-bearing restricted chain at the
+# maximum volume cap (rep 1 exists for every row as before); "all" replicates
+# every sample row.
+samples_n_repeats <- max(1L, as.integer(cfg$samples$n_repeats %||% 1L))
+samples_repeats_scope <- cfg$samples$repeats_scope %||% "headline"
+sample_max_cap <- max(sample_params$sample_max_vols, na.rm = TRUE)
+
+sample_params <- sample_params %>%
+  mutate(
+    .rep_eligible = if (identical(samples_repeats_scope, "all")) {
+      TRUE
+    } else {
+      sample_type == "restricted" & sample_max_vols == sample_max_cap
+    },
+    sample_rep = purrr::map(.rep_eligible, ~ if (isTRUE(.x)) seq_len(samples_n_repeats) else 1L)
+  ) %>%
+  tidyr::unnest(sample_rep) %>%
+  mutate(
+    sample_rep = as.integer(sample_rep),
+    # Empty label for rep 1 (dropped by slugify) keeps rep-1 target names
+    # byte-identical; reps 2..n get a `repN` fragment, following the
+    # sample_dedupe_label empty-when-default convention.
+    sample_rep_label = dplyr::if_else(sample_rep == 1L, "", paste0("rep", sample_rep))
+  ) %>%
+  select(-.rep_eligible)
+
 sample_df <- expand_grid(workset_meta_df, sample_params) %>%
-  add_target("sample", c("workset_meta_id", "sample_type", "sample_max_vols", "sample_dedupe_label"))
+  add_target(
+    "sample",
+    c("workset_meta_id", "sample_type", "sample_max_vols", "sample_dedupe_label", "sample_rep_label")
+  )
 
 files_df <- sample_df %>%
   add_target("files", "sample_id")
@@ -850,6 +883,12 @@ testing_dfms <- dfm_df %>%
   filter(
     sample_type == "unrestricted",
     sample_max_vols == min_sample_cap,
+    # Pair every model replicate with the rep-1 unrestricted testing DFM. Under
+    # "headline" scope the unrestricted chain only has rep 1, so reps 2..n would
+    # otherwise lose their OOD match; filtering the testing side to rep 1 (and
+    # dropping sample_rep in the transmute below) neutralizes the rep column so
+    # the join on workset_meta_id + dfm_to_lower matches all reps to one DFM.
+    sample_rep == 1L,
     dfm_to_lower %in% performance_wild_sample_df$dfm_to_lower
   ) %>%
   transmute(
@@ -954,10 +993,21 @@ kl_common_vocab_values <- if (isTRUE(cfg$kl$common_vocab_robustness %||% FALSE))
   FALSE
 }
 
+# kl and entropy target names are built from semantic labels (weight_type etc.)
+# that do NOT encode the sample id, so two replicates of the same engine would
+# collide (exactly like the duplicate-engine bug fixed via
+# predictive_model_engine_label above). `sample_rep_label` (empty for rep 1)
+# disambiguates reps 2..n while keeping default target names unchanged.
 kl_df <- divergence_base %>%
   expand_grid(kl_common_vocab = kl_common_vocab_values) %>%
   mutate(kl_common_vocab_label = dplyr::if_else(kl_common_vocab, "commonvocab", "")) %>%
-  add_target("kl", c("weight_type", "workset_meta_id", "feature_id", "dfm_to_lower", "kl_common_vocab_label"))
+  add_target(
+    "kl",
+    c("weight_type", "workset_meta_id", "feature_id", "dfm_to_lower", "kl_common_vocab_label", "sample_rep_label")
+  )
 
 entropy_df <- divergence_base %>%
-  add_target("entropy", c("weight_type", "workset_meta_id", "feature_id", "dfm_to_lower"))
+  add_target(
+    "entropy",
+    c("weight_type", "workset_meta_id", "feature_id", "dfm_to_lower", "sample_rep_label")
+  )

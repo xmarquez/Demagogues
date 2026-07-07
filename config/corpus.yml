@@ -27,6 +27,17 @@ samples:
   # keeps one per author+title. Use the latter two only as robustness checks.
   # Values: none | bib_key | author_title
   dedupe: none
+  # Number of independent volume-sample replicates for uncertainty
+  # quantification (P3). Rep 1 always exists (byte-identical target names); reps
+  # 2..n re-run the sample -> files -> dfm -> split -> model -> weights ->
+  # kl/entropy chain with fresh samples (targets derives each replicate's RNG
+  # seed from its rep-labelled target name). Default 1 = no replication; run
+  # configs override (e.g. n_repeats: 5) so the expensive replication is opt-in.
+  n_repeats: 1
+  # Which sample rows get reps 2..n. `headline` (default) replicates only the
+  # model-bearing restricted chain at the maximum `sample_max_vols` cap; `all`
+  # replicates every sample row. Values: headline | all
+  repeats_scope: headline
 
 dfm:
   vocab_size: [30000]

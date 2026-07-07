@@ -39,6 +39,7 @@ headline_target_names <- function(features = "democracy") {
     "combined_kl",
     "combined_entropy",
     "sample_sizes",
+    "sampled_htids",
     "info_performance",
     "info_graph",
     # Feature-independent corpus stats used by the paper
