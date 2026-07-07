@@ -556,7 +556,15 @@ model_targets <- list(
       command = kl_simple(weight_object, "period", common_vocab_only = kl_common_vocab) %>%
         kl_matrix_to_df() %>%
         dplyr::mutate(kl_id = kl_id),
-      deployment = "main",
+      # Per-branch (one weight_object each), so run on the worker pool rather
+      # than serially on the coordinator. Matters at scale: n_repeats multiplies
+      # these branches, and on "main" they bottleneck the whole tail. storage/
+      # retrieval="worker" keeps the data off the coordinator (shared scratch
+      # store). Changing deployment/storage/retrieval does not invalidate cached
+      # targets (they are not part of the target hash).
+      deployment = "worker",
+      storage = "worker",
+      retrieval = "worker",
       # A failed branch/run is recorded in tar_meta() and becomes NULL rather
       # than aborting the whole pipeline.
       error = "null",
@@ -569,7 +577,10 @@ model_targets <- list(
       name = entropy_object,
       command = entropy(weight_object) |>
         dplyr::mutate(entropy_id = entropy_id),
-      deployment = "main",
+      # Per-branch; parallelize on workers (see kl_object note).
+      deployment = "worker",
+      storage = "worker",
+      retrieval = "worker",
       # A failed branch/run is recorded in tar_meta() and becomes NULL rather
       # than aborting the whole pipeline.
       error = "null",
@@ -715,7 +726,13 @@ graph_targets <- list(
       iteration = "list",
       memory = "transient",
       garbage_collection = TRUE,
-      deployment = "main",
+      # Per-branch ggplot builds; parallelize on workers (see kl_object note).
+      # graph_similarities() uses fully ggplot2::-qualified calls, so ggplot2
+      # need only be installed (it is, in the container), not attached - no
+      # `packages` change needed (which would also avoid re-hashing the target).
+      deployment = "worker",
+      storage = "worker",
+      retrieval = "worker",
       # A failed branch/run is recorded in tar_meta() and becomes NULL rather
       # than aborting the whole pipeline.
       error = "null",
