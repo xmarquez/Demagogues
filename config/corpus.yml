@@ -12,6 +12,11 @@ corpora:
 worksets:
   method: auto
 
+corpus_stats:
+  # Year bounds for the per-feature bookworm corpus-stats queries (word counts,
+  # words-per-million, text counts, text percent).
+  lims: [1700, 2020]
+
 samples:
   sample_max_vols: [40, 500]
   sample_type: [unrestricted, restricted]

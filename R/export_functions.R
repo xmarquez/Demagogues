@@ -10,12 +10,14 @@
 #'
 #' Returns the names of the small, paper-facing objects in the targets store:
 #' combined weights/performance/information-theory tables, their info/metadata
-#' companions, and the corpus-stats summaries referenced by the paper. All
-#' names are static targets in `_targets.R` except the per-feature workset
-#' volume counts, which are generated as `workset_volume_count_<feature>` /
-#' `workset_meta_volume_count_<feature>` (see `object_parameters.R`).
+#' companions, and the corpus-stats summaries referenced by the paper. The
+#' feature-independent statics are constant target names in `_targets.R`; the
+#' per-feature stats (workset volume counts and the bookworm corpus-stats
+#' summaries) are generated per feature as `workset_volume_count_<feature>`,
+#' `workset_meta_volume_count_<feature>`, `<feature>_words_per_million`,
+#' `<feature>_text_percent`, and `<feature>_trans` (see `object_parameters.R`).
 #'
-#' @param features Character vector of feature names whose workset volume-count
+#' @param features Character vector of feature names whose per-feature stats
 #'   targets should be included. Defaults to `"democracy"` (the main paper's
 #'   feature). Missing objects are skipped with a warning by
 #'   [make_results_bundle()], so extra names are harmless.
@@ -39,10 +41,7 @@ headline_target_names <- function(features = "democracy") {
     "sample_sizes",
     "info_performance",
     "info_graph",
-    # Corpus stats used by the paper
-    "democracy_text_percent",
-    "democracy_words_per_million",
-    "democracy_trans",
+    # Feature-independent corpus stats used by the paper
     "num_ht_bib_keys",
     "num_author_title",
     "num_htids_per_author",
@@ -50,21 +49,74 @@ headline_target_names <- function(features = "democracy") {
     "date_info",
     "total_texts"
   )
-  feature_counts <- c(
+  feature_stats <- c(
     paste0("workset_volume_count_", features),
-    paste0("workset_meta_volume_count_", features)
+    paste0("workset_meta_volume_count_", features),
+    paste0(features, "_words_per_million"),
+    paste0(features, "_text_percent"),
+    paste0(features, "_trans")
   )
-  unique(c(static, feature_counts))
+  unique(c(static, feature_stats))
+}
+
+#' Rendered document outputs to ship home from a cluster run
+#'
+#' Collects the rendered paper/appendix artifacts under `<paper_dir>/`:
+#' `*.md`, `*.html`, `*.pdf`, and the contents of any `*_files/` companion
+#' directories (recursively, e.g. the figures/libs quarto emits alongside an
+#' HTML render). Returns paths relative to `root` so they can be added to the
+#' results bundle with the same project-relative layout as the store files.
+#' Missing files simply do not appear in the result (no error, no warning).
+#'
+#' @param root Project root containing the paper directory.
+#' @param paper_dir Sub-directory holding rendered documents, relative to
+#'   `root`. Default `"Paper"`.
+#'
+#' @return Character vector of existing document paths relative to `root`
+#'   (forward-slash separated), or `character(0)` when none are present.
+#' @seealso [make_results_bundle()]
+rendered_document_files <- function(root, paper_dir = "Paper") {
+  root <- normalizePath(root, winslash = "/", mustWork = FALSE)
+  base <- file.path(root, paper_dir)
+  if (!dir.exists(base)) {
+    return(character(0))
+  }
+
+  doc_globs <- c("*.md", "*.html", "*.pdf")
+  docs <- unlist(
+    lapply(doc_globs, function(p) Sys.glob(file.path(base, p))),
+    use.names = FALSE
+  )
+  docs <- docs[!dir.exists(docs)]
+
+  companion_dirs <- Sys.glob(file.path(base, "*_files"))
+  companion_dirs <- companion_dirs[dir.exists(companion_dirs)]
+  companion_files <- unlist(
+    lapply(companion_dirs, function(d) {
+      list.files(d, recursive = TRUE, full.names = TRUE, all.files = TRUE, include.dirs = FALSE)
+    }),
+    use.names = FALSE
+  )
+
+  all_paths <- c(docs, companion_files)
+  if (!length(all_paths)) {
+    return(character(0))
+  }
+  all_paths <- normalizePath(all_paths, winslash = "/", mustWork = FALSE)
+  rel <- sub(paste0("^", root, "/"), "", all_paths)
+  unique(rel)
 }
 
 #' Bundle headline results from the targets store into a tar.gz archive
 #'
 #' Creates `exports/results_<run>_<timestamp>.tar.gz` containing
-#' `_targets/meta/meta` plus every existing `_targets/objects/<name>` file for
-#' the requested targets. Paths inside the archive are relative to the project
-#' root (`_targets/meta/meta`, `_targets/objects/...`), so extracting the
-#' archive at another project root drops the files straight into that
-#' project's store.
+#' `_targets/meta/meta`, every existing `_targets/objects/<name>` file for
+#' the requested targets, and any rendered document outputs under `Paper/`
+#' (`*.md`, `*.html`, `*.pdf`, and their `*_files/` companion directories; see
+#' [rendered_document_files()]). Paths inside the archive are relative to the
+#' project root (`_targets/meta/meta`, `_targets/objects/...`, `Paper/...`), so
+#' extracting the archive at another project root drops the files straight into
+#' that project.
 #'
 #' @param dir Output directory for the bundle (created if missing). Relative
 #'   paths are resolved against `root`.
@@ -79,7 +131,8 @@ headline_target_names <- function(features = "democracy") {
 #'
 #' @return Invisibly, the absolute path to the created bundle. Warns for each
 #'   requested object missing from the store, and errors if the store metadata
-#'   file is absent (nothing worth bundling without it).
+#'   file is absent (nothing worth bundling without it). Rendered documents are
+#'   optional: absent ones are silently omitted.
 make_results_bundle <- function(dir = "exports",
                                 targets = headline_target_names(),
                                 store = "_targets",
@@ -102,7 +155,8 @@ make_results_bundle <- function(dir = "exports",
       call. = FALSE
     )
   }
-  files <- c(meta_rel, object_rel[exists_mask])
+  doc_files <- rendered_document_files(root)
+  files <- c(meta_rel, object_rel[exists_mask], doc_files)
 
   if (!dir.exists(file.path(root, dir)) && !grepl("^([A-Za-z]:)?[/\\\\]", dir)) {
     dir.create(file.path(root, dir), recursive = TRUE)

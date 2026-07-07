@@ -1,0 +1,212 @@
+---
+title: "Appendix B: Methodological Choices"
+author: "Xavier Marquez"
+date: today
+format: gfm
+execute-dir: file
+execute:
+  echo: false
+  message: false
+  warning: false
+  fig-path: "figure/figs-methods-"
+---
+
+```{r setup, include=FALSE}
+library(targets)
+library(tidyverse)
+tar_config_set(store = here::here("_targets"),
+               config = "custom.yaml")
+
+theme_set(theme_bw())
+
+# Tuning-study tables are committed CSV snapshots (see "How this appendix is
+# maintained" below), not live store objects: the store's combined tables are
+# overwritten by whichever run was executed last, while these snapshots freeze
+# the tuning runs' results.
+tuning_perf_path <- here::here("data", "tuning_study_performance.csv")
+tuning_sparsity_path <- here::here("data", "tuning_study_sparsity.csv")
+has_tuning <- file.exists(tuning_perf_path) && file.exists(tuning_sparsity_path)
+```
+
+This appendix documents the main methodological choices behind the pipeline
+that produces the paper's results, and reports the hyperparameter tuning study
+used to select model defaults. All choices described here are recorded in the
+project's configuration files (`config/corpus.yml` and `config/runs/*.yml`),
+so the mapping from this text to the code is one-to-one: each subsection names
+the configuration key that controls the choice it describes.
+
+## Model hyperparameters are configuration, not code
+
+Every predictive-model hyperparameter is set in the run configuration
+(`predictive_models.engines` in `config/corpus.yml`), not in the modeling
+code. An engine entry may be a bare name (which uses the documented defaults
+below) or a mapping with explicit parameters; any non-default parameter set is
+hashed into the affected targets' names, so changing a hyperparameter
+invalidates and recomputes exactly the models it affects and nothing else.
+
+The default hyperparameters are:
+
+| Engine | Defaults |
+|---|---|
+| glmnet | `alpha = 1` (lasso), `nfolds = 10`, coefficients read at `lambda.min` |
+| xgboost | `eta = 0.1`, `max_depth = 12`, `nrounds = 120`, `colsample_bytree = 0.5`, `subsample = 0.5`, `lambda = 0.5`, `scale_pos_weight` = class-imbalance ratio |
+| LiblineaR | `type = 1` (L2-regularized L2-loss SVM, dual), `cost = 1/\bar{\lVert x \rVert}`, inverse-frequency class weights |
+| naive Bayes | multinomial, `laplace = 1` |
+
+One disclosure is in order. During this project we discovered that version 3.x
+of the {xgboost} R package silently ignores the parameter list passed through
+its legacy high-level interface. Any xgboost results computed with that
+interface therefore reflect the library's built-in defaults
+(`max_depth = 6`, `eta = 0.3`, no subsampling, no class-imbalance correction)
+rather than the settings documented at the time. The pipeline now uses the
+low-level `xgb.train()` interface, which honors the parameter list; all
+xgboost results reported in the paper were computed after this correction.
+
+## Hyperparameter tuning study
+
+Defaults were checked against a grid-search tuning study run on the same
+pipeline as the main results (so tuning and final models share sampling, DFM
+construction, and evaluation code exactly). The study uses three widely
+separated eras — volumes from 1790–1809, 1860–1879, and 1940–1959, two decade
+slices each — chosen to span the large changes in corpus size, composition,
+and OCR quality over the study period. In each decade slice, models were fit
+on the paper's model-bearing DFM configuration (up to 500 volumes per decade,
+pages restricted to those containing the target term, PPMI weighting) for
+every combination in the grid:
+
+- **glmnet:** `alpha` ∈ {0 (ridge), 0.5 (elastic net), 1 (lasso)}, plus
+  `lambda.1se` as an alternative to `lambda.min` at `alpha = 1`;
+- **xgboost:** `max_depth` ∈ {4, 6, 8} × `eta` ∈ {0.05, 0.1, 0.3} at
+  `nrounds = 120`, plus the documented default (`max_depth = 12`,
+  `eta = 0.1`) as a baseline.
+
+Variants are compared on held-out test AUC and Cohen's kappa, and on weight
+sparsity (the share of exactly-zero coefficients for glmnet; the share of
+features with zero gain for xgboost), since weight sparsity propagates into
+all downstream entropy and divergence measures.
+
+```{r tuning-performance, eval=has_tuning}
+tuning_perf <- read_csv(tuning_perf_path, show_col_types = FALSE)
+
+tuning_perf %>%
+  filter(.metric %in% c("roc_auc", "kap")) %>%
+  ggplot(aes(x = variant, y = .estimate, color = era)) +
+  geom_point(position = position_dodge(width = 0.4)) +
+  facet_wrap(~.metric, scales = "free_y") +
+  coord_flip() +
+  labs(x = NULL, y = "Held-out estimate", color = "Era",
+       title = "Tuning study: held-out performance by hyperparameter variant")
+```
+
+```{r tuning-sparsity, eval=has_tuning}
+tuning_sparsity <- read_csv(tuning_sparsity_path, show_col_types = FALSE)
+
+tuning_sparsity %>%
+  ggplot(aes(x = variant, y = zero_share, color = era)) +
+  geom_point(position = position_dodge(width = 0.4)) +
+  coord_flip() +
+  labs(x = NULL, y = "Share of zero-weight features", color = "Era",
+       title = "Tuning study: weight sparsity by hyperparameter variant")
+```
+
+```{r tuning-pending, eval=!has_tuning, results="asis"}
+cat("*(Tuning-study snapshot tables not yet present in `data/`; the figures",
+    "and the defaults discussion below will be completed when the tuning",
+    "runs' results are snapshotted. See \"How this appendix is",
+    "maintained\".)*")
+```
+
+<!-- TODO(after tuning analysis): one paragraph stating which settings were
+adopted as defaults and why, referencing the figures above. Update
+config/corpus.yml (mapping-form engines) in the same commit so the text and
+the configuration cannot drift apart. Note explicitly if any winner sat on a
+grid edge and whether an xgb.cv follow-up was run (the in-pipeline study uses
+fixed nrounds = 120 and no early stopping, so eta = 0.05 cells may be
+undertrained at 120 rounds). -->
+
+## From model weights to distributions
+
+Signed model weights (regression coefficients, SVM weights, log-odds ratios,
+gain shares) are converted to probability-like distributions over the
+vocabulary before any entropy or divergence is computed. The conversion is
+configurable (`weights.normalization`); the paper uses `positive`, which keeps
+only positive weights and renormalizes. Two alternatives are implemented for
+robustness checks: `shift` (shift by the minimum, then renormalize, retaining
+negative-weight features at low mass) and `softmax` (exponential weighting
+with a temperature). The choice matters mainly for how features that models
+treat as *negative* evidence enter the entropy measures; `positive` reads the
+distributions as "what the model considers evidence *for* the concept."
+
+## Duplicate volumes are kept by default
+
+HathiTrust contains many duplicate copies and editions of the same work. The
+pipeline keeps them (`samples.dedupe: none`): a work reprinted in many copies
+was more widely available, and multiplicity is precisely the popularity signal
+a "corpus as readership" design should preserve. Two deduplication modes are
+available as robustness checks (`bib_key`: one volume per HathiTrust
+bibliographic key; `author_title`: one per author-title pair), applied within
+each period slice so a reprint in a *later* decade still counts toward that
+decade.
+
+## Vocabulary handling in divergence measures
+
+Kullback-Leibler and Jensen-Shannon divergences between period-specific weight
+distributions are computed on the *union* of the two periods' vocabularies,
+with additive smoothing for features absent from one side. This is the
+headline measure: restricting to the intersection would silently discard
+exactly the vocabulary innovation the measures are meant to detect. An
+intersection-vocabulary variant can be enabled for robustness
+(`kl.common_vocab_robustness: true`), which adds parallel `*_commonvocab`
+targets without disturbing the headline ones.
+
+## Evaluation uses training-set statistics
+
+Feature weighting at evaluation time (TF-IDF document frequencies, PPMI
+marginals) is computed from the *training* DFM and applied to the evaluation
+DFM, never recomputed on test data — recomputing on the test set would leak
+test-set statistics into the features. Out-of-distribution evaluation
+("testing - OOD") applies the same rule: models trained on page-balanced
+(restricted) samples are evaluated on unrestricted samples with weights
+derived from their own training statistics.
+
+## Sampling uncertainty
+
+<!-- TODO(P3): update when n_repeats lands. -->
+
+The headline pipeline computes one realization per decade: one volume sample,
+one train/test split, one fit per model configuration. A configurable
+`samples.n_repeats` replication of the sample → DFM → model → weights chain
+(with independent seeds) is planned; entropy/divergence time-series figures
+will then carry mean ± range bands, addressing the question of how much
+decade-to-decade movement is sampling noise.
+
+## Reproducibility
+
+- **Environment:** all computation runs in a versioned container
+  (`ghcr.io/xmarquez/demagogues`, built from `docker/Dockerfile`) with the R
+  package library pinned by `renv.lock` (R 4.5.1).
+- **Configuration:** every run is fully described by a YAML file under
+  `config/runs/`; the parameter grids that generate the pipeline's targets are
+  derived from it deterministically.
+- **Sampling:** volume sampling uses {targets}' deterministic per-target
+  seeding.
+<!-- TODO(P4): when the sampled_htids export lands, reference the published
+htid × period × sample table here as supplementary material. -->
+
+## How this appendix is maintained
+
+This document is a `tar_quarto` target: it renders as part of the pipeline
+(the `document` output group) and reads only (a) objects from the targets
+store and (b) committed snapshot files under `data/`. To update it:
+
+1. **Prose about a methodological choice** — edit this file directly; the
+   relevant configuration keys are named in each section, so keep text and
+   `config/corpus.yml` in sync in the same commit.
+2. **Tuning-study figures** — after fetching the tuning runs' result bundles,
+   snapshot their `combined_performance` and weight-sparsity summaries to
+   `data/tuning_study_performance.csv` and `data/tuning_study_sparsity.csv`
+   (columns used here: `era`, `variant`, `.metric`, `.estimate` /
+   `zero_share`). The figures activate automatically once those files exist.
+3. **Rendering** — `targets::tar_make(Appendix_Methods)` locally, or it
+   renders on the cluster in any run whose `outputs` include `document`; the
+   rendered markdown ships home in the results bundle.

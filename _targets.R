@@ -751,27 +751,95 @@ graph_targets <- list(
 )
 
 # Basic corpus stats ---------------------------------------------------------
-corpus_stats_targets <- list(
-  tar_target(
-    name = democracy_word_counts,
-    command = query_bookworm(
-      c("democracy"),
-      counttype = c("WordCount"),
-      lims = c(1700, 2020)
-    ),
-    deployment = "main",
-    description = "Corpus Stats: Raw word counts for 'democracy' over time."
+# Feature-dependent bookworm summaries are generated per run feature via
+# tar_eval() over corpus_stats_df (see object_parameters.R), emitting stable
+# `<feature>_word_counts` / `_words_per_million` / `_text_counts` / `_text_percent`
+# target names. The feature-independent totals/catalogue counts stay static.
+corpus_stats_feature_targets <- list(
+  tar_eval(
+    values = corpus_stats_df,
+    tar_target(
+      name = word_counts_object,
+      command = query_bookworm(
+        bookworm_terms,
+        counttype = c("WordCount"),
+        lims = corpus_stats_lims
+      ),
+      deployment = "main",
+      description = "Corpus Stats: Raw word counts for the feature over time."
+    )
   ),
-  tar_target(
-    name = democracy_words_per_million,
-    command = query_bookworm(
-      c("democracy"),
-      counttype = c("WordsPerMillion"),
-      lims = c(1700, 2020)
-    ),
-    deployment = "main",
-    description = "Corpus Stats: Words-per-million time series for 'democracy'."
+  tar_eval(
+    values = corpus_stats_df,
+    tar_target(
+      name = words_per_million_object,
+      command = query_bookworm(
+        bookworm_terms,
+        counttype = c("WordsPerMillion"),
+        lims = corpus_stats_lims
+      ),
+      deployment = "main",
+      description = "Corpus Stats: Words-per-million time series for the feature."
+    )
   ),
+  tar_eval(
+    values = corpus_stats_df,
+    tar_target(
+      name = text_counts_object,
+      command = query_bookworm(
+        bookworm_terms,
+        counttype = c("TextCount"),
+        lims = corpus_stats_lims
+      ),
+      deployment = "main",
+      description = "Corpus Stats: Number of texts containing the feature."
+    )
+  ),
+  tar_eval(
+    values = corpus_stats_df,
+    tar_target(
+      name = text_percent_object,
+      command = query_bookworm(
+        bookworm_terms,
+        counttype = c("TextPercent"),
+        lims = corpus_stats_lims
+      ),
+      deployment = "main",
+      description = "Corpus Stats: Percentage of texts containing the feature."
+    )
+  )
+)
+
+# Per-feature translations sources (only for features declaring translations_file).
+corpus_stats_translations_targets <- if (nrow(corpus_stats_translations_df) > 0) {
+  list(
+    tar_eval(
+      values = corpus_stats_translations_df,
+      tar_target(
+        name = translations_object,
+        command = here::here(translations_file),
+        format = "file",
+        deployment = "main",
+        description = "Corpus Stats: Source Excel file listing feature translations."
+      )
+    ),
+    tar_eval(
+      values = corpus_stats_translations_df,
+      tar_target(
+        name = trans_object,
+        command = democracy_translations_freqs(translations_object),
+        deployment = "main",
+        description = "Corpus Stats: Frequency table of feature translations."
+      )
+    )
+  )
+} else {
+  list()
+}
+
+corpus_stats_targets <- c(
+  corpus_stats_feature_targets,
+  list(
   tar_target(
     name = total_words,
     command = query_bookworm(
@@ -780,26 +848,6 @@ corpus_stats_targets <- list(
     ),
     deployment = "main",
     description = "Corpus Stats: Total word counts in the corpus over time."
-  ),
-  tar_target(
-    name = democracy_text_counts,
-    command = query_bookworm(
-      c("democracy"),
-      counttype = c("TextCount"),
-      lims = c(1700, 2020)
-    ),
-    deployment = "main",
-    description = "Corpus Stats: Number of texts containing 'democracy'."
-  ),
-  tar_target(
-    name = democracy_text_percent,
-    command = query_bookworm(
-      c("democracy"),
-      counttype = c("TextPercent"),
-      lims = c(1700, 2020)
-    ),
-    deployment = "main",
-    description = "Corpus Stats: Percentage of texts containing 'democracy'."
   ),
   tar_target(
     name = total_texts,
@@ -859,20 +907,9 @@ corpus_stats_targets <- list(
       dplyr::count(rights_date_used),
     deployment = "main",
     description = "Corpus Stats: Counts of volumes by rights_date_used."
-  ),
-  tar_target(
-    name = democracy_translations,
-    command = here::here("democracy_translations.xlsx"),
-    format = "file",
-    deployment = "main",
-    description = "Corpus Stats: Source Excel file listing democracy translations."
-  ),
-  tar_target(
-    name = democracy_trans,
-    command = democracy_translations_freqs(democracy_translations),
-    deployment = "main",
-    description = "Corpus Stats: Frequency table of democracy translations."
   )
+  ),
+  corpus_stats_translations_targets
 )
 
 # Paper and appendixes -------------------------------------------------------
@@ -897,6 +934,13 @@ document_targets <- list(
     output_file = "The_Vector_Space_of_Democracy.md",
     deployment = "main",
     description = "Document: Render the Paper."
+  ),
+  tar_quarto(
+    name = Appendix_Methods,
+    path = "Paper/Appendix_Methods.qmd",
+    output_file = "Appendix_Methods.md",
+    deployment = "main",
+    description = "Document: Render Appendix B (methodological choices)."
   )
 )
 

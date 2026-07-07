@@ -4,6 +4,7 @@ description: "Dictionary for democracy nouns (case-sensitive)."
 search_terms: [democracy]
 search_join: OR
 pages_contain: democracy
+translations_file: democracy_translations.xlsx
 dictionary:
   democracy:
     - democracy_nn

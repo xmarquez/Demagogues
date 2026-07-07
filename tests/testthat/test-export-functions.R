@@ -84,3 +84,61 @@ test_that("make_results_bundle errors when the store metadata is absent", {
     regexp = "metadata"
   )
 })
+
+# rendered_document_files() ---------------------------------------------------
+
+make_fake_paper <- function(root) {
+  paper <- file.path(root, "Paper")
+  dir.create(paper, recursive = TRUE)
+  writeLines("paper", file.path(paper, "The_Paper.md"))
+  writeLines("<html></html>", file.path(paper, "The_Paper.html"))
+  writeLines("%PDF", file.path(paper, "The_Paper.pdf"))
+  fig_dir <- file.path(paper, "The_Paper_files", "figure-html")
+  dir.create(fig_dir, recursive = TRUE)
+  writeLines("png", file.path(fig_dir, "plot-1.png"))
+  writeLines("notes", file.path(paper, "notes.txt"))  # unrelated, must be skipped
+  invisible(root)
+}
+
+test_that("rendered_document_files finds md/html/pdf plus _files contents, relative", {
+  root <- file.path(tempdir(), paste0("paper_", as.integer(stats::runif(1, 1, 1e8))))
+  dir.create(root)
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+  make_fake_paper(root)
+
+  rel <- rendered_document_files(root)
+  expect_true("Paper/The_Paper.md" %in% rel)
+  expect_true("Paper/The_Paper.html" %in% rel)
+  expect_true("Paper/The_Paper.pdf" %in% rel)
+  expect_true("Paper/The_Paper_files/figure-html/plot-1.png" %in% rel)
+  expect_false(any(grepl("notes.txt", rel)))
+  expect_false(any(grepl("^([A-Za-z]:)?/", rel)))  # all paths are relative
+})
+
+test_that("rendered_document_files returns character(0) when Paper is absent", {
+  root <- file.path(tempdir(), paste0("nopaper_", as.integer(stats::runif(1, 1, 1e8))))
+  dir.create(root)
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+  expect_identical(rendered_document_files(root), character(0))
+})
+
+test_that("make_results_bundle includes rendered documents when present", {
+  root <- file.path(tempdir(), paste0("doc_store_", as.integer(stats::runif(1, 1, 1e8))))
+  dir.create(root)
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+  make_fake_store(root, "combined_performance")
+  make_fake_paper(root)
+
+  bundle <- make_results_bundle(
+    dir = "exports",
+    targets = "combined_performance",
+    root = root,
+    run = "with_docs"
+  )
+  contents <- gsub("\\\\", "/", utils::untar(bundle, list = TRUE))
+  expect_true("Paper/The_Paper.md" %in% contents)
+  expect_true("Paper/The_Paper.html" %in% contents)
+  expect_true("Paper/The_Paper.pdf" %in% contents)
+  expect_true("Paper/The_Paper_files/figure-html/plot-1.png" %in% contents)
+  expect_false(any(grepl("notes.txt", contents)))
+})

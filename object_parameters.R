@@ -536,6 +536,52 @@ workset_meta_count_df <- workset_meta_df %>%
     feature_name, ~ rlang::sym(paste0("workset_meta_volume_count_", .x))
   ))
 
+# Corpus stats ----------------------------------------------------------------
+
+# Time bounds for the bookworm corpus-stats queries. Configurable via
+# `corpus_stats.lims` (default 1700-2020, preserving the historical query). Held
+# as a `c(<min>, <max>)` call so tar_eval() splices it verbatim into the
+# query_bookworm() commands.
+corpus_stats_lims <- as.numeric(cfg$corpus_stats$lims %||% c(1700, 2020))
+corpus_stats_lims_call <- rlang::call2("c", !!!as.list(corpus_stats_lims))
+
+# One row per run feature carrying the bookworm search-term call and the four
+# stable summary target-name symbols (`<feature>_word_counts`,
+# `<feature>_words_per_million`, `<feature>_text_counts`, `<feature>_text_percent`).
+# Search terms come from an explicit `bookworm_terms` key, else the feature's
+# search terms (matching feature_params), else the feature name. They are wrapped
+# in a `c(...)` call so the emitted commands read query_bookworm(c("democracy"), ...)
+# exactly as the historical hard-coded targets did.
+corpus_stats_df <- purrr::map_dfr(cfg$features, function(f) {
+  feature_name <- f$name %||% f$id
+  search_terms <- f$search_terms %||% f$tokens %||% feature_name
+  terms <- as.character(f$bookworm_terms %||% search_terms)
+  tibble(
+    feature_name = feature_name,
+    bookworm_terms = list(rlang::call2("c", !!!as.list(terms))),
+    corpus_stats_lims = list(corpus_stats_lims_call),
+    word_counts_object = list(rlang::sym(paste0(feature_name, "_word_counts"))),
+    words_per_million_object = list(rlang::sym(paste0(feature_name, "_words_per_million"))),
+    text_counts_object = list(rlang::sym(paste0(feature_name, "_text_counts"))),
+    text_percent_object = list(rlang::sym(paste0(feature_name, "_text_percent")))
+  )
+})
+
+# Optional per-feature translations sources. Only features whose config declares a
+# `translations_file` produce `<feature>_translations` (a "file" target) and
+# `<feature>_trans` (a frequency table) targets. Empty (0x0) tibble when no
+# feature defines one; _targets.R guards on nrow() before emitting the tar_eval.
+translations_features <- purrr::keep(cfg$features, ~ !is.null(.x$translations_file))
+corpus_stats_translations_df <- purrr::map_dfr(translations_features, function(f) {
+  feature_name <- f$name %||% f$id
+  tibble(
+    feature_name = feature_name,
+    translations_file = as.character(f$translations_file),
+    translations_object = list(rlang::sym(paste0(feature_name, "_translations"))),
+    trans_object = list(rlang::sym(paste0(feature_name, "_trans")))
+  )
+})
+
 # Sample parameters -----------------------------------------------------------
 
 # Volume deduplication strategy (default: none). Kept multiplicities are a
