@@ -430,7 +430,11 @@ model_targets <- list(
         dplyr::mutate(performance_id = performance_id, period = period_object),
       pattern = map(predictive_model_object, testing_dfm_object, dfm_object, split_object, period_object),
       packages = c("quanteda"),
-      resources = tar_resources(crew = tar_resources_crew(controller = "std")),
+      # OOD evaluates on the unrestricted DFM (up to ~150k pages x 30k features
+      # for recent decades); route to bigmem so the largest evaluations have
+      # headroom. (Resources are not part of a target's hash, so this does not
+      # invalidate already-built OOD targets - only errored ones retry here.)
+      resources = tar_resources(crew = tar_resources_crew(controller = "bigmem")),
       storage = "worker",
       retrieval = "worker",
       error = "null",

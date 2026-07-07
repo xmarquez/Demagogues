@@ -335,6 +335,19 @@ model_performance <- function(model, dfm, initial_split, feat, weight, use = "te
   UseMethod("model_performance")
 }
 
+#' @describeIn model_performance Fallback for a missing model (an upstream
+#'   `predictive_model` target that errored to `NULL`): returns a zero-row
+#'   metrics tibble instead of failing `UseMethod()` dispatch, so a single
+#'   failed fit does not also error its downstream performance target.
+#' @export
+model_performance.NULL <- function(model, dfm, initial_split, feat, weight, use = "testing",
+                                   reference_dfm = NULL) {
+  tibble::tibble(
+    .metric = character(0), .estimator = character(0), .estimate = numeric(0),
+    model_type = character(0)
+  )
+}
+
 #' Performance for multinomial naive Bayes models
 #'
 #' Evaluates a fitted `naivebayes::multinomial_naive_bayes()` model on the chosen
@@ -364,10 +377,15 @@ model_performance.multinomial_naive_bayes <- function(model, dfm, initial_split,
     testing_dfm <- dfm
   }
 
+  # Keep the evaluation matrix sparse (dgCMatrix), which
+  # predict.multinomial_naive_bayes() accepts directly. Densifying with
+  # as.matrix() on a large OOD/unrestricted DFM (up to ~150k pages x 30k
+  # features) allocates tens of GB and was the source of the out-of-memory
+  # failures on the largest decades.
   x_test <- get_x_eval(testing_dfm, dfm, feat = feat, weight = weight,
                        initial_split = initial_split, reference_dfm = reference_dfm) %>%
     quanteda::dfm_match(rownames(model$params)) %>%
-    as.matrix()
+    methods::as("dgCMatrix")
 
   y_test <- get_y(testing_dfm, feat, model_type = "classification")
 
@@ -417,8 +435,17 @@ model_performance.LiblineaR <- function(model, dfm, initial_split, feat,
   model_type <- ifelse(model$Type %in% c(0:7), "classification",
                        "regression")
 
+  # LiblineaR's predict requires every training feature to be present in the
+  # test matrix (it reorders/subsets to `fNames` itself, but errors on any
+  # missing one). get_x_eval() returns the DFM in the reference feature space,
+  # which is not the model's training space, so match to the model's features
+  # explicitly - as the glmnet/xgboost/naivebayes methods already do. The
+  # training feature names are the columns of the weight matrix minus "Bias"
+  # (see LiblineaR:::predict.LiblineaR).
+  feature_names <- colnames(model$W)[colnames(model$W) != "Bias"]
   x_test <- get_x_eval(testing_dfm, dfm, feat = feat, weight = weight,
                        initial_split = initial_split, reference_dfm = reference_dfm) %>%
+    quanteda::dfm_match(feature_names) %>%
     as("dgCMatrix") %>%
     as("RsparseMatrix") %>%
     as("dgRMatrix")
