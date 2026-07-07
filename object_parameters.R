@@ -879,7 +879,17 @@ graph_df <- bind_rows(sims_svd_df,
 divergence_base <- bind_rows(predictive_model_weights_df,
                              ppmi_wv_df,
                              sims_svd_df) %>%
-  mutate(weight_type = case_when(!is.na(predictive_model_engine) ~ paste(predictive_model_engine, sample_max_vols,
+  # Engine label carries the params hash (when non-empty) so multiple variants
+  # of the same engine (e.g. a tuning run's xgboost grid) get distinct
+  # kl/entropy target names and distinguishable weight_type labels downstream.
+  # Default (empty-hash) configs keep the bare engine name, so historical
+  # target names are unchanged.
+  mutate(predictive_model_engine_label = dplyr::case_when(
+    is.na(predictive_model_engine) ~ NA_character_,
+    is.na(predictive_model_params_hash) | predictive_model_params_hash == "" ~ predictive_model_engine,
+    TRUE ~ paste0(predictive_model_engine, "_", predictive_model_params_hash)
+  )) %>%
+  mutate(weight_type = case_when(!is.na(predictive_model_engine) ~ paste(predictive_model_engine_label, sample_max_vols,
                                                                          dfm_to_lower),
                                  !is.na(svd_dims) ~ paste("svd", sample_max_vols, svd_weight,
                                                           dfm_to_lower),

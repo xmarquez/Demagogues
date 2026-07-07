@@ -95,6 +95,12 @@ Config-driven hyperparameters, per the P1 spec (decision: Phase 3 P1–P4 run **
 
 Next in Phase 3: P2 tuning run config (3 decades, xgboost depth×eta grid, glmnet α grid) on Rāpoi → tuned defaults into config; then P3 `n_repeats` and P4 `sampled_htids`.
 
+### 2026-07-07 — Phase 3 P2 tuning study configured (runs submitted to Rāpoi)
+
+- **Three run configs** `config/runs/tuning_democracy_{1790,1860,1940}.yml` (periods are a single contiguous range in config, so non-contiguous decades = separate runs; they must run **sequentially** — the combined tables are static target names in the shared store, and each run's bundle is separately timestamped in `exports/`). Each: democracy, one decade, the full run's model-bearing DFM config (500 restricted vols, feature pages, lowercased), weights `[ppmi]`, engines = scalar baselines (glmnet α=1@lambda.min; xgboost depth=12/eta=0.1) + glmnet {α=0, α=0.5, α=1@lambda.1se} + xgboost depth {4,6,8} × eta {0.05,0.1,0.3} at nrounds=120 (no in-pipeline early stopping; if a winner lands on a grid edge, follow up with xgb.cv). 152 targets/run, 14 model variants/decade. These runs double as the first 500-vol bigmem DFM test.
+- **P1 gap found by the tuning grid and fixed:** `weight_type` (which seeds kl/entropy target names and labels the combined tables) was `paste(engine, sample_max_vols, to_lower)` — duplicate engines with different params collided (“duplicated target names: kl_…”). Now an engine *label* carries the params hash when non-empty (`xgboost_<hash8>`); empty-hash configs keep bare engine names, so the default manifest is still byte-identical (re-verified, 383 targets) and the suite still passes 111/0.
+- Analysis once bundles are back: per-variant test AUC/kappa from `combined_performance`, weight sparsity (share of exactly-zero / near-zero weights) from `all_model_weights` keyed by the hashed `weight_type` label → pick defaults, write them into `config/corpus.yml` as mapping-form engines, record the table for the paper appendix (makes the “recommended defaults” claim true).
+
 ---
 
 ## Phase 1 — Correctness fixes (do these before re-running anything expensive)

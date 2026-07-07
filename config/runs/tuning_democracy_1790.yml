@@ -1,0 +1,68 @@
+id: tuning_democracy_1790
+description: >-
+  Hyperparameter tuning study (Phase 3 P2), 1790s decade: xgboost max_depth x eta
+  grid and glmnet alpha / lambda_rule grid, fit on the full run's model-bearing
+  DFM configuration (500 restricted volumes, feature pages, lowercased).
+  Compare test AUC/kappa (combined_performance) and weight sparsity
+  (all_model_weights) across the engine variants; scalar baseline entries keep
+  hash-free target names. Run the three tuning_democracy_* runs sequentially
+  (they share the store's static combined tables), fetching results after each.
+features: [democracy]
+outputs: [ingest, dfm, model]
+
+periods:
+  sample_min_year: 1790
+  sample_max_year: 1800
+  sample_slice_size: 10
+  period_name: decade
+
+samples:
+  sample_max_vols: [500]
+  sample_type: [restricted]
+  sample_multiplier: [1]
+
+dfm:
+  plans:
+    - id: restricted_feature_pages
+      sample_max_vols: [500]
+      sample_type: [restricted]
+      pages_contain: ["{feature_pages_contain}"]
+      to_lower: [true]
+
+predictive_models:
+  task: [classification]
+  weights: [ppmi]
+  engines:
+    # Baselines (scalar form = historical defaults, hash-free names):
+    # glmnet alpha=1 @ lambda.min; xgboost max_depth=12, eta=0.1, nrounds=120.
+    - glmnet
+    - xgboost
+    # glmnet grid: alpha in {0, 0.5, 1(baseline)}; plus lambda.1se at alpha=1.
+    - name: glmnet
+      params: { alpha: 0 }
+    - name: glmnet
+      params: { alpha: 0.5 }
+    - name: glmnet
+      params: { lambda_rule: lambda.1se }
+    # xgboost grid: max_depth {4,6,8} x eta {0.05,0.1,0.3}, nrounds fixed at the
+    # default 120 (no early stopping in-pipeline; if a winner sits at a grid
+    # edge, especially at eta=0.05 which may be undertrained at 120 rounds,
+    # follow up with xgb.cv before adopting it).
+    - name: xgboost
+      params: { max_depth: 4, eta: 0.05 }
+    - name: xgboost
+      params: { max_depth: 4, eta: 0.1 }
+    - name: xgboost
+      params: { max_depth: 4, eta: 0.3 }
+    - name: xgboost
+      params: { max_depth: 6, eta: 0.05 }
+    - name: xgboost
+      params: { max_depth: 6, eta: 0.1 }
+    - name: xgboost
+      params: { max_depth: 6, eta: 0.3 }
+    - name: xgboost
+      params: { max_depth: 8, eta: 0.05 }
+    - name: xgboost
+      params: { max_depth: 8, eta: 0.1 }
+    - name: xgboost
+      params: { max_depth: 8, eta: 0.3 }
