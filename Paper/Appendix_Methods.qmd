@@ -85,35 +85,37 @@ sparsity (the share of exactly-zero coefficients for glmnet; the share of
 features with zero gain for xgboost), since weight sparsity propagates into
 all downstream entropy and divergence measures.
 
-```{r tuning-performance, eval=has_tuning}
-tuning_perf <- read_csv(tuning_perf_path, show_col_types = FALSE)
+```{r tuning-figures, results="asis"}
+# Self-contained conditional (no cross-chunk `eval=` option, which the
+# tar_quarto dependency scan cannot resolve): draw the figures if the committed
+# snapshots exist, otherwise print a pending note.
+if (has_tuning) {
+  tuning_perf <- read_csv(tuning_perf_path, show_col_types = FALSE)
+  print(
+    tuning_perf %>%
+      filter(.metric %in% c("roc_auc", "kap")) %>%
+      ggplot(aes(x = variant, y = .estimate, color = era)) +
+      geom_point(position = position_dodge(width = 0.4)) +
+      facet_wrap(~.metric, scales = "free_y") +
+      coord_flip() +
+      labs(x = NULL, y = "Held-out estimate", color = "Era",
+           title = "Tuning study: held-out performance by hyperparameter variant")
+  )
 
-tuning_perf %>%
-  filter(.metric %in% c("roc_auc", "kap")) %>%
-  ggplot(aes(x = variant, y = .estimate, color = era)) +
-  geom_point(position = position_dodge(width = 0.4)) +
-  facet_wrap(~.metric, scales = "free_y") +
-  coord_flip() +
-  labs(x = NULL, y = "Held-out estimate", color = "Era",
-       title = "Tuning study: held-out performance by hyperparameter variant")
-```
-
-```{r tuning-sparsity, eval=has_tuning}
-tuning_sparsity <- read_csv(tuning_sparsity_path, show_col_types = FALSE)
-
-tuning_sparsity %>%
-  ggplot(aes(x = variant, y = zero_share, color = era)) +
-  geom_point(position = position_dodge(width = 0.4)) +
-  coord_flip() +
-  labs(x = NULL, y = "Share of zero-weight features", color = "Era",
-       title = "Tuning study: weight sparsity by hyperparameter variant")
-```
-
-```{r tuning-pending, eval=!has_tuning, results="asis"}
-cat("*(Tuning-study snapshot tables not yet present in `data/`; the figures",
-    "and the defaults discussion below will be completed when the tuning",
-    "runs' results are snapshotted. See \"How this appendix is",
-    "maintained\".)*")
+  tuning_sparsity <- read_csv(tuning_sparsity_path, show_col_types = FALSE)
+  print(
+    tuning_sparsity %>%
+      ggplot(aes(x = variant, y = zero_share, color = era)) +
+      geom_point(position = position_dodge(width = 0.4)) +
+      coord_flip() +
+      labs(x = NULL, y = "Share of zero-weight features", color = "Era",
+           title = "Tuning study: weight sparsity by hyperparameter variant")
+  )
+} else {
+  cat("*(Tuning-study snapshot tables not yet present in `data/`; the figures",
+      "will render once the tuning runs' results are snapshotted. See \"How",
+      "this appendix is maintained\".)*")
+}
 ```
 
 **Adopted defaults.** For glmnet, the study left the defaults unchanged:

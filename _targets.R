@@ -941,11 +941,18 @@ document_targets <- list(
     deployment = "main",
     description = "Document: Markdown block with graph names for reporting."
   ),
+  # error = "null" on the quarto targets: these read the store via
+  # tar_read_raw(<string>), which tarchetypes cannot register as a dependency,
+  # so they are not ordered after their inputs and a render failure must never
+  # abort the (multi-day) pipeline. The `document` output group is omitted from
+  # full_democracy.yml for the same reason; render documents locally until the
+  # targets gain explicit dependencies (Phase 4 / W1).
   tar_quarto(
     name = Appendix,
     path = "Paper/Appendix.qmd",
     output_file = "Appendix.md",
     deployment = "main",
+    error = "null",
     description = "Document: Render the Appendix markdown."
   ),
     tar_quarto(
@@ -953,6 +960,7 @@ document_targets <- list(
     path = "Paper/The_Vector_Space_of_Democracy.qmd",
     output_file = "The_Vector_Space_of_Democracy.md",
     deployment = "main",
+    error = "null",
     description = "Document: Render the Paper."
   ),
   tar_quarto(
@@ -960,6 +968,7 @@ document_targets <- list(
     path = "Paper/Appendix_Methods.qmd",
     output_file = "Appendix_Methods.md",
     deployment = "main",
+    error = "null",
     description = "Document: Render Appendix B (methodological choices)."
   )
 )

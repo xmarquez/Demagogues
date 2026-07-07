@@ -1,7 +1,13 @@
 id: full_democracy
 description: "Full democracy pipeline using the shared corpus defaults."
 features: [democracy]
-outputs: [ingest, dfm, model, graph, corpus_stats, document]
+# `document` is intentionally omitted: the tar_quarto targets read the store
+# with tar_read_raw(<string>), which tarchetypes cannot detect as a dependency,
+# so they render at pipeline start (before their inputs exist) instead of last.
+# Compute everything here, fetch, and render the paper/appendices locally. Re-add
+# `document` only after the quarto targets gain explicit target dependencies
+# (Phase 4 / W1). error="null" on those targets (see _targets.R) is a backstop.
+outputs: [ingest, dfm, model, graph, corpus_stats]
 samples:
   # Five independent volume samples for the headline (restricted, max-vols)
   # chain, for uncertainty bands on entropy/KL/JSD (P3). Deep-merges with the
