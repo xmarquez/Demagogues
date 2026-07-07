@@ -79,7 +79,9 @@ Verified on Windows: `_targets.R` parses; `tar_validate()` passes on both backen
 
 Robustness added along the way: `restricted_dfm_from_json()` returns NULL for empty period slices, and the branch-heavy model chain (files/dfm/split/model/svd/weights/topic/kl/entropy/graph) uses `error = "null"` so a failed branch is recorded in `tar_meta()` (shipped home in the bundle via `meta`) instead of aborting a multi-day run.
 
-Still to observe on the first **full** run: memory/walltime adequacy at 500 vols/decade (bigmem DFM builds), worker `free(): invalid pointer` at teardown (cosmetic so far — results unaffected), and quarto report renders on the coordinator (the smoke run's graph reports rendered? verify on full run).
+Still to observe on the first **full** run: memory/walltime adequacy at 500 vols/decade (bigmem DFM builds — *validated by the P2 tuning runs 2026-07-07*), worker `free(): invalid pointer` at teardown (cosmetic so far — results unaffected), and quarto report renders on the coordinator (the smoke run's graph reports rendered? verify on full run).
+
+EF-cache attrition (observed on the tuning runs, 2026-07-07): sampled volumes whose EF files are not pre-staged in `/nfs/scratch/marquexa/corpora/hathi/hathi-ef` are silently dropped by `cache_ef_files()` because parallel compute nodes have no outbound network for the rsync top-up. Tuning coverage was 999/1000 (1790s–1800s), 978/1000 (1860s–70s), 1000/1000 (1940s–50s) — ≤2.2% loss. Before the full run, consider a pre-stage step: materialize the sampled htids, run `hathiTools::rsync_from_hathi()` for them from the login node (which has network), then start the pipeline; or accept the ~2% attrition and note it in the paper's sample description.
 
 ---
 
