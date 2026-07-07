@@ -120,8 +120,12 @@ Key design points:
    `RESEARCH_DATA_ROOT=/nfs/scratch/marquexa/corpora` is set by `launch.sh`;
    the pipeline resolves the catalog and EF cache under it exactly as it does
    under `D:/ResearchData/corpora` locally. `cache_ef_files()` downloads any
-   missing EF volumes itself **if compute nodes have outbound network** —
-   verify on the smoke run; if blocked, pre-stage the full cache.
+   missing EF volumes itself — compute nodes (incl. the `parallel` partition)
+   have outbound network (verified 2026-07-07 on node spj01). The container
+   image includes `rsync` (added 2026-07-07 — pull a fresh image), and
+   `cache_ef_files()` works around a hathiTools 0.2.0 path-encoding bug for
+   htids with dots in the local id (miun/miua Michigan ids): see
+   `ef_remote_path()` in `R/fast_dfm_functions.R`.
 
 ## Everyday workflow
 
@@ -197,7 +201,7 @@ default to quicktest, 2 CPU, 2 GB, 1 h.
 | `Rscript: command not found` in worker logs | Re-exec into container didn't happen | Check the singularity binary path (`DEMAGOGUES_SINGULARITY`; default is the EasyBuild absolute path) and `DEMAGOGUES_SIF` in `logs/worker-*.out` |
 | `Oilpan: CagedHeap reservation` / `QUARTO_DENO` error | Quarto's deno/V8 needs ~66G of virtual ADDRESS SPACE; Slurm sets RLIMIT_AS = --mem (VSizeFactor), so small coordinators kill it | Keep coordinator `--mem=96G` (launch.sh/smoke.sh); do not "optimize" it down |
 | `module: command not found` in any job | Lmod init is unreliable in batch shells | Scripts call singularity by absolute path precisely to avoid this; only the fallback path needs Lmod |
-| EF download failures on workers | Compute nodes have no outbound network | Pre-stage `hathi-ef/` via rsync (see Data staging) |
+| EF download failures on workers | hathiTools encoding bug (dotted miun/miua ids) or stale container without `rsync` | `cache_ef_files()` retries with corrected paths (`ef_remote_path()`); ensure the image is current (`slurm/pull_image.sh`). Compute nodes DO have outbound network (verified 2026-07-07) |
 | `deploy.ps1` SSH check fails | VPN down / no key | Follow the printed key-setup guidance |
 | Container build fails on GitHub rate limits (GitHub-remote pkgs) | Unauthenticated API limit | Workflow already passes `GITHUB_TOKEN` as `GITHUB_PAT` build-arg; re-run the job |
 
@@ -208,7 +212,8 @@ default to quicktest, 2 CPU, 2 GB, 1 h.
    Singularity 3.10.2 on Rāpoi's compute nodes.
 3. The ssh shims: intra-cluster passwordless ssh from a compute-node container
    back to the login node, and whether login-node policy allows it.
-4. Whether Rāpoi compute nodes have outbound network for EF downloads.
+4. ~~Whether Rāpoi compute nodes have outbound network for EF downloads.~~
+   Resolved 2026-07-07: they do (verified from a parallel-partition job).
 5. Memory/walltime adequacy of the std (6 GB/cpu) and bigmem (40 GB/cpu)
    controller settings for the full 500-vols-per-decade run.
 6. Quarto renders (`run_graph_html`, Paper/Appendix) inside the container on

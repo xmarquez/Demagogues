@@ -42,6 +42,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       curl \
       gdebi-core \
       openssh-client \
+      rsync \
     && rm -rf /var/lib/apt/lists/*
 
 # --- Quarto CLI -------------------------------------------------------------

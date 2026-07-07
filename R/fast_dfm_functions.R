@@ -179,6 +179,74 @@ dfm_from_json <- function(paths,
 #'   include HTIDs).
 #'
 #' @return A character vector of local JSON file paths (existing files only).
+#' Corrected HTRC rsync path for an htid
+#'
+#' hathiTools 0.2.0's `stubby_url_to_rsync()` builds remote paths with
+#' `id_clean()` (`:` -> `+`, `/` -> `=`) but omits the `.` -> `,` substitution
+#' the HTRC rsync tree uses (`id_encode()`), so every htid with a dot in its
+#' local id (e.g. `miun.*`, `miua.*`) 404s. The comma encoding applies to both
+#' the stub directory and the local-id portion of the filename; the dot
+#' separating namespace from local id is preserved. Verified against the live
+#' tree 2026-07-07: `miun.abj7655.0004.001` lives at
+#' `miun/a750,1/miun.abj7655,0004,001.json.bz2`.
+#'
+#' @param htids Character vector of HathiTrust ids.
+#'
+#' @return Character vector of remote paths relative to the rsync module root.
+#' @keywords internal
+ef_remote_path <- function(htids) {
+  parts <- stringr::str_split_fixed(htids, "\\.", 2)
+  ns <- parts[, 1]
+  enc <- chartr(":/.", "+=,", parts[, 2])
+  stub <- vapply(enc, function(x) {
+    breaks <- seq(1, by = 3, length.out = ceiling(nchar(x) / 3))
+    paste0(strsplit(x, "")[[1]][breaks], collapse = "")
+  }, character(1), USE.NAMES = FALSE)
+  paste0(ns, "/", stub, "/", ns, ".", enc, ".json.bz2")
+}
+
+#' Fetch EF files by comma-encoded remote path, storing at the expected local path
+#'
+#' Fallback fetcher for the htids `hathiTools::rsync_from_hathi()` cannot
+#' retrieve (its encoding bug; see [ef_remote_path()]). Downloads the
+#' comma-encoded remote files into `ef_dir` (mirroring the remote layout), then
+#' copies each fetched file to the dot-encoded `local_loc` that
+#' `find_cached_htids()` expects, so the rest of the pipeline sees a normal
+#' cache hit.
+#'
+#' @param htids Character vector of missing htids.
+#' @param local_locs Expected local cache paths for those htids
+#'   (`find_cached_htids()$local_loc`), parallel to `htids`.
+#' @param ef_dir EF cache root directory.
+#'
+#' @return Invisibly, a logical vector: which of `local_locs` now exist.
+#' @keywords internal
+rsync_ef_comma_encoded <- function(htids, local_locs, ef_dir) {
+  remote <- ef_remote_path(htids)
+  list_file <- tempfile(fileext = ".txt")
+  on.exit(unlink(list_file), add = TRUE)
+  writeLines(remote, list_file)
+
+  status <- suppressWarnings(system2(
+    "rsync",
+    c("-a", "--files-from", shQuote(list_file),
+      "data.analytics.hathitrust.org::features-2020.03/", shQuote(ef_dir)),
+    stdout = FALSE, stderr = FALSE
+  ))
+  if (!identical(as.integer(status), 0L)) {
+    warning("comma-encoded EF rsync fallback exited with status ", status,
+            " (some volumes may be genuinely absent upstream).", call. = FALSE)
+  }
+
+  fetched <- file.path(ef_dir, remote)
+  ok <- file.exists(fetched) & !file.exists(local_locs)
+  for (i in which(ok)) {
+    dir.create(dirname(local_locs[i]), recursive = TRUE, showWarnings = FALSE)
+    file.copy(fetched[i], local_locs[i])
+  }
+  invisible(file.exists(local_locs))
+}
+
 cache_ef_files <- function(democracy_samples) {
   research_data_root <- normalizePath(
     Sys.getenv("RESEARCH_DATA_ROOT", "D:/ResearchData/corpora"),
@@ -189,23 +257,54 @@ cache_ef_files <- function(democracy_samples) {
   old_opts <- options(hathiTools.ef.dir = ef_dir)
   on.exit(options(old_opts), add = TRUE)
 
-  # Cache hits need no network; rsync failure (e.g. compute nodes without
-  # outbound access) only matters for volumes not already cached.
-  tryCatch(
-    hathiTools::rsync_from_hathi(democracy_samples),
-    error = function(e) {
-      warning(
-        "rsync_from_hathi failed (compute node without outbound network?): ",
-        conditionMessage(e),
-        call. = FALSE
-      )
-      NULL
+  # Cache hits need no network. The top-up needs an rsync binary: present on
+  # Raapoi nodes (incl. parallel-partition compute nodes, verified 2026-07-07)
+  # and in the container image; typically absent on Windows dev machines, where
+  # the cache is pre-staged.
+  rsync_available <- nzchar(Sys.which("rsync"))
+  if (!rsync_available) {
+    warning("No rsync binary on PATH; relying on the pre-staged EF cache only.",
+            call. = FALSE)
+  } else {
+    # rsync_from_hathi() returns the rsync exit status but never checks it (a
+    # missing binary is exit 127 and looks like success to callers that ignore
+    # the return value) - so check it here.
+    status <- tryCatch(
+      hathiTools::rsync_from_hathi(democracy_samples),
+      error = function(e) {
+        warning("rsync_from_hathi failed: ", conditionMessage(e), call. = FALSE)
+        -1L
+      }
+    )
+    if (!identical(as.integer(status), 0L)) {
+      warning("rsync_from_hathi exited with status ", status,
+              "; relying on the pre-staged cache and the encoding-fixed fetch.",
+              call. = FALSE)
     }
-  )
+  }
 
   json_paths <- hathiTools::find_cached_htids(democracy_samples, cache_type = "none")
+
+  # hathiTools cannot fetch htids with dots in the local id (encoding bug, see
+  # ef_remote_path()); retry exactly the missing ones with corrected paths.
+  missing <- !file.exists(json_paths$local_loc)
+  if (any(missing) && rsync_available) {
+    rsync_ef_comma_encoded(
+      json_paths$htid[missing],
+      json_paths$local_loc[missing],
+      ef_dir
+    )
+  }
+
   paths <- json_paths$local_loc
   paths <- paths[file.exists(paths)]
+
+  still_missing <- nrow(democracy_samples) - length(paths)
+  if (still_missing > 0L && length(paths) > 0L) {
+    warning(still_missing, " of ", nrow(democracy_samples),
+            " sampled volumes have no EF file after the rsync top-up; ",
+            "they are dropped from this slice.", call. = FALSE)
+  }
 
   # Zero files for a non-empty sample means the cache dir is wrong or the data
   # is unstaged: fail loudly rather than poisoning downstream targets with an
