@@ -1,0 +1,85 @@
+era,variant,engine,zero_share
+1790,glmnet alpha=0,glmnet,0.019671943106217022
+1790,glmnet alpha=0.5,glmnet,0.9683700389997706
+1790,"glmnet alpha=1, lambda.1se",glmnet,0.9867515485203028
+1790,"glmnet default (alpha=1, lambda.min)",glmnet,0.9755677907777013
+1790,"xgboost default (depth=12, eta=0.1)",xgboost,0.9731876577196604
+1790,"xgboost depth=4, eta=0.05",xgboost,0.9874684560679055
+1790,"xgboost depth=4, eta=0.1",xgboost,0.9863500802936453
+1790,"xgboost depth=4, eta=0.3",xgboost,0.9864647855012617
+1790,"xgboost depth=6, eta=0.05",xgboost,0.9811023170451938
+1790,"xgboost depth=6, eta=0.1",xgboost,0.9807295251204404
+1790,"xgboost depth=6, eta=0.3",xgboost,0.9817618719889883
+1790,"xgboost depth=8, eta=0.05",xgboost,0.9761699931176876
+1790,"xgboost depth=8, eta=0.1",xgboost,0.9780339527414544
+1790,"xgboost depth=8, eta=0.3",xgboost,0.9786935076852489
+1800,glmnet alpha=0,glmnet,0.01609308299648672
+1800,glmnet alpha=0.5,glmnet,0.973593744097314
+1800,"glmnet alpha=1, lambda.1se",glmnet,0.9908579199879113
+1800,"glmnet default (alpha=1, lambda.min)",glmnet,0.9785047788145518
+1800,"xgboost default (depth=12, eta=0.1)",xgboost,0.968909372520872
+1800,"xgboost depth=4, eta=0.05",xgboost,0.9840202485739111
+1800,"xgboost depth=4, eta=0.1",xgboost,0.9833402591515243
+1800,"xgboost depth=4, eta=0.3",xgboost,0.9828113784896679
+1800,"xgboost depth=6, eta=0.05",xgboost,0.9777870122020325
+1800,"xgboost depth=6, eta=0.1",xgboost,0.9774470174908391
+1800,"xgboost depth=6, eta=0.3",xgboost,0.9786558875750822
+1800,"xgboost depth=8, eta=0.05",xgboost,0.9723093196328058
+1800,"xgboost depth=8, eta=0.1",xgboost,0.9733293037663858
+1800,"xgboost depth=8, eta=0.3",xgboost,0.9760870386460655
+1860,glmnet alpha=0,glmnet,0.005988233646168932
+1860,glmnet alpha=0.5,glmnet,0.9805294859223981
+1860,"glmnet alpha=1, lambda.1se",glmnet,0.9921907830228324
+1860,"glmnet default (alpha=1, lambda.min)",glmnet,0.9815100154083205
+1860,"xgboost default (depth=12, eta=0.1)",xgboost,0.9588177615912593
+1860,"xgboost depth=4, eta=0.05",xgboost,0.9828057150861466
+1860,"xgboost depth=4, eta=0.1",xgboost,0.981404958677686
+1860,"xgboost depth=4, eta=0.3",xgboost,0.9807746182938787
+1860,"xgboost depth=6, eta=0.05",xgboost,0.9716346827286735
+1860,"xgboost depth=6, eta=0.1",xgboost,0.9725451743941729
+1860,"xgboost depth=6, eta=0.3",xgboost,0.9738758929822104
+1860,"xgboost depth=8, eta=0.05",xgboost,0.9661367138254657
+1860,"xgboost depth=8, eta=0.1",xgboost,0.9683078862585797
+1860,"xgboost depth=8, eta=0.3",xgboost,0.9699537750385208
+1870,glmnet alpha=0,glmnet,0.008019193479475465
+1870,glmnet alpha=0.5,glmnet,0.9790975120780886
+1870,"glmnet alpha=1, lambda.1se",glmnet,0.9929667729319355
+1870,"glmnet default (alpha=1, lambda.min)",glmnet,0.982745587800309
+1870,"xgboost default (depth=12, eta=0.1)",xgboost,0.9589509317382587
+1870,"xgboost depth=4, eta=0.05",xgboost,0.9824169323298386
+1870,"xgboost depth=4, eta=0.1",xgboost,0.9818253524829921
+1870,"xgboost depth=4, eta=0.3",xgboost,0.9809051171656752
+1870,"xgboost depth=6, eta=0.05",xgboost,0.9730831169684819
+1870,"xgboost depth=6, eta=0.1",xgboost,0.9741019489269399
+1870,"xgboost depth=6, eta=0.3",xgboost,0.976303940579091
+1870,"xgboost depth=8, eta=0.05",xgboost,0.9678903605350511
+1870,"xgboost depth=8, eta=0.1",xgboost,0.9679560916291452
+1870,"xgboost depth=8, eta=0.3",xgboost,0.971012587504519
+1940,glmnet alpha=0,glmnet,0.002887687392479725
+1940,glmnet alpha=0.5,glmnet,0.9763148193659376
+1940,"glmnet alpha=1, lambda.1se",glmnet,0.9866367657901204
+1940,"glmnet default (alpha=1, lambda.min)",glmnet,0.9767449004669452
+1940,"xgboost default (depth=12, eta=0.1)",xgboost,0.9512779552715654
+1940,"xgboost depth=4, eta=0.05",xgboost,0.981322192184812
+1940,"xgboost depth=4, eta=0.1",xgboost,0.980093389039076
+1940,"xgboost depth=4, eta=0.3",xgboost,0.9795097075448513
+1940,"xgboost depth=6, eta=0.05",xgboost,0.9686040796264438
+1940,"xgboost depth=6, eta=0.1",xgboost,0.9689727205701647
+1940,"xgboost depth=6, eta=0.3",xgboost,0.9703551241091177
+1940,"xgboost depth=8, eta=0.05",xgboost,0.9603710985500122
+1940,"xgboost depth=8, eta=0.1",xgboost,0.9619378225608257
+1940,"xgboost depth=8, eta=0.3",xgboost,0.9635352666502827
+1950,glmnet alpha=0,glmnet,0.0030140434552199257
+1950,glmnet alpha=0.5,glmnet,0.974960254372019
+1950,"glmnet alpha=1, lambda.1se",glmnet,0.9883081611022787
+1950,"glmnet default (alpha=1, lambda.min)",glmnet,0.9762519872813991
+1950,"xgboost default (depth=12, eta=0.1)",xgboost,0.9502848436671966
+1950,"xgboost depth=4, eta=0.05",xgboost,0.9795972443031267
+1950,"xgboost depth=4, eta=0.1",xgboost,0.9795641229464759
+1950,"xgboost depth=4, eta=0.3",xgboost,0.9789016958134605
+1950,"xgboost depth=6, eta=0.05",xgboost,0.9677729199788023
+1950,"xgboost depth=6, eta=0.1",xgboost,0.9690315315315315
+1950,"xgboost depth=6, eta=0.3",xgboost,0.9699920508744038
+1950,"xgboost depth=8, eta=0.05",xgboost,0.9599231584525703
+1950,"xgboost depth=8, eta=0.1",xgboost,0.9604531001589826
+1950,"xgboost depth=8, eta=0.3",xgboost,0.9640633280339163

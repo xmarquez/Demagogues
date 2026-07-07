@@ -49,7 +49,7 @@ The default hyperparameters are:
 | Engine | Defaults |
 |---|---|
 | glmnet | `alpha = 1` (lasso), `nfolds = 10`, coefficients read at `lambda.min` |
-| xgboost | `eta = 0.1`, `max_depth = 12`, `nrounds = 120`, `colsample_bytree = 0.5`, `subsample = 0.5`, `lambda = 0.5`, `scale_pos_weight` = class-imbalance ratio |
+| xgboost | `eta = 0.05`, `max_depth = 6` (set by the tuning study below; the engine-code fallback is `eta = 0.1`, `max_depth = 12`), `nrounds = 120`, `colsample_bytree = 0.5`, `subsample = 0.5`, `lambda = 0.5`, `scale_pos_weight` = class-imbalance ratio |
 | LiblineaR | `type = 1` (L2-regularized L2-loss SVM, dual), `cost = 1/\bar{\lVert x \rVert}`, inverse-frequency class weights |
 | naive Bayes | multinomial, `laplace = 1` |
 
@@ -116,13 +116,21 @@ cat("*(Tuning-study snapshot tables not yet present in `data/`; the figures",
     "maintained\".)*")
 ```
 
-<!-- TODO(after tuning analysis): one paragraph stating which settings were
-adopted as defaults and why, referencing the figures above. Update
-config/corpus.yml (mapping-form engines) in the same commit so the text and
-the configuration cannot drift apart. Note explicitly if any winner sat on a
-grid edge and whether an xgb.cv follow-up was run (the in-pipeline study uses
-fixed nrounds = 120 and no early stopping, so eta = 0.05 cells may be
-undertrained at 120 rounds). -->
+**Adopted defaults.** For glmnet, the study left the defaults unchanged:
+`alpha = 0.5` and `alpha = 1` are statistically indistinguishable in held-out
+AUC (0.816 vs. 0.814 averaged across eras), `lambda.1se` sacrifices a little
+kappa for somewhat sparser weights, and ridge (`alpha = 0`) is clearly worse
+at discrimination (AUC 0.748) — so the paper keeps lasso at `lambda.min`. For
+xgboost, `max_depth = 6, eta = 0.05` was adopted: it matches the best
+grid cell on AUC (0.819 vs. 0.820) and kappa (0.490 vs. 0.495) within noise
+while being markedly better calibrated (mean log loss 1.16 against 1.53 for
+the former `max_depth = 12, eta = 0.1` setting, which ties the best AUC but
+is the most overconfident of the top group). The `eta = 0.3` cells are
+uniformly worst. No adopted setting sits on a worrying grid edge: performance
+flattens between depth 8 and 12, and the feared undertraining of `eta = 0.05`
+at 120 rounds did not materialize, so no `xgb.cv` follow-up was needed. These
+defaults are recorded as engine parameters in `config/corpus.yml`, in the
+same commit as this paragraph.
 
 ## From model weights to distributions
 

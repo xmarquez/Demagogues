@@ -108,6 +108,18 @@ Next in Phase 3: P2 tuning run config (3 decades, xgboost depth×eta grid, glmne
 - **`Paper/Appendix_Methods.qmd` drafted** ("Appendix B: Methodological Choices") and registered as `tar_quarto` target `Appendix_Methods` (manifest 383→384, only that name added). Documents: config-driven hyperparameters + defaults table + **the xgboost 3.x params-dropping disclosure**, tuning-study design, weight normalization, keep-duplicates decision, union-vocab KL, train-statistics eval weighting, planned n_repeats (P3), reproducibility (P4 hooks). Tuning figures read committed snapshots `data/tuning_study_{performance,sparsity}.csv` (self-activating `eval=has_tuning` chunks) because the store's combined tables are overwritten by the most recent run; maintenance instructions are in the document's final section.
 - Ops note recorded: pushes to master are safe while cluster jobs run (the scratch clone is pinned to a detached SHA at deploy time); only `deploy.ps1` moves the cluster checkout — don't deploy until the tuning chain finishes.
 
+### 2026-07-07 — P2 complete: tuning study ran green; defaults adopted
+
+All three tuning runs completed on Rāpoi with **zero errored targets** (~20 min each; the 500-vol restricted DFM builds ran fine on bigmem — retiring that open risk for the full run). Bundles fetched by scp, each extracted to an isolated store, per-variant results snapshotted to `data/tuning_study_performance.csv` / `data/tuning_study_sparsity.csv` (committed; the appendix figures now activate).
+
+**Results (mean held-out, across 6 decades: 1790s/1800s, 1860s/70s, 1940s/50s):**
+- glmnet: α=0.5 ≈ α=1 default (AUC .816 vs .814, within noise); λ.1se trades a little kappa for sparsity (.990 vs .979 zero-share); ridge α=0 clearly worse (AUC .748, dense weights). **Kept default α=1 @ λ.min.**
+- xgboost: eta=0.3 uniformly worst. Top group spans AUC .812–.820. Old default (12, 0.1) ties best AUC but worst calibration of the group (log loss 1.53). **Adopted depth=6, eta=0.05** (AUC .819, kappa .490, log loss 1.16) per Xavier — near-best discrimination, much better calibrated, conventional depth for sparse text. No adopted setting on a worrying grid edge (depth flattens 8→12; eta .05 undertraining at 120 rounds did not materialize) → no xgb.cv follow-up needed.
+
+Written into `config/corpus.yml` (mapping-form xgboost entry) + adopted-defaults paragraph and updated defaults table in `Paper/Appendix_Methods.qmd` in the same commit. Verified: exactly the 73-target xgboost closure changes names in the full_democracy manifest (checked changed names ⊆ xgboost-chain object names from the grid; 0 outside); tests 123/0.
+
+**Full-run impact:** xgboost model targets and their downstream closure will (correctly) rebuild with the new params; glmnet/naivebayes/LiblineaR chains keep their names.
+
 ---
 
 ## Phase 1 — Correctness fixes (do these before re-running anything expensive)
@@ -307,7 +319,7 @@ Create `slurm/` with:
 
 ## Phase 3 — Model parameterization & statistical robustness
 
-> **P1 status: ✅ done 2026-07-07** (see Progress log — includes a pre-existing xgboost-3.x params-dropping bug found and fixed). P2–P4 pending.
+> **P1 status: ✅ done 2026-07-07** (see Progress log — includes a pre-existing xgboost-3.x params-dropping bug found and fixed). **P2 status: ✅ done 2026-07-07** — tuning study ran on Rāpoi; defaults adopted (xgboost depth=6/eta=0.05; glmnet unchanged) per Xavier. P3–P4 pending.
 
 ### P1. Move all hyperparameters from code to config
 
