@@ -1,0 +1,198 @@
+---
+title: "Prototype: cross-model similarity & entropy over time"
+subtitle: "Democracy full run — figure prototypes for IMPROVEMENT_PLAN W5"
+format:
+  html:
+    toc: true
+    toc-location: right
+    fig-width: 9
+    fig-height: 5
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+theme_set(theme_bw(base_size = 12))
+
+store <- here::here("_targets")
+rd <- function(n) targets::tar_read_raw(n, store = store)
+
+ra <- rd("rank_agreements")          # period, term, term2, spearman, top_overlap (+ NA engine cols)
+wc <- rd("weight_correlations")      # period, term, term2, value (Pearson)
+jsd <- rd("jsd_distances")           # period, term, term2, value (JS distance)
+ent <- rd("combined_entropy")        # weight_id, period, entropy, sample_rep, engine, weight_type...
+
+# --- model lookup: weight_id -> family / engine / rep -----------------------
+# The similarity targets leave engine/engine2 as NA (a metadata-join bug in
+# correlation_functions.R), so we rebuild the mapping from combined_entropy,
+# which carries clean labels. Match rate against rank_agreements terms is 100%.
+lut <- ent |>
+  distinct(weight_id, predictive_model_engine, predictive_model_dfm_weight, weight_type, sample_rep) |>
+  mutate(
+    family = case_when(
+      str_starts(weight_id, "weight_pred") ~ "predictive",
+      str_starts(weight_id, "weight_svd")  ~ "svd",
+      str_starts(weight_id, "weight_ppmi") ~ "ppmi",
+      TRUE ~ "other"
+    ),
+    model_label = case_when(
+      family == "predictive" ~ predictive_model_engine,
+      family == "svd"        ~ "PPMI-SVD",
+      family == "ppmi" & str_detect(weight_type, "similarities") ~ "PPMI (sim.)",
+      family == "ppmi"       ~ "PPMI (feature)",
+      TRUE ~ family
+    )
+  )
+
+engine_pal <- c(glmnet = "#1b9e77", LiblineaR = "#d95f02",
+                naivebayes = "#7570b3", xgboost = "#e7298a")
+```
+
+## 1. Cross-model weight agreement over time
+
+*How similar are the different classifiers' term-weight rankings within each
+decade?* For every decade we take each **rep's** four predictive models
+(glmnet, LiblineaR, naïve Bayes, xgboost), compute the Spearman rank
+correlation of normalized weights over the common vocabulary for every distinct
+engine pair, and average those pairwise agreements. The line is the mean across
+the five sampling reps; the band is the rep min–max (replicate range, not a CI —
+consistent with Appendix B).
+
+```{r cross-model-prep}
+pair <- ra |>
+  select(period, term, term2, spearman, top_overlap) |>
+  inner_join(select(lut, term = weight_id, fam1 = family, eng1 = model_label, rep1 = sample_rep),
+             by = "term") |>
+  inner_join(select(lut, term2 = weight_id, fam2 = family, eng2 = model_label, rep2 = sample_rep),
+             by = "term2")
+
+# predictive-vs-predictive, same rep, distinct engines
+pred_pairs <- pair |>
+  filter(fam1 == "predictive", fam2 == "predictive", rep1 == rep2, eng1 != eng2)
+
+per_rep <- pred_pairs |>
+  group_by(period, rep = rep1) |>
+  summarise(mean_spearman = mean(spearman, na.rm = TRUE),
+            mean_overlap  = mean(top_overlap, na.rm = TRUE), .groups = "drop")
+
+agree_summary <- per_rep |>
+  group_by(period) |>
+  summarise(spearman = mean(mean_spearman),
+            lo = min(mean_spearman), hi = max(mean_spearman),
+            overlap = mean(mean_overlap), .groups = "drop")
+```
+
+```{r fig-cross-model-agreement}
+ggplot(agree_summary, aes(period, spearman)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, fill = "#1b9e77") +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.4) +
+  scale_x_continuous(breaks = seq(1700, 2010, 30)) +
+  labs(x = NULL, y = "Mean pairwise Spearman\n(4 predictive models)",
+       title = "Cross-model agreement in term weights, by decade",
+       subtitle = "Line = mean over reps; band = replicate (rep) range") +
+  coord_cartesian(ylim = c(0, 1))
+```
+
+### Individual engine pairs (rep 1)
+
+Which pairs drive the average? Below, each line is one engine pair in rep 1.
+
+```{r fig-cross-model-pairs}
+pairs_r1 <- pred_pairs |>
+  filter(rep1 == 1) |>
+  mutate(pair = paste(pmin(eng1, eng2), pmax(eng1, eng2), sep = " – ")) |>
+  group_by(period, pair) |>
+  summarise(spearman = mean(spearman, na.rm = TRUE), .groups = "drop")
+
+ggplot(pairs_r1, aes(period, spearman, colour = pair)) +
+  geom_line(linewidth = 0.7) +
+  scale_x_continuous(breaks = seq(1700, 2010, 30)) +
+  labs(x = NULL, y = "Spearman (rep 1)", colour = "Engine pair",
+       title = "Pairwise term-weight agreement between predictive models") +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme(legend.position = "bottom")
+```
+
+### Per-decade agreement heatmap (rep 1, 1950)
+
+```{r fig-cross-model-heatmap, fig.height=4.5, fig.width=6.5}
+decade_show <- 1950
+hm <- pair |>
+  filter(period == decade_show, rep1 == 1, rep2 == 1,
+         fam1 %in% c("predictive", "ppmi", "svd"),
+         fam2 %in% c("predictive", "ppmi", "svd")) |>
+  select(eng1, eng2, spearman)
+
+ggplot(hm, aes(eng1, eng2, fill = spearman)) +
+  geom_tile(colour = "white") +
+  geom_text(aes(label = sprintf("%.2f", spearman)), size = 3) +
+  scale_fill_gradient2(low = "#b2182b", mid = "#f7f7f7", high = "#2166ac",
+                       midpoint = 0.5, limits = c(0, 1)) +
+  labs(x = NULL, y = NULL, fill = "Spearman",
+       title = paste0("Model-vs-model weight agreement, ", decade_show, " (rep 1)")) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1),
+        panel.grid = element_blank())
+```
+
+## 2. Weight-distribution entropy over time
+
+*How concentrated vs. diffuse is each model's vocabulary weighting?* Shannon
+entropy of each model's normalized positive weights per decade. Higher = weight
+spread across more words; lower = a few dominant terms. Line = mean over the
+five reps, band = rep min–max.
+
+```{r fig-entropy, fig.height=5}
+ent_pred <- ent |>
+  mutate(family = case_when(
+    str_starts(weight_id, "weight_pred") ~ "predictive",
+    str_starts(weight_id, "weight_svd")  ~ "svd",
+    str_starts(weight_id, "weight_ppmi") ~ "ppmi", TRUE ~ "other")) |>
+  filter(family == "predictive") |>
+  group_by(engine = predictive_model_engine, period) |>
+  summarise(entropy = mean(entropy), lo = min(entropy), hi = max(entropy),
+            .groups = "drop")
+
+ggplot(ent_pred, aes(period, entropy, colour = engine, fill = engine)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.15, colour = NA) +
+  geom_line(linewidth = 0.9) +
+  scale_colour_manual(values = engine_pal, aesthetics = c("colour", "fill")) +
+  scale_x_continuous(breaks = seq(1700, 2010, 30)) +
+  labs(x = NULL, y = "Entropy (nats) of normalized weights",
+       colour = "Model", fill = "Model",
+       title = "Vocabulary-weight entropy by predictive model, over time",
+       subtitle = "Line = mean over reps; band = replicate (rep) range") +
+  theme(legend.position = "bottom")
+```
+
+### Entropy including PPMI / SVD baselines
+
+```{r fig-entropy-all, fig.height=5}
+ent_all <- ent |>
+  left_join(distinct(lut, weight_id, model_label, family), by = "weight_id") |>
+  group_by(model_label, period) |>
+  summarise(entropy = mean(entropy), lo = min(entropy), hi = max(entropy),
+            .groups = "drop")
+
+ggplot(ent_all, aes(period, entropy, colour = model_label, fill = model_label)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.12, colour = NA) +
+  geom_line(linewidth = 0.8) +
+  scale_x_continuous(breaks = seq(1700, 2010, 30)) +
+  labs(x = NULL, y = "Entropy (nats)", colour = "Model", fill = "Model",
+       title = "Vocabulary-weight entropy: all model families") +
+  theme(legend.position = "bottom")
+```
+
+---
+
+*Prototype for W5. Data: `rank_agreements`, `combined_entropy` from the
+`full_democracy` run bundle (`_targets/`). Engine labels reconstructed from
+`combined_entropy` because the similarity targets currently emit `NA` engine
+columns (correlation_functions.R metadata-join bug — flag for W5).*

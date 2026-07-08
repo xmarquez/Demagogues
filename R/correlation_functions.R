@@ -1,3 +1,31 @@
+#' Canonical `weight_id` for a model info table
+#'
+#' The model info tables (e.g. `info_all_model_weights`) do **not** carry a single
+#' `weight_id` column; each model is keyed by one of three family-specific id
+#' columns — `weight_pred_id` (predictive models), `weight_svd_id` (PPMI-SVD word
+#' vectors), or `weight_ppmi_id` (PPMI) — with the others `NA` for that row.
+#' Coalescing them in `predictive > svd > ppmi` priority yields the canonical id
+#' that matches the `weight_id`/`term` used everywhere else (verified 100% match
+#' against the full-run store, 2026-07-08). Matching against the non-existent
+#' `info$weight_id` was the cause of the all-`NA` `engine`/`engine2` columns.
+#'
+#' @param info A model info table with either a direct `weight_id` column or the
+#'   family-specific `weight_pred_id` / `weight_svd_id` / `weight_ppmi_id` columns.
+#' @return A character vector of canonical weight ids, aligned to `info`'s rows.
+#' @keywords internal
+canonical_weight_id <- function(info) {
+  if ("weight_id" %in% names(info)) {
+    return(info$weight_id)
+  }
+  fam_cols <- c("weight_pred_id", "weight_svd_id", "weight_ppmi_id")
+  present <- fam_cols[fam_cols %in% names(info)]
+  if (!length(present)) {
+    stop("info table has neither `weight_id` nor any of ",
+         paste(fam_cols, collapse = "/"), call. = FALSE)
+  }
+  do.call(dplyr::coalesce, unname(as.list(info[, present, drop = FALSE])))
+}
+
 #' Correlate weight vectors within each period
 #'
 #' Takes a long weights table, reshapes it into a word-by-model matrix for each
@@ -27,15 +55,16 @@ correlate_weights_by_period <- function(weight_object, info_predictive_model_wei
     mutate(period = as.numeric(period)) |>
     tidyr::pivot_longer(starts_with("weight"), names_to = "term2")
 
+  wid <- canonical_weight_id(info_predictive_model_weights)
   correlations |>
     mutate(engine = info_predictive_model_weights$predictive_model_engine[
-      match(term, info_predictive_model_weights$weight_id)],
+      match(term, wid)],
       engine2 = info_predictive_model_weights$predictive_model_engine[
-        match(term2, info_predictive_model_weights$weight_id)],
+        match(term2, wid)],
       workset_meta_id = info_predictive_model_weights$workset_meta_id[
-        match(term, info_predictive_model_weights$weight_id)],
+        match(term, wid)],
       workset_meta_id2 = info_predictive_model_weights$workset_meta_id[
-        match(term2, info_predictive_model_weights$weight_id)]) |>
+        match(term2, wid)]) |>
     filter(!is.na(value))
 }
 
@@ -89,16 +118,17 @@ rank_agreement_by_period <- function(weight_object, info_predictive_model_weight
     )) |>
     select(period, term, term2, top_overlap)
 
+  wid <- canonical_weight_id(info_predictive_model_weights)
   spearman |>
     left_join(overlap, by = c("period", "term", "term2")) |>
     mutate(engine = info_predictive_model_weights$predictive_model_engine[
-      match(term, info_predictive_model_weights$weight_id)],
+      match(term, wid)],
       engine2 = info_predictive_model_weights$predictive_model_engine[
-        match(term2, info_predictive_model_weights$weight_id)],
+        match(term2, wid)],
       workset_meta_id = info_predictive_model_weights$workset_meta_id[
-        match(term, info_predictive_model_weights$weight_id)],
+        match(term, wid)],
       workset_meta_id2 = info_predictive_model_weights$workset_meta_id[
-        match(term2, info_predictive_model_weights$weight_id)]) |>
+        match(term2, wid)]) |>
     filter(!is.na(spearman))
 }
 
@@ -135,14 +165,15 @@ jsd_weights_by_period <- function(weight_object, info_predictive_model_weights) 
     mutate(period = as.numeric(period)) |>
     tidyr::pivot_longer(starts_with("weight"), names_to = "term2")
 
+  wid <- canonical_weight_id(info_predictive_model_weights)
   jsd_df |>
     mutate(engine = info_predictive_model_weights$predictive_model_engine[
-      match(term, info_predictive_model_weights$weight_id)],
+      match(term, wid)],
       engine2 = info_predictive_model_weights$predictive_model_engine[
-        match(term2, info_predictive_model_weights$weight_id)],
+        match(term2, wid)],
       workset_meta_id = info_predictive_model_weights$workset_meta_id[
-        match(term, info_predictive_model_weights$weight_id)],
+        match(term, wid)],
       workset_meta_id2 = info_predictive_model_weights$workset_meta_id[
-        match(term2, info_predictive_model_weights$weight_id)]) |>
+        match(term2, wid)]) |>
     filter(value != 0)
 }

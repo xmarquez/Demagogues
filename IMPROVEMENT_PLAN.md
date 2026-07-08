@@ -144,6 +144,16 @@ The first full democracy deploy exposed several issues invisible in the smoke/tu
 **Full-run cost note:** manifest grows ×2.22 (853 targets); the extra load is 4×31 bigmem DFM builds + the downstream model chain — estimated +3–4 h wall with 4 bigmem workers.
 **Prerequisite before deploying the full run:** fresh container image on the cluster (`slurm/pull_image.sh`) — the EF-cache fix (rsync binary + encoding workaround, see the corrected attrition note above) landed in the image today.
 
+### 2026-07-08 — Full democracy run complete + verified; `run_graph_html` reliability gap found (NOT fixed)
+
+Job 3291382 finished green after the deployment-parallelization fix (kl/entropy/graph moved to `deployment="worker"`). Bundle `results_full_democracy_20260708-185536.tar.gz` (1.1 GB) fetched and verified: **0 errored science targets**; `combined_performance` (46,656 rows) clean across all 6 engine families — crucially **naivebayes (none/ppmi/tfidf) and LiblineaR now produce results** (the OOM-densification + train/test-column-mismatch fixes held in production); `sampled_htids` 85,108 rows with all 5 reps (rep 1 = 30,076 headline, reps 2–5 = 13,758 each); `combined_kl` 527,310 rows and `combined_entropy` 1,120 rows, both balanced 5-way by rep. Only meta-recorded error: `Appendix` (quarto CLI, `error="null"` so non-fatal — same non-blocking guard that saved the run from the earlier document-abort).
+
+**New issue found (W-item below, NOT completed):** `run_graph_html` "completed" (110 s) in the run yet **no `graphs_full_democracy.html` persisted on scratch** — the bundle glob picked up the stale smoke-run `graphs_auth_glmnet_40.html` instead. Root-cause suspects: the qmd setup chunk's `tar_config_set(store = here::here("_targets"), config = "custom.yaml")` + `here()` store resolution under the container, and/or the deno/V8 memory ceiling. Recovered by a standalone bigmem re-render (job 3291755, 256 GB): rendered `graphs_full_democracy.qmd` fresh in **~2h33m** (385 chunks, dominated by the n=5-rep force-directed graph layouts; finished ~25 min under the 3 h wall — user time-limit extension was *denied*, so this nearly timed out). `graphs_full_democracy.html` (1.8 MB) + `_files/` (54 MB) fetched to local `Paper/`. This recovery is a one-off; the underlying target is still fragile — see W4.
+
+### 2026-07-08 — Figure prototypes (W5) + similarity engine-label bug fixed
+
+Prototyped the two requested figure families against the local bundle in `Paper/prototype_measures.qmd` (kept as proof-of-concept, per user; not wired into the pipeline yet): (1) **cross-model term-weight agreement by decade** — mean pairwise Spearman among the 4 predictive models rises from ~0.22 (1700s) to a ~0.30–0.32 plateau from ~1780, tight replicate bands; plus a per-decade model×model heatmap showing family-internal agreement (PPMI-feature↔PPMI-sim 0.72) far exceeds cross-family; (2) **weight-distribution entropy by model** — clean two-tier split: naïveBayes/LiblineaR near-max entropy (~9–9.7 nats), glmnet/xgboost concentrated (~4→6, broadening over time). While building these, found and **fixed** the `correlation_functions.R` engine-label bug (see W5): all three similarity targets emitted `NA` engine columns because they matched against a non-existent `info$weight_id`. Added `canonical_weight_id()` + regression tests (suite 167 pass, 0 warn). Not yet committed; the three similarity targets will re-run next `tar_make`.
+
 ---
 
 ## Phase 1 — Correctness fixes (do these before re-running anything expensive)
@@ -419,6 +429,37 @@ Specific defects, by line (current file):
 ### W3. Appendix (`Paper/Appendix.qmd`)
 
 Verify every `tar_read()`/`tar_read_raw()` call against `tar_manifest()` after the Phase 1–3 target-name changes (AGENTS.md's own warning). Add: tuning table (P2), OCR-noise-by-decade figure (M4), dedupe robustness (B5), rank-agreement figure (M3).
+
+Also fix the `Appendix` render itself: it errored in the 2026-07-08 full run ("Error running quarto CLI … System command 'quarto' failed"), surviving only because of `error="null"`. Rerun locally with `quiet = FALSE` to surface the real pandoc/quarto message and repair the qmd.
+
+### W4. Harden `run_graph_html` (graph browser doc) — ⬜ NOT DONE (found 2026-07-08)
+
+Two coupled problems observed in the full democracy run (see 2026-07-08 progress entry):
+
+1. **Silent non-persistence.** The target reported success (110 s) but left no `graphs_full_democracy.html` on scratch; the results bundle then shipped a *stale* `graphs_auth_glmnet_40.html` from an earlier smoke run. `render_quarto_file()` derives its output path from the qmd name and `stop()`s if missing, so the "success without a file" strongly implicates the qmd setup chunk's `targets::tar_config_set(store = here::here("_targets"), config = "custom.yaml")` — under the container `here()`/`custom.yaml` store resolution is nondeterministic. **Fix:** make the store path explicit/deterministic in the generated qmd (drop the `custom.yaml` indirection on the cluster; pass an absolute store or rely on the default `_targets`), and add a post-render existence+freshness assertion so a missing/stale HTML fails the target instead of passing.
+2. **~2.5 h render, nearly blows walltime.** The doc renders every graph for **all 5 sampling reps** (385 chunks, dominated by force-directed `fig-graph-weight-*` layouts). Recovery job 3291755 took 2h33m on 256 GB and finished only ~25 min inside a 3 h cap that could not be extended (user `scontrol` denied). **Fix:** restrict the browser doc to **rep-1 (headline) graphs only** (reps 2–5 exist for the replicate-range stats, not for eyeballing), which should drop it to minutes; optionally paginate or lazy-render. Consider whether it should stay `deployment="main"` or move to a bigmem worker.
+3. **Make the doc's content configurable** (user request 2026-07-08). Rendering *every* graph is both slow and mostly noise; the interesting cells are a small subset. Add a `graph_doc:` block to the run config (`config/runs/*.yml`) selecting which branches the qmd emits, e.g.:
+   - **by POS / feature-type** — only `adjectives` and `_ism`-word graphs (the user's "most interesting" subset), skipping nouns/verbs;
+   - **by weight type** — only the predictive-model weights (`predictive_model_weights`), skipping `ppmi`/`svd` (or vice-versa);
+   - **by engine**, **by rep** (defaulting to rep 1 per point 2), and **by period range**.
+   Thread the selection through `code_generation.R` (which builds the qmd chunk list from `graph_df`) so the chunk set is filtered before emission — this is the same lever that fixes the runtime, just generalized. Keep "render everything" available as an explicit opt-in for full QA.
+
+Until this is done, regenerate the graph HTML with the standalone bigmem job pattern (`render_graph.sh`, 256 GB, `graphs_full_democracy.qmd`) rather than trusting the in-pipeline target.
+
+### W5. Visualize the cross-model similarity + information-theoretic measures — ⬜ NOT DONE (found 2026-07-08)
+
+Several analysis targets are **computed but never plotted or written up**. The data exists in every bundle; the gap is figures (in `code_generation.R`'s graph doc and/or `Appendix.qmd`) and paper text.
+
+- **Cross-model weight similarity per decade** (user request 2026-07-08 — "how similar the weights are across models in given decades"). This is *already computed* per period for every ordered model pair by three existing targets: `weight_correlations` (Pearson of `normalized_value`), `rank_agreements` (Spearman + top-100 overlap — the most robust to engine sparsity differences), and `jsd_distances` (Jensen-Shannon distance between weight distributions). What's missing:
+  - **Summary time series**: collapse each period's model×model matrix to a single cross-model agreement scalar (mean/median of off-diagonal `spearman` / `top_overlap` / JSD) and plot over decades — one line per measure, optionally faceted by weight-type family. Answers "do the models agree more/less over time?".
+  - **Per-decade heatmap**: model×model Spearman (or JSD) for a chosen decade, to see *which* models cluster.
+  - **Restrict-to-predictive option**: filter to `predictive_model_*` weights (drop ppmi/svd) so the comparison is classifier-vs-classifier, per the user's note; the functions carry `engine`/`engine2`, so this is a filter, not new computation.
+  - (No new methodology strictly required — but if a single "consensus" number per decade is wanted, mean pairwise Spearman over the predictive models is the defensible default.)
+  - **✅ Engine-label bug fixed 2026-07-08 (commit pending).** `correlate_weights_by_period()` / `rank_agreement_by_period()` / `jsd_weights_by_period()` matched `term`/`term2` against a **non-existent `info$weight_id` column**, so `engine`/`engine2`/`workset_meta_id*` came back all-`NA` (the synthetic test fixture had a `weight_id` column, so it never caught it). `info_all_model_weights` instead keys each model by one of `weight_pred_id`/`weight_svd_id`/`weight_ppmi_id`. Added `canonical_weight_id()` (coalesce, `predictive > svd > ppmi`; falls back to a direct `weight_id`) — verified 100% match / 0% NA against the full-run store — plus regression tests using the real column layout (suite 167 pass). **This changes the command body of the three similarity targets, so they will re-run on the next `tar_make` (cheap, `deployment="main"`) and the new bundle will carry populated engine labels.**
+- **Entropy figures** (`combined_entropy`, 1,120 rows: `weight_id × period × entropy`, 5 reps). No figure exists. Add a line plot of weight-distribution entropy over decades, colored by model / weight-type, with the rep spread shown as a band (min–max or IQR across the 5 reps — consistent with Appendix B's replicate-range framing, not CIs). Interpretation: how concentrated vs. diffuse each model's vocabulary weighting is over time.
+- **KL figures** (`combined_kl`, 527,310 rows: `P`/`past_period`/`future_period`/`measure`/`value`, 5 reps). No figure exists. Options: (a) a **temporal-change line** — KL of each decade's distribution to the *adjacent* decade (or to a fixed baseline decade), per model, showing rate of semantic drift; (b) a **past×future heatmap** per model for a representative engine. Decide with W2/M-caveats which normalization (`positive`) and which `measure` rows to display.
+
+These three (similarity summary, entropy, KL) are the natural quantitative backbone for the paper's "how the vector space of democracy shifts over time" argument and should land in `Appendix.qmd` (W3) and/or the main paper (W1).
 
 ### A1. Repo hygiene
 

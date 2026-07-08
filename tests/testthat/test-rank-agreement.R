@@ -53,3 +53,45 @@ test_that("rank_agreement_by_period computes Spearman and top-n overlap", {
   expect_equal(p1$engine, "glmnet")
   expect_equal(p1$engine2, "xgboost")
 })
+
+test_that("canonical_weight_id coalesces family-specific id columns", {
+  # info_all_model_weights has NO `weight_id` column; the id lives in one of
+  # weight_pred_id / weight_svd_id / weight_ppmi_id per row (the others NA).
+  info <- tibble::tibble(
+    weight_pred_id = c("weight_pred_A", NA,             NA),
+    weight_svd_id  = c(NA,              "weight_svd_C", NA),
+    weight_ppmi_id = c(NA,              "weight_ppmi_B", "weight_ppmi_B"),
+    predictive_model_engine = c("glmnet", "SVD word vectors", "featureppmi")
+  )
+  # predictive > svd > ppmi priority: row 2 is an SVD model (built on PPMI, so
+  # weight_ppmi_id is also set) and must resolve to its svd id, not the ppmi one.
+  expect_equal(canonical_weight_id(info),
+               c("weight_pred_A", "weight_svd_C", "weight_ppmi_B"))
+  # Falls back to a direct weight_id column when present (synthetic fixtures).
+  expect_equal(canonical_weight_id(tibble::tibble(weight_id = c("x", "y"))),
+               c("x", "y"))
+})
+
+test_that("rank_agreement_by_period labels engines from family-specific id columns", {
+  skip_if_not_installed("corrr")
+
+  weights <- tibble::tribble(
+    ~weight_id,   ~period, ~word, ~normalized_value,
+    "weight_p_A", 1, "w1", 0.1, "weight_p_A", 1, "w2", 0.2, "weight_p_A", 1, "w3", 0.7,
+    "weight_s_B", 1, "w1", 0.5, "weight_s_B", 1, "w2", 0.3, "weight_s_B", 1, "w3", 0.2
+  )
+  # Real-shape info: no `weight_id` column, ids split across family columns.
+  info <- tibble::tibble(
+    weight_pred_id = c("weight_p_A", NA),
+    weight_svd_id  = c(NA,           "weight_s_B"),
+    weight_ppmi_id = c(NA,           NA),
+    predictive_model_engine = c("glmnet", "SVD word vectors"),
+    workset_meta_id = c("ws", "ws")
+  )
+
+  res <- suppressWarnings(rank_agreement_by_period(weights, info, top_n = 2))
+  # Before the fix these were all NA (match against a non-existent info$weight_id).
+  expect_false(any(is.na(res$engine)))
+  expect_setequal(unique(c(res$engine, res$engine2)),
+                  c("glmnet", "SVD word vectors"))
+})
