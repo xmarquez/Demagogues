@@ -13,3 +13,13 @@ samples:
   # chain, for uncertainty bands on entropy/KL/JSD (P3). Deep-merges with the
   # corpus.yml samples block; all other sample settings inherit.
   n_repeats: 5
+graph_doc:
+  # Restrict the run-level graph browser doc to the fast, interesting subset:
+  # rep-1 (headline) adjective + ism graphs for the predictive-model weights.
+  # Deep-merges with corpus.yml graph_doc; unset axes inherit (weight_types/
+  # engines/periods stay `all` unless overridden). Rendering every rep x pos x
+  # weight-family chunk took ~2.5 h and nearly blew the cluster walltime (W4).
+  # Use `graph_doc: all` for a full-QA render of every chunk.
+  reps: [1]
+  pos: [adjectives, ism]
+  weight_types: [predictive]

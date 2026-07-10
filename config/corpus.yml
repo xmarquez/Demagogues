@@ -104,6 +104,30 @@ graphs:
   tracked_top_n: 10
   exclude_fiction: true
 
+# graph_doc controls which chunks the *run-level graph browser document*
+# (run_graph_qmd / run_graph_html) emits. It NEVER changes which graph_object
+# targets are built, so it does not invalidate science targets - it only trims
+# the rendered document (the force-directed graph chunks dominate its runtime;
+# rendering all 5 reps nearly blew the cluster walltime - see IMPROVEMENT_PLAN W4).
+# Filtering happens in write_run_graph_qmd() before qmd emission.
+#   reps:         sample replicates to show. Default [1] (rep 1 = headline);
+#                 reps 2-5 exist for replicate-range stats, not eyeballing.
+#                 Use `all` to render every replicate.
+#   pos:          feature-type subset, any of: all_terms, nouns, verbs,
+#                 adjectives, ism, uppercase_nouns. Default `all`.
+#   weight_types: weight families, any of: predictive, ppmi, svd. Default `all`.
+#   engines:      predictive engines, any of: glmnet, LiblineaR, naivebayes,
+#                 xgboost (only narrows predictive rows). Default `all`.
+#   periods:      [min, max] decade range for the time-series chunks (performance
+#                 and weight trajectories); graphs span all periods. Default `all`.
+# Set `graph_doc: all` (a bare scalar) to render every chunk for full QA.
+graph_doc:
+  reps: [1]
+  pos: all
+  weight_types: all
+  engines: all
+  periods: all
+
 outputs: [ingest, dfm, model, graph, corpus_stats, document]
 
 profiles:

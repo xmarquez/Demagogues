@@ -763,7 +763,8 @@ graph_targets <- list(
       run_id = cfg$run_id,
       run_description = cfg$run_description,
       tracked_terms = run_tracked_terms,
-      tracked_top_n = run_tracked_top_n
+      tracked_top_n = run_tracked_top_n,
+      graph_doc = cfg$graph_doc
     ),
     format = "file",
     deployment = "main",

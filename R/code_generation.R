@@ -58,6 +58,238 @@ rmd_blocks_graph_names <- function(graph_df) {
   here::here("Paper", "graph_appendix.rmd")
 }
 
+# --- graph_doc chunk selection ------------------------------------------------
+# The run-level graph browser document renders one chunk per graph target. For
+# large parameter grids (every sampling replicate x feature-type x weight family
+# x engine) that is slow and mostly noise. The `graph_doc:` block in the run /
+# corpus config selects which chunks the document emits WITHOUT changing which
+# `graph_object` targets are built (so it never invalidates science targets).
+# The helpers below normalize that config and filter the graph grid accordingly.
+
+#' Canonical feature-type / POS slug for a graph POS pattern
+#'
+#' Maps the regex strings stored in `graph_pos_patterns` to stable, friendly
+#' slugs used by the `graph_doc` run-config selector.
+#'
+#' @param graph_pos_patterns Character vector of `graph_pos_patterns` values.
+#' @return Character vector of canonical slugs.
+#' @keywords internal
+graph_doc_pos_slug <- function(graph_pos_patterns) {
+  dplyr::case_when(
+    graph_pos_patterns == "." ~ "all_terms",
+    graph_pos_patterns == "ism_" ~ "ism",
+    graph_pos_patterns == "^[A-Z].+NN" ~ "uppercase_nouns",
+    stringr::str_detect(graph_pos_patterns, "_nn|_NN") ~ "nouns",
+    stringr::str_detect(graph_pos_patterns, "_vb|_VB") ~ "verbs",
+    stringr::str_detect(graph_pos_patterns, "_jj|_JJ") ~ "adjectives",
+    TRUE ~ graph_pos_patterns
+  )
+}
+
+#' Normalize a user-supplied feature-type / POS selector to a canonical slug
+#'
+#' @param x Character vector of selectors from the config.
+#' @return Character vector of canonical slugs.
+#' @keywords internal
+normalize_pos_slug <- function(x) {
+  x <- tolower(trimws(as.character(x)))
+  dplyr::case_when(
+    x %in% c("all", "all_terms", "everything", ".") ~ "all_terms",
+    x %in% c("noun", "nouns", "nn") ~ "nouns",
+    x %in% c("verb", "verbs", "vb") ~ "verbs",
+    x %in% c("adjective", "adjectives", "adj", "jj") ~ "adjectives",
+    x %in% c("ism", "isms", "ism_", "_ism") ~ "ism",
+    x %in% c("uppercase_nouns", "uppercase", "upper_nouns", "proper_nouns") ~ "uppercase_nouns",
+    TRUE ~ x
+  )
+}
+
+#' Weight-type family ("predictive" / "svd" / "ppmi") for each graph row
+#'
+#' @param graph_df A graph parameter grid.
+#' @return Character vector of weight families, one per row.
+#' @keywords internal
+graph_doc_weight_family <- function(graph_df) {
+  n <- nrow(graph_df)
+  get_col <- function(nm) if (nm %in% names(graph_df)) graph_df[[nm]] else rep(NA, n)
+  engine <- get_col("predictive_model_engine")
+  svd_dims <- get_col("svd_dims")
+  ppmi_fun <- get_col("ppmi_fun")
+  dplyr::case_when(
+    !is.na(engine) ~ "predictive",
+    !is.na(svd_dims) ~ "svd",
+    !is.na(ppmi_fun) ~ "ppmi",
+    TRUE ~ NA_character_
+  )
+}
+
+#' Normalize a user-supplied weight-family selector
+#'
+#' @param x Character vector of selectors from the config.
+#' @return Character vector of canonical weight families.
+#' @keywords internal
+normalize_weight_family <- function(x) {
+  x <- tolower(trimws(as.character(x)))
+  dplyr::case_when(
+    x %in% c("predictive", "predictive_model", "predictive_model_weights", "model") ~ "predictive",
+    x %in% c("ppmi", "ppmi_weights") ~ "ppmi",
+    x %in% c("svd", "svd_weights", "word_vectors") ~ "svd",
+    TRUE ~ x
+  )
+}
+
+#' Resolve the `graph_doc` run-config block into a normalized filter spec
+#'
+#' Applies sensible defaults (rep-1 / headline only; every feature-type, weight
+#' family, and engine; full period range). Set `graph_doc: all` (a bare scalar)
+#' to render every chunk for full QA; set any axis to `all` to opt out of that
+#' filter individually.
+#'
+#' @param graph_doc The raw `graph_doc` config value: `NULL`, the scalar `"all"`,
+#'   or a mapping with `reps` / `pos` / `weight_types` / `engines` / `periods`.
+#' @return A normalized list with `reps`, `pos`, `weight_types`, `engines` (each a
+#'   vector, or `NULL` meaning "no filter"), `period_min` / `period_max` (numeric
+#'   or `NULL`), and `render_all` (logical).
+#' @keywords internal
+resolve_graph_doc_config <- function(graph_doc = NULL) {
+  is_all <- function(v) {
+    is.character(v) && length(v) == 1 && tolower(trimws(v)) %in% c("all", "everything", "full")
+  }
+
+  render_all <- FALSE
+  if (is_all(graph_doc)) {
+    render_all <- TRUE
+    graph_doc <- list()
+  }
+  if (is.null(graph_doc) || !is.list(graph_doc)) {
+    graph_doc <- list()
+  }
+
+  first_non_null <- function(...) {
+    vals <- list(...)
+    for (v in vals) if (!is.null(v)) return(v)
+    NULL
+  }
+
+  # An axis returns NULL (no filter) under render_all, when the value is missing
+  # (these axes default to "all"), or when the value is the scalar "all".
+  as_selector <- function(value, normalizer) {
+    if (render_all || is.null(value) || is_all(value)) return(NULL)
+    unique(normalizer(unlist(value, use.names = FALSE)))
+  }
+
+  # reps default to rep 1 (headline) rather than "all".
+  reps <- if (render_all) {
+    NULL
+  } else if (is.null(graph_doc$reps)) {
+    1L
+  } else if (is_all(graph_doc$reps)) {
+    NULL
+  } else {
+    as.integer(unlist(graph_doc$reps, use.names = FALSE))
+  }
+
+  pos <- as_selector(
+    first_non_null(graph_doc$pos, graph_doc$pos_types, graph_doc$feature_types),
+    normalize_pos_slug
+  )
+  weight_types <- as_selector(
+    first_non_null(graph_doc$weight_types, graph_doc$weights),
+    normalize_weight_family
+  )
+  engines <- as_selector(graph_doc$engines, function(x) as.character(x))
+
+  period_min <- NULL
+  period_max <- NULL
+  periods <- graph_doc$periods
+  if (!render_all && !is.null(periods) && !is_all(periods)) {
+    periods <- suppressWarnings(as.numeric(unlist(periods, use.names = FALSE)))
+    periods <- periods[!is.na(periods)]
+    if (length(periods) >= 1) {
+      period_min <- min(periods)
+      period_max <- max(periods)
+    }
+  }
+
+  list(
+    reps = reps,
+    pos = pos,
+    weight_types = weight_types,
+    engines = engines,
+    period_min = period_min,
+    period_max = period_max,
+    render_all = render_all
+  )
+}
+
+#' Emitted R lines that resolve the targets store at render time
+#'
+#' Quarto executes chunks with the DOCUMENT directory (`Paper/`) as the working
+#' directory for standalone renders; an `execute-dir: project` front-matter line
+#' is silently ignored, so the generated document must resolve the store
+#' explicitly. The emitted block resolves it from, in order: a non-empty
+#' `TARGETS_STORE` environment variable; `_targets` under the current working
+#' directory (covers project-root execution); `../_targets` (the normal case:
+#' chunk cwd = `Paper/` under the project root, correct both locally on Windows
+#' and in the cluster scratch clone). It then asserts the resolved store exists,
+#' so a bad resolution fails the render immediately rather than at the first
+#' `tar_read`. `tar_config_set()` is deliberately not used - it would write a
+#' stray `Paper/_targets.yaml`; the generated chunks instead pass
+#' `store = targets_store` to every `tar_read_raw()` call.
+#'
+#' @return Character vector of R source lines for the generated setup chunk.
+#' @keywords internal
+graph_doc_store_setup_lines <- function() {
+  c(
+    "targets_store <- Sys.getenv(\"TARGETS_STORE\", unset = \"\")",
+    "if (!nzchar(targets_store)) {",
+    "  targets_store <- if (dir.exists(\"_targets\")) \"_targets\" else file.path(\"..\", \"_targets\")",
+    "}",
+    "targets_store <- normalizePath(targets_store, winslash = \"/\", mustWork = FALSE)",
+    "if (!dir.exists(targets_store)) {",
+    "  stop(",
+    "    \"targets data store not found: \", targets_store,",
+    "    \" (chunk cwd: \", getwd(),",
+    "    \"). Set the TARGETS_STORE environment variable to the store directory.\",",
+    "    call. = FALSE",
+    "  )",
+    "}"
+  )
+}
+
+#' Filter a graph parameter grid according to a resolved `graph_doc` spec
+#'
+#' Applies the rep / feature-type / weight-family / engine filters. The period
+#' range is NOT applied here (graphs span all periods and have no period column);
+#' it is threaded into the document's time-series chunks instead.
+#'
+#' @param graph_df A graph parameter grid.
+#' @param config A list from [resolve_graph_doc_config()], or `NULL` for defaults.
+#' @return `graph_df` restricted to the selected chunks.
+#' @keywords internal
+filter_graph_doc <- function(graph_df, config = NULL) {
+  if (is.null(config)) {
+    config <- resolve_graph_doc_config(NULL)
+  }
+  df <- graph_df
+
+  if (!is.null(config$reps) && "sample_rep" %in% names(df)) {
+    df <- df[df$sample_rep %in% config$reps, , drop = FALSE]
+  }
+  if (!is.null(config$pos) && "graph_pos_patterns" %in% names(df)) {
+    df <- df[graph_doc_pos_slug(df$graph_pos_patterns) %in% normalize_pos_slug(config$pos), , drop = FALSE]
+  }
+  if (!is.null(config$weight_types)) {
+    df <- df[graph_doc_weight_family(df) %in% normalize_weight_family(config$weight_types), , drop = FALSE]
+  }
+  if (!is.null(config$engines) && "predictive_model_engine" %in% names(df)) {
+    eng <- df$predictive_model_engine
+    df <- df[is.na(eng) | eng %in% config$engines, , drop = FALSE]
+  }
+
+  df
+}
+
 #' Generate a run-level Quarto document for graph targets
 #'
 #' Creates a Quarto document containing one plot chunk per graph target in the
@@ -73,6 +305,9 @@ rmd_blocks_graph_names <- function(graph_df) {
 #' @param tracked_terms Character vector of specific terms to plot over time.
 #' @param tracked_top_n Number of top terms per predictive model/POS group to plot.
 #' @param output_dir Directory where the `.qmd` file should be written.
+#' @param graph_doc Raw `graph_doc` config block (see [resolve_graph_doc_config()])
+#'   selecting which graph chunks to emit. `NULL` (or omission) keeps the default
+#'   rep-1 / headline subset; `"all"` renders every chunk.
 #'
 #' @return The path to the generated `.qmd` file.
 write_run_graph_qmd <- function(graph_df,
@@ -80,10 +315,17 @@ write_run_graph_qmd <- function(graph_df,
                                 run_description = "",
                                 tracked_terms = character(0),
                                 tracked_top_n = 10,
-                                output_dir = here::here("Paper")) {
+                                output_dir = here::here("Paper"),
+                                graph_doc = NULL) {
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
   }
+
+  # Select the subset of graph chunks to emit (does not affect built targets).
+  graph_doc_config <- resolve_graph_doc_config(graph_doc)
+  graph_df <- filter_graph_doc(graph_df, graph_doc_config)
+  period_min <- if (is.null(graph_doc_config$period_min)) -Inf else graph_doc_config$period_min
+  period_max <- if (is.null(graph_doc_config$period_max)) Inf else graph_doc_config$period_max
 
   tracked_top_n <- as.integer(tracked_top_n)
   tracked_top_n <- tracked_top_n[!is.na(tracked_top_n)]
@@ -223,7 +465,6 @@ write_run_graph_qmd <- function(graph_df,
     "          margin-left: 0.75rem;",
     "        }",
     "        </style>",
-    "execute-dir: project",
     "execute:",
     "  echo: false",
     "  message: false",
@@ -237,8 +478,16 @@ write_run_graph_qmd <- function(graph_df,
     "library(ggplot2)",
     "library(here)",
     "library(knitr)",
-    "targets::tar_config_set(store = here::here(\"_targets\"), config = \"custom.yaml\")",
+    "# Deterministic store resolution (W4). Quarto runs chunks with the document",
+    "# directory (Paper/) as cwd for standalone renders, so resolve the store",
+    "# explicitly: TARGETS_STORE env var if set, else `_targets` under the cwd",
+    "# (project-root execution), else `../_targets` (cwd = Paper/). All",
+    "# tar_read_raw() calls below pass store = targets_store; tar_config_set() is",
+    "# avoided so no stray Paper/_targets.yaml is written.",
+    graph_doc_store_setup_lines(),
     "ggplot2::theme_set(ggplot2::theme_bw())",
+    paste0("graph_doc_period_min <- ", deparse(period_min)),
+    paste0("graph_doc_period_max <- ", deparse(period_max)),
     "```",
     "",
     paste0("Run: `", run_id, "`."),
@@ -264,9 +513,9 @@ write_run_graph_qmd <- function(graph_df,
     "#| fig-cap: \"Testing F1 by model and period.\"",
     "#| fig-width: 8",
     "#| fig-height: 4",
-    "performance <- targets::tar_read_raw(\"combined_performance\") |>",
+    "performance <- targets::tar_read_raw(\"combined_performance\", store = targets_store) |>",
     "  dplyr::left_join(",
-    "    targets::tar_read_raw(\"info_performance\") |>",
+    "    targets::tar_read_raw(\"info_performance\", store = targets_store) |>",
     "      dplyr::distinct(",
     "        performance_id,",
     "        performance_split,",
@@ -285,7 +534,7 @@ write_run_graph_qmd <- function(graph_df,
     "    )",
     "  )",
     "",
-    "sample_sizes <- targets::tar_read_raw(\"sample_sizes\") |>",
+    "sample_sizes <- targets::tar_read_raw(\"sample_sizes\", store = targets_store) |>",
     "  dplyr::select(",
     "    performance_id,",
     "    period,",
@@ -298,6 +547,7 @@ write_run_graph_qmd <- function(graph_df,
     "performance_wide <- performance |>",
     "  dplyr::filter(",
     "    performance_split == \"testing\",",
+    "    dplyr::between(period, graph_doc_period_min, graph_doc_period_max),",
     "    .metric %in% c(\"f_meas\", \"roc_auc\", \"accuracy\", \"kap\")",
     "  ) |>",
     "  dplyr::select(period, performance_id, model, .metric, .estimate) |>",
@@ -357,9 +607,9 @@ write_run_graph_qmd <- function(graph_df,
     paste0("tracked_top_n <- ", tracked_top_n),
     "tracked_pos_levels <- c(\"Adjectives\", \"Verbs\", \"Nouns\")",
     "",
-    "model_weights <- targets::tar_read_raw(\"predictive_model_weights\") |> ",
+    "model_weights <- targets::tar_read_raw(\"predictive_model_weights\", store = targets_store) |> ",
     "  dplyr::left_join(",
-    "    targets::tar_read_raw(\"info_predictive_model_weights\") |> ",
+    "    targets::tar_read_raw(\"info_predictive_model_weights\", store = targets_store) |> ",
     "      dplyr::distinct(",
     "        weight_id = weight_pred_id,",
     "        predictive_model_engine,",
@@ -373,7 +623,8 @@ write_run_graph_qmd <- function(graph_df,
     "      predictive_model_dfm_weight,",
     "      \"weights\"",
     "    )",
-    "  )",
+    "  ) |> ",
+    "  dplyr::filter(dplyr::between(period, graph_doc_period_min, graph_doc_period_max))",
     "",
     "top_terms <- model_weights |> ",
     "  dplyr::mutate(",
@@ -560,7 +811,7 @@ write_run_graph_qmd <- function(graph_df,
           "#| fig-cap: ", chunk_quote(caption), "\n",
           "#| fig-width: 11\n",
           "#| fig-height: 9\n",
-          "graph <- targets::tar_read_raw(\"", graph_target, "\")\n",
+          "graph <- targets::tar_read_raw(\"", graph_target, "\", store = targets_store)\n",
           "graph\n",
           "```"
         )
@@ -585,6 +836,12 @@ write_run_graph_qmd <- function(graph_df,
 render_quarto_file <- function(qmd_path,
                                output_format = "html",
                                quiet = TRUE) {
+  # Timestamp taken before rendering so a stale HTML left over from an earlier
+  # run (the "success without a fresh file" bug, W4) fails the assertion below
+  # instead of being silently accepted. 1s slack absorbs filesystem mtime
+  # resolution / clock skew.
+  render_start <- Sys.time() - 1
+
   quarto::quarto_render(
     input = qmd_path,
     output_format = output_format,
@@ -595,6 +852,17 @@ render_quarto_file <- function(qmd_path,
   html_path <- paste0(tools::file_path_sans_ext(qmd_path), ".html")
   if (!file.exists(html_path)) {
     stop("Expected rendered Quarto output not found: ", html_path, call. = FALSE)
+  }
+
+  html_mtime <- file.mtime(html_path)
+  if (is.na(html_mtime) || html_mtime < render_start) {
+    stop(
+      "Rendered Quarto output is stale: ", html_path,
+      " (mtime ", format(html_mtime), " predates render start ",
+      format(render_start + 1), "). A prior build's HTML may have been left in ",
+      "place without a fresh render.",
+      call. = FALSE
+    )
   }
 
   support_dir <- paste0(tools::file_path_sans_ext(qmd_path), "_files")
