@@ -1,6 +1,6 @@
 # Appendix
 Xavier Marquez
-2025-12-15
+2026-07-09
 
 This appendix is rendered from the project’s `targets` pipeline. The
 code chunks below read precomputed objects from the targets store
@@ -64,6 +64,10 @@ of mentions of ‘democracy’ in the volume).
 ![](Appendix_files/figure-commonmark/unnamed-chunk-9-13.png)
 
 ![](Appendix_files/figure-commonmark/unnamed-chunk-9-14.png)
+
+![](Appendix_files/figure-commonmark/unnamed-chunk-9-15.png)
+
+![](Appendix_files/figure-commonmark/unnamed-chunk-9-16.png)
 
 ## Graphs for Individual Models
 
