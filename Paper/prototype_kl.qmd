@@ -1,0 +1,320 @@
+---
+title: "Prototype: KL divergence & conceptual novelty over time"
+subtitle: "Democracy full run — figure prototypes for IMPROVEMENT_PLAN W5"
+format:
+  html:
+    toc: true
+    toc-location: right
+    fig-width: 9
+    fig-height: 6
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+library(ggrepel)
+library(knitr)
+theme_set(theme_bw(base_size = 12))
+
+store <- here::here("_targets")
+rd <- function(n) targets::tar_read_raw(n, store = store)
+
+model_order <- c(
+  "glmnet", "LiblineaR", "naivebayes", "xgboost",
+  "PPMI (feature)", "PPMI (sim.)", "PPMI-SVD"
+)
+
+# Reuses the sibling prototypes' Dark2-based engine colours; "PPMI (sim.)" is
+# swapped from Dark2's brown (too close to "PPMI (feature)" green under
+# deuteranopia) to a distinguishable red so the 7-colour set passes the
+# categorical CVD-separation check.
+model_pal <- c(
+  glmnet            = "#1b9e77",
+  LiblineaR         = "#d95f02",
+  naivebayes        = "#7570b3",
+  xgboost           = "#e7298a",
+  "PPMI (feature)"  = "#66a61e",
+  "PPMI (sim.)"     = "#b2182b",
+  "PPMI-SVD"        = "#1f78b4"
+)
+```
+
+## Aim & data
+
+This prototype builds figures for `combined_kl` (the KL / conceptual-novelty
+measures), reading only saved targets from `_targets/`; it does not rerun the
+pipeline. It follows the pattern of `prototype_measures.qmd` (cross-model
+agreement, entropy) and `prototype_ism_clusters.qmd` (ism-term stability).
+
+`combined_kl` has 527,310 rows and one row per `(P, past_period, future_period,
+measure, model source, sampling rep)` combination. Each pairwise KL divergence
+between two decades' weight distributions is computed once
+(`kl_simple()` in `R/entropy_functions.R`) and then reshaped by
+`kl_matrix_to_df()` into three derived measures for every reference decade `P`:
+
+- **novelty** = KL(`P` &#8741; `past_period`), for every `past_period < P` — how much `P`'s
+  distribution diverges from an earlier decade.
+- **transience** = KL(`P` &#8741; `future_period`), for every `future_period > P` — how much
+  `P`'s distribution diverges from a later decade.
+- **resonance** = novelty − transience, for every `(past_period, future_period)`
+  pair sharing the same `P` (a full cross join within `P`, so most
+  `past_period`/`future_period` combinations are *not* adjacent decades — figures
+  below filter to the adjacent case, ±1 decade, to get a single well-defined
+  resonance value per `P`).
+
+The model/source columns already carry clean labels in `combined_kl` itself
+(`predictive_model_engine`, `ppmi_fun`, `svd_dims` are populated directly from
+the run's metadata table, unlike `rank_agreements`/`weight_correlations`, which
+need the `combined_entropy` lookup fix described in `prototype_measures.qmd`).
+There are 7 weight sources (4 predictive engines + PPMI-feature + PPMI-similarity
++ PPMI-SVD) &times; 5 sampling reps &times; 32 decades (1700–2010, 10-year steps), all
+using the union vocabulary (`kl_common_vocab` is `FALSE` for every row in this
+bundle — the common-vocabulary robustness variant was not run).
+
+```{r data-prep}
+kl_raw <- rd("combined_kl")
+
+kl <- kl_raw |>
+  transmute(
+    P, past_period, future_period, measure, value, sample_rep,
+    weight_type, predictive_model_engine, ppmi_fun, svd_dims
+  ) |>
+  mutate(
+    family = case_when(
+      !is.na(predictive_model_engine) ~ "predictive",
+      !is.na(svd_dims) ~ "svd",
+      !is.na(ppmi_fun) ~ "ppmi",
+      TRUE ~ "other"
+    ),
+    model_label = case_when(
+      family == "predictive" ~ predictive_model_engine,
+      family == "svd" ~ "PPMI-SVD",
+      family == "ppmi" & ppmi_fun == "ppmi_similarities" ~ "PPMI (sim.)",
+      family == "ppmi" ~ "PPMI (feature)",
+      TRUE ~ family
+    ),
+    model_label = factor(model_label, levels = model_order)
+  )
+
+rm(kl_raw)
+gc()
+
+diagnostics <- tibble(
+  rows = nrow(kl),
+  model_sources = n_distinct(kl$model_label),
+  reps = n_distinct(kl$sample_rep),
+  decades = n_distinct(kl$P),
+  measures = n_distinct(kl$measure)
+)
+```
+
+```{r tbl-diagnostics}
+kable(diagnostics, caption = "Data used for the KL prototype.")
+```
+
+## 1. Adjacent-decade semantic change
+
+*How much does each decade's weight distribution diverge from the one before
+it?* This filters `measure == "novelty"` to `P - past_period == 10` — KL
+divergence against the immediately preceding decade only — for every model
+source, then averages across the 5 sampling reps. **Panels use free y-axes
+deliberately: KL levels are not comparable across model families (a glmnet
+weight distribution and an xgboost one are not on the same scale), only the
+shape of each model's own trend over time is informative.**
+
+```{r fig1-prep}
+adj_novelty <- kl |>
+  filter(measure == "novelty", P - past_period == 10) |>
+  group_by(model_label, period = P) |>
+  summarise(
+    mean_kl = mean(value, na.rm = TRUE),
+    lo = min(value, na.rm = TRUE),
+    hi = max(value, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r fig-adjacent-novelty, fig.width=10, fig.height=7}
+ggplot(adj_novelty, aes(period, mean_kl, colour = model_label, fill = model_label)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, colour = NA) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 1) +
+  facet_wrap(~model_label, scales = "free_y", ncol = 4) +
+  scale_colour_manual(values = model_pal, aesthetics = c("colour", "fill")) +
+  scale_x_continuous(breaks = seq(1700, 2010, 60)) +
+  labs(
+    x = NULL, y = "Adjacent-decade KL divergence (bits)",
+    title = "Semantic change: KL divergence from the previous decade",
+    subtitle = "Line = mean over 5 sampling reps; band = replicate (rep) range, not a confidence interval"
+  ) +
+  theme(legend.position = "none", strip.text = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 40, hjust = 1, size = 8))
+```
+
+*Every predictive engine (glmnet, LiblineaR, naivebayes, xgboost) shows its
+highest adjacent-decade novelty in 1710–1750 — glmnet peaks at 1750 (21.6 bits,
+mean over reps) and again at 1730 (21.5); LiblineaR and naivebayes peak at 1730
+(15.4 and 16.3). This is the part of the corpus where the volume-sampling cap
+(500 volumes/decade) is least often reached, so part of the early-decade signal
+is corpus scarcity rather than genuine conceptual turnover — treat the
+1700–1750 spike as a floor/noise effect, not evidence of unusually fast
+semantic change. naivebayes additionally shows a level shift around 1830–1840,
+dropping from ~10–16 bits to a stable ~7–9 bits for the rest of the series —
+the sharpest structural break of any engine, worth checking against known
+corpus-composition changes at that point. glmnet sits on a systematically
+higher absolute scale (18–22 bits) than xgboost (3–9 bits) throughout, which is
+exactly the "not comparable across engines" caveat in action: LiblineaR and
+naivebayes's decade-by-decade shapes correlate at r = 0.96, glmnet correlates
+0.86–0.83 with both, but xgboost is essentially uncorrelated with the others
+(r = 0.01 with LiblineaR, −0.12 with naivebayes) — its curve looks noisier and
+should be read cautiously.*
+
+## 2. Past &times; future KL heatmap
+
+*How far is every decade from every other decade, not just its immediate
+neighbours?* `combined_kl` already contains a full novelty/transience
+decomposition for one representative engine and rep (glmnet, rep 1): novelty
+gives KL(`P` &#8741; `Q`) for every `Q < P` and transience gives it for every
+`Q > P`, so combining them reconstructs the complete 32&times;32 directed
+divergence matrix (992 off-diagonal cells; the true diagonal, `P == Q`, has KL
+= 0 and is dropped upstream).
+
+```{r fig2-prep}
+heat_engine <- "glmnet"
+heat_rep <- 1
+
+hm <- kl |>
+  filter(model_label == heat_engine, sample_rep == heat_rep,
+         measure %in% c("novelty", "transience")) |>
+  mutate(Q = if_else(measure == "novelty", past_period, future_period)) |>
+  filter(!is.na(Q)) |>
+  distinct(P, Q, value)
+```
+
+```{r fig-kl-heatmap, fig.width=8, fig.height=7}
+ggplot(hm, aes(Q, P, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "#f7fbff", high = "#08306b") +
+  scale_x_continuous(breaks = seq(1700, 2010, 30)) +
+  scale_y_continuous(breaks = seq(1700, 2010, 30)) +
+  coord_equal() +
+  labs(
+    x = "Compared decade (Q)", y = "Reference decade (P)", fill = "KL(P||Q)\n(bits)",
+    title = paste0("Past-vs-future KL divergence, ", heat_engine, " (rep ", heat_rep, ")"),
+    subtitle = "Cell = KL(P||Q): how much decade P's weight distribution diverges from decade Q's"
+  ) +
+  theme(panel.grid = element_blank())
+```
+
+*The single most divergent pair for glmnet/rep 1 is `P` = 1700 vs `Q` = 2010
+(25.6 bits) — the corpus's earliest and latest decades share the least
+vocabulary structure, which is the expected result and a sanity check that the
+measure behaves as intended. The lowest-divergence pairs are 1720&rarr;1760 and
+1880&rarr;1890 (15.6 bits each) — note 1720&rarr;1760 spans 40 years yet is as
+close as a true 10-year adjacent pair, a reminder that "adjacent" and "similar"
+are not the same thing. The matrix is visibly
+asymmetric: KL(1700 &#8741; 2010) = 25.6 but KL(2010 &#8741; 1700) = 24.5 — a modest
+but real difference, as expected for a genuinely directional divergence measure
+(KL is not a metric). This is one engine and one rep only; it is not averaged
+across the replicate range, so read it as illustrative of structure, not as a
+precise point estimate.*
+
+## 3. Novelty vs transience (Barron-style resonance)
+
+*Does a decade look more different from its past or from its future?* Both
+directions exist in `combined_kl` (confirmed above), so the Barron, Leydesdorff
+& Yan (2018) novelty/transience/resonance framing is directly supported.
+Resonance is computed here on the adjacent-decade window only (`past_period =
+P - 10`, `future_period = P + 10`) so each `(model, rep, decade)` has exactly
+one value, matching the framing used in Section 1.
+
+```{r fig3-prep}
+adj_resonance <- kl |>
+  filter(measure == "resonance", P - past_period == 10, future_period - P == 10) |>
+  group_by(model_label, period = P) |>
+  summarise(
+    mean_res = mean(value, na.rm = TRUE),
+    lo = min(value, na.rm = TRUE),
+    hi = max(value, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r fig-resonance, fig.width=10, fig.height=6}
+ggplot(adj_resonance, aes(period, mean_res, colour = model_label)) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1) +
+  scale_colour_manual(values = model_pal) +
+  scale_x_continuous(breaks = seq(1700, 2010, 30)) +
+  labs(
+    x = NULL, y = "Resonance = novelty − transience (bits)", colour = "Model",
+    title = "Novelty vs transience: adjacent-decade resonance",
+    subtitle = "Line = mean over 5 reps. Positive = decade diverges more from its past than its future (novelty-dominant); negative = the reverse (transience-dominant)"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+```{r fig3b-prep}
+scatter_engine <- "glmnet"
+
+nov <- kl |>
+  filter(model_label == scatter_engine, measure == "novelty", P - past_period == 10) |>
+  group_by(period = P) |>
+  summarise(novelty = mean(value, na.rm = TRUE), .groups = "drop")
+
+tra <- kl |>
+  filter(model_label == scatter_engine, measure == "transience", future_period - P == 10) |>
+  group_by(period = P) |>
+  summarise(transience = mean(value, na.rm = TRUE), .groups = "drop")
+
+nt <- inner_join(nov, tra, by = "period")
+```
+
+```{r fig-novelty-transience-scatter, fig.width=7.5, fig.height=7}
+lims <- range(c(nt$novelty, nt$transience))
+
+ggplot(nt, aes(novelty, transience, label = period)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_point(colour = model_pal[[scatter_engine]], size = 2) +
+  ggrepel::geom_text_repel(size = 3, max.overlaps = 20) +
+  coord_equal(xlim = lims, ylim = lims) +
+  labs(
+    x = "Novelty: KL(decade || previous decade)", y = "Transience: KL(decade || next decade)",
+    title = paste0("Novelty vs transience by decade, ", scatter_engine, " (mean over reps)"),
+    subtitle = "Above the diagonal = transience-dominant (looks more different from its future); below = novelty-dominant"
+  )
+```
+
+*Resonance is small relative to the overall KL scale for every engine — mean
+adjacent-decade novelty is 12–19 bits (Section 1) while resonance rarely
+exceeds &plusmn;3 bits — so forward/backward asymmetry is a second-order effect on
+top of a much larger shared level of decade-to-decade change. The most
+transience-dominant point in the whole series is PPMI-SVD at 1820 (resonance =
+&minus;1.70: that decade looks more different from 1830 than from 1810); the most
+novelty-dominant is xgboost at 1750 (+2.99). Several of the largest resonance
+swings cluster in the volume-scarce 1700s–1740s window flagged in Section 1, so
+read those specific values with the same corpus-scarcity caveat. For glmnet,
+the novelty-vs-transience scatter sits close to the 45&deg; line for most of the
+19th–20th century (novelty &#8776; transience — a decade's distance to its past and
+future are similar), with the clearest departures at the early, volume-scarce
+decades, again reflecting scarcity noise more than a genuine forward/backward
+asymmetry in semantic change.*
+
+---
+
+*Prototype for W5. Data: `combined_kl` from the `full_democracy` run bundle
+(`_targets/`). Model labels are taken directly from `combined_kl`'s own
+metadata columns (`predictive_model_engine`, `ppmi_fun`, `svd_dims`); no
+lookup-table repair is needed here (contrast `prototype_measures.qmd`, where
+`rank_agreements`/`weight_correlations` need the `combined_entropy` fix for the
+correlation_functions.R metadata-join bug). Bands throughout are replicate
+(rep) ranges across the 5 sampling reps, not confidence intervals, consistent
+with Appendix B's sampling-uncertainty section.*

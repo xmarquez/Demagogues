@@ -1,0 +1,361 @@
+---
+title: "Prototype: ism-term clustering across models and repeats"
+subtitle: "Democracy full run - diagnostic from saved targets"
+format:
+  html:
+    toc: true
+    toc-location: right
+    fig-width: 10
+    fig-height: 6
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
+library(purrr)
+library(tibble)
+library(knitr)
+library(here)
+library(targets)
+
+theme_set(theme_bw(base_size = 12))
+
+store <- here::here("_targets")
+targets::tar_config_set(store = store, config = "custom.yaml")
+rd <- function(n) targets::tar_read_raw(n, store = store)
+
+model_order <- c(
+  "glmnet",
+  "LiblineaR",
+  "naivebayes",
+  "xgboost",
+  "PPMI feature",
+  "PPMI similarities",
+  "SVD PPMI 50d"
+)
+
+model_pal <- c(
+  glmnet = "#1b9e77",
+  LiblineaR = "#d95f02",
+  naivebayes = "#7570b3",
+  xgboost = "#e7298a",
+  "PPMI feature" = "#66a61e",
+  "PPMI similarities" = "#a6761d",
+  "SVD PPMI 50d" = "#1f78b4"
+)
+```
+
+## Aim
+
+This prototype asks which `ism_` terms are stable across the five sample repeats
+and across model families. It reads only saved targets from `_targets/`; it does
+not rerun the pipeline.
+
+The plots collapse part-of-speech variants, so `despotism_nn`,
+`despotism_nnp`, and similar variants contribute to one `despotism` row. Within
+each model/repeat source, term scores are normalized before comparing across
+models because glmnet, LiblineaR, naive Bayes, xgboost, PPMI, and SVD weights
+are not on a common scale.
+
+```{r data}
+info <- rd("info_all_model_weights") |>
+  mutate(
+    weight_id = coalesce(weight_pred_id, weight_ppmi_id, weight_svd_id),
+    model_family = case_when(
+      predictive_model_engine %in% c("glmnet", "LiblineaR", "naivebayes", "xgboost") ~
+        predictive_model_engine,
+      ppmi_fun == "feature_ppmi" ~ "PPMI feature",
+      ppmi_fun == "ppmi_similarities" ~ "PPMI similarities",
+      !is.na(svd_dims) ~ paste("SVD", toupper(svd_weight), paste0(svd_dims, "d")),
+      TRUE ~ predictive_model_engine
+    ),
+    model_family = factor(model_family, levels = model_order),
+    source_id = paste0(as.character(model_family), " r", sample_rep)
+  ) |>
+  select(weight_id, model_family, sample_rep, source_id)
+
+weights_all <- rd("all_model_weights")
+ism_weights <- weights_all[
+  grepl("ism_", weights_all$word, fixed = TRUE),
+  c("weight_id", "word", "period", "value")
+]
+rm(weights_all)
+gc()
+
+ism_weights <- ism_weights |>
+  as_tibble() |>
+  inner_join(info, by = "weight_id") |>
+  mutate(
+    term = str_remove(word, "_[a-z]+$"),
+    value = as.numeric(value),
+    positive_value = pmax(value, 0)
+  ) |>
+  group_by(weight_id) |>
+  mutate(
+    source_max = max(positive_value, na.rm = TRUE),
+    value_norm = if_else(source_max > 0, positive_value / source_max, 0)
+  ) |>
+  ungroup()
+
+diagnostics <- tibble(
+  ism_rows = nrow(ism_weights),
+  unique_terms = n_distinct(ism_weights$term),
+  sources = n_distinct(ism_weights$weight_id),
+  model_families = n_distinct(ism_weights$model_family)
+)
+```
+
+```{r tbl-diagnostics}
+kable(diagnostics, caption = "Data used for the ism-term prototype.")
+```
+
+```{r scoring}
+term_source <- ism_weights |>
+  group_by(weight_id, model_family, sample_rep, source_id, term) |>
+  summarise(
+    score = sum(log1p(9 * value_norm), na.rm = TRUE),
+    max_norm = max(value_norm, na.rm = TRUE),
+    periods_positive = sum(value_norm > 0, na.rm = TRUE),
+    peak_period = period[which.max(value_norm)],
+    .groups = "drop"
+  ) |>
+  group_by(weight_id) |>
+  arrange(desc(score), desc(periods_positive), desc(max_norm), term, .by_group = TRUE) |>
+  mutate(
+    source_rank = row_number(),
+    source_score = {
+      source_score_max <- max(score, na.rm = TRUE)
+      if (is.finite(source_score_max) && source_score_max > 0) {
+        score / source_score_max
+      } else {
+        0
+      }
+    },
+    in_top = source_rank <= 35
+  ) |>
+  ungroup()
+
+term_summary <- term_source |>
+  filter(in_top, source_score > 0) |>
+  group_by(term) |>
+  summarise(
+    n_sources = n_distinct(weight_id),
+    n_model_families = n_distinct(model_family),
+    n_predictive_families = n_distinct(
+      model_family[model_family %in% c("glmnet", "LiblineaR", "naivebayes", "xgboost")]
+    ),
+    n_reps = n_distinct(sample_rep),
+    mean_source_score = mean(source_score, na.rm = TRUE),
+    max_source_score = max(source_score, na.rm = TRUE),
+    peak_period = round(weighted.mean(peak_period, source_score, na.rm = TRUE) / 10) * 10,
+    .groups = "drop"
+  ) |>
+  arrange(desc(n_model_families), desc(n_sources), desc(mean_source_score), term)
+
+stable_terms <- term_summary |>
+  filter(n_model_families >= 3 | n_sources >= 8) |>
+  slice_head(n = 45)
+
+selected_terms <- stable_terms$term
+```
+
+```{r tbl-stable-terms}
+stable_terms |>
+  transmute(
+    term,
+    model_families = n_model_families,
+    predictive_families = n_predictive_families,
+    sources = n_sources,
+    reps = n_reps,
+    peak_period,
+    mean_score = round(mean_source_score, 3)
+  ) |>
+  kable(caption = "Most stable ism terms by top-35 support across model/repeat sources.")
+```
+
+## 1. Clustered model/repeat support
+
+Each column is one model/repeat source. Each row is an `ism` term. The fill is
+the term's normalized score inside that source, so darker cells mean a term was
+near the top of that particular model/repeat. Rows and columns are clustered
+from the source-by-term matrix.
+
+```{r source-clustering}
+source_matrix_df <- term_source |>
+  filter(term %in% selected_terms) |>
+  select(term, source_id, source_score) |>
+  group_by(term, source_id) |>
+  summarise(source_score = max(source_score, na.rm = TRUE), .groups = "drop") |>
+  complete(term = selected_terms, source_id = info$source_id, fill = list(source_score = 0))
+
+source_wide <- source_matrix_df |>
+  pivot_wider(names_from = source_id, values_from = source_score, values_fill = 0) |>
+  arrange(term)
+
+source_mat <- as.matrix(source_wide[, -1])
+rownames(source_mat) <- source_wide$term
+
+term_order_source <- if (nrow(source_mat) > 1) {
+  rownames(source_mat)[hclust(dist(source_mat), method = "ward.D2")$order]
+} else {
+  rownames(source_mat)
+}
+
+source_order <- if (ncol(source_mat) > 1) {
+  colnames(source_mat)[hclust(dist(t(source_mat)), method = "ward.D2")$order]
+} else {
+  colnames(source_mat)
+}
+
+source_heat <- source_matrix_df |>
+  mutate(
+    term = factor(term, levels = rev(term_order_source)),
+    source_id = factor(source_id, levels = source_order)
+  )
+```
+
+```{r fig-clustered-source-heatmap, fig.width=12, fig.height=10}
+ggplot(source_heat, aes(source_id, term, fill = source_score)) +
+  geom_tile(color = "white", linewidth = 0.15) +
+  scale_fill_gradient(low = "#f7fbff", high = "#08306b", limits = c(0, 1)) +
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = "Within-source\nscore",
+    title = "Clustered support for ism terms across model/repeat sources",
+    subtitle = "Rows and columns are clustered; term scores are normalized within each source."
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    axis.text.y = element_text(size = 8),
+    panel.grid = element_blank()
+  )
+```
+
+## 2. Model-family stability
+
+This view collapses repeats within each model family. The fill is how many of
+the five repeats place the term in that source's top 35 `ism` terms; the text
+shows the same count. Rows are ordered by the weighted peak period so the
+historical sequence is visible.
+
+```{r model-family-support}
+family_support <- term_source |>
+  filter(term %in% selected_terms, in_top, source_score > 0) |>
+  group_by(term, model_family) |>
+  summarise(
+    reps_supported = n_distinct(sample_rep),
+    mean_score = mean(source_score, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  complete(
+    term = selected_terms,
+    model_family = factor(model_order, levels = model_order),
+    fill = list(reps_supported = 0, mean_score = 0)
+  ) |>
+  left_join(select(stable_terms, term, peak_period), by = "term")
+
+term_order_period <- stable_terms |>
+  arrange(peak_period, term) |>
+  pull(term)
+```
+
+```{r fig-family-support, fig.width=10, fig.height=9}
+ggplot(
+  family_support,
+  aes(model_family, factor(term, levels = rev(term_order_period)), fill = reps_supported)
+) +
+  geom_tile(color = "white", linewidth = 0.2) +
+  geom_text(aes(label = if_else(reps_supported > 0, as.character(reps_supported), "")), size = 2.6) +
+  scale_fill_gradient(low = "#f7fbff", high = "#08519c", limits = c(0, 5), breaks = 0:5) +
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = "Repeats\nin top 35",
+    title = "Repeat-stable ism terms by model family",
+    subtitle = "Rows are ordered by weighted peak decade; numbers count supporting repeats."
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 35, hjust = 1),
+    axis.text.y = element_text(size = 8),
+    panel.grid = element_blank()
+  )
+```
+
+## 3. Temporal clusters
+
+The previous plots show model/repeat stability. This plot asks when each stable
+term is most associated with democracy. Values are the mean normalized positive
+association across model/repeat sources in each decade.
+
+```{r temporal-clustering}
+term_period <- ism_weights |>
+  filter(term %in% selected_terms) |>
+  group_by(term, period) |>
+  summarise(mean_norm = mean(value_norm, na.rm = TRUE), .groups = "drop") |>
+  complete(term = selected_terms, period = sort(unique(ism_weights$period)), fill = list(mean_norm = 0))
+
+period_wide <- term_period |>
+  pivot_wider(names_from = period, values_from = mean_norm, values_fill = 0) |>
+  arrange(term)
+
+period_mat <- as.matrix(period_wide[, -1])
+rownames(period_mat) <- period_wide$term
+
+period_hc <- hclust(dist(period_mat), method = "ward.D2")
+period_clusters <- tibble(
+  term = names(cutree(period_hc, k = 4)),
+  cluster = cutree(period_hc, k = 4)
+) |>
+  left_join(select(stable_terms, term, peak_period), by = "term") |>
+  group_by(cluster) |>
+  mutate(cluster_peak = median(peak_period, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(
+    cluster_order = dense_rank(cluster_peak),
+    cluster_label = paste0("Cluster ", cluster_order, " (median peak ", cluster_peak, ")")
+  )
+
+term_order_time <- period_clusters |>
+  arrange(cluster_order, peak_period, term) |>
+  pull(term)
+
+term_period_plot <- term_period |>
+  left_join(period_clusters, by = "term") |>
+  mutate(term = factor(term, levels = rev(term_order_time)))
+```
+
+```{r fig-temporal-clusters, fig.width=11, fig.height=10}
+ggplot(term_period_plot, aes(period, term, fill = mean_norm)) +
+  geom_tile(color = "white", linewidth = 0.1) +
+  facet_grid(cluster_label ~ ., scales = "free_y", space = "free_y") +
+  scale_x_continuous(breaks = seq(1700, 2010, 30)) +
+  scale_fill_gradient(low = "#fff7ec", high = "#7f0000") +
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = "Mean normalized\npositive association",
+    title = "Temporal clusters of stable ism terms",
+    subtitle = "Values are averaged across model/repeat sources after within-source normalization."
+  ) +
+  theme(
+    axis.text.y = element_text(size = 8),
+    strip.text.y = element_text(angle = 0),
+    panel.grid = element_blank()
+  )
+```
+
+## Reading
+
+The most useful terms are those supported by multiple model families and
+multiple repeats. Terms that appear in one model family only are better treated
+as model-specific diagnostics. In these figures, the stronger stable pattern is
+the shift from early constitutional/oppositional `ism` language toward modern
+ideological and regime-type language.
